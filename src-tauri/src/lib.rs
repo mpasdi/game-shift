@@ -23,7 +23,7 @@ pub fn run() {
             db::initialize(app.handle())?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![app_info, games::list_games_command])
+        .invoke_handler(tauri::generate_handler![app_info, games::list_games_command, games::create_game_command])
         .run(tauri::generate_context!())
         .expect("error while running Game Shift");
 }

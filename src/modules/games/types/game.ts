@@ -14,3 +14,10 @@ export interface Game {
   createTime: number
   updateTime: number
 }
+
+export interface CreateGamePayload {
+  name: string
+  exePath: string
+  workDir?: string | null
+  args?: string | null
+}

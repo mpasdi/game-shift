@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia'
-import { listGames } from '../api'
-import type { Game, GameFilter } from '../types/game'
+import { createGame, listGames } from '../api'
+import type { CreateGamePayload, Game, GameFilter } from '../types/game'
 
 interface GamesState {
   games: Game[]
   searchText: string
   activeFilter: GameFilter
   isLoading: boolean
+  isSaving: boolean
   errorMessage: string | null
 }
 
@@ -16,6 +17,7 @@ export const useGamesStore = defineStore('games', {
     searchText: '',
     activeFilter: 'all',
     isLoading: false,
+    isSaving: false,
     errorMessage: null
   }),
   getters: {
@@ -47,6 +49,21 @@ export const useGamesStore = defineStore('games', {
         this.errorMessage = error instanceof Error ? error.message : String(error)
       } finally {
         this.isLoading = false
+      }
+    },
+    async createGame(payload: CreateGamePayload) {
+      this.isSaving = true
+      this.errorMessage = null
+
+      try {
+        const game = await createGame(payload)
+        await this.loadGames()
+        return game
+      } catch (error) {
+        this.errorMessage = error instanceof Error ? error.message : String(error)
+        throw error
+      } finally {
+        this.isSaving = false
       }
     },
     setFilter(filter: GameFilter) {
