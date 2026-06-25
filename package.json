@@ -16,6 +16,8 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "check": "pnpm type-check && pnpm lint && pnpm format:check && pnpm build",
+    "check:rust": "cargo check --manifest-path src-tauri/Cargo.toml",
+    "verify": "pnpm check && pnpm check:rust",
     "prepare": "husky",
     "commit": "czg --config=./cz.config.js",
     "lint-staged": "lint-staged"

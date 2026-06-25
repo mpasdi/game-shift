@@ -306,6 +306,8 @@
 - [x] 配置 `format` 脚本
 - [x] 配置 `format:check` 脚本
 - [x] 配置 `check` 汇总检查脚本
+- [x] 配置 check:rust Rust 检查脚本
+- [x] 配置 erify 全量验证脚本
 - [x] 配置 Git 文本换行规范
 - [x] 接入 Git hooks
 - [x] 接入 Husky
