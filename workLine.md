@@ -306,8 +306,15 @@
 - [x] 配置 `format:check` 脚本
 - [x] 配置 `check` 汇总检查脚本
 - [x] 配置 Git 文本换行规范
-- [ ] 接入 Git hooks
-- [ ] 接入提交信息规范
+- [x] 接入 Git hooks
+- [x] 接入 Husky
+- [x] 接入 lint-staged
+- [x] 接入 commitlint
+- [x] 同步 commitlint 提交类型枚举
+- [x] 接入 czg
+- [x] 按项目约定配置 czg 提交类型
+- [x] 修正 czg 配置加载文件为 cz.config.js`n- [x] 配置 `commit` 交互式提交脚本
+- [x] 接入提交信息规范
 
 ## 4. 页面清单
 
