@@ -11,6 +11,7 @@
 ## 2. 当前完成状态
 
 - [x] 创建正式需求文档 `docs/requirements.md`
+- [x] 补充项目 README
 - [x] 初始化 Tauri v2 项目骨架
 - [x] 初始化 Vue 3 + TypeScript + Vite 前端工程
 - [x] 接入 Pinia
