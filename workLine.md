@@ -35,11 +35,14 @@
 - [x] 使用自定义组件体系维护桌面工具风格
 - [x] 使用 `@lucide/vue` 提供图标
 - [x] 使用 `@vueuse/core` 提供组合式工具能力
-- [ ] 自建 Button 基础组件
-- [ ] 自建 Modal 基础组件
+- [x] 自建 Button 基础组件
+- [x] 自建 IconButton 基础组件
+- [x] 自建 Modal 基础组件
 - [ ] 自建 Toast 基础组件
 - [ ] 自建 ConfirmDialog 基础组件
-- [ ] 自建 EmptyState 基础组件
+- [x] 自建 EmptyState 基础组件
+- [x] 自建 TextField 基础组件
+- [x] 确定全局主题色
 
 ## 3. 开发阶段拆分
 
@@ -450,10 +453,12 @@
 
 ### 6.3 `shared/components`
 
-- [ ] Button 基础组件
-- [ ] Modal 基础组件
+- [x] Button 基础组件
+- [x] IconButton 基础组件
+- [x] Modal 基础组件
 - [ ] Toast 基础组件
-- [ ] EmptyState 基础组件
+- [x] EmptyState 基础组件
+- [x] TextField 基础组件
 - [ ] Loading 基础组件
 - [ ] ConfirmDialog 基础组件
 

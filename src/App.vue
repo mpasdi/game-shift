@@ -14,6 +14,10 @@
     Sparkles
   } from '@lucide/vue'
   import { useGamesStore } from './modules/games/stores/games'
+  import BaseButton from './shared/components/BaseButton.vue'
+  import EmptyState from './shared/components/EmptyState.vue'
+  import IconButton from './shared/components/IconButton.vue'
+  import TextField from './shared/components/TextField.vue'
 
   const gamesStore = useGamesStore()
   const { games, searchText, activeFilter, isLoading, errorMessage } = storeToRefs(gamesStore)
@@ -62,76 +66,72 @@
 
     <section class="workspace" aria-label="游戏库">
       <header class="toolbar">
-        <label class="search-box" for="game-search">
-          <Search :size="17" />
-          <input id="game-search" v-model="searchText" type="search" placeholder="输入游戏名称或 exe 文件名" />
-        </label>
+        <TextField id="game-search" v-model="searchText" type="search" placeholder="输入游戏名称或 exe 文件名">
+          <template #icon><Search :size="17" /></template>
+        </TextField>
 
         <div class="toolbar-actions">
           <div class="segmented" aria-label="视图切换">
-            <button :class="{ active: viewMode === 'grid' }" type="button" title="网格视图" @click="viewMode = 'grid'">
+            <IconButton label="网格视图" :variant="viewMode === 'grid' ? 'active' : 'plain'" @click="viewMode = 'grid'">
               <Grid2X2 :size="17" />
-            </button>
-            <button :class="{ active: viewMode === 'list' }" type="button" title="列表视图" @click="viewMode = 'list'">
+            </IconButton>
+            <IconButton label="列表视图" :variant="viewMode === 'list' ? 'active' : 'plain'" @click="viewMode = 'list'">
               <LayoutList :size="17" />
-            </button>
+            </IconButton>
           </div>
-          <button class="secondary-action" type="button">
-            <FolderSearch :size="17" />
+          <BaseButton variant="secondary">
+            <template #icon><FolderSearch :size="17" /></template>
             扫描目录
-          </button>
-          <button class="primary-action" type="button">
-            <Plus :size="17" />
+          </BaseButton>
+          <BaseButton variant="primary">
+            <template #icon><Plus :size="17" /></template>
             手动添加
-          </button>
+          </BaseButton>
         </div>
       </header>
 
-      <section v-if="isLoading" class="empty-state" aria-label="正在加载游戏库">
-        <div class="empty-copy">
-          <p class="eyebrow">
-            <Sparkles :size="15" />
-            正在加载
-          </p>
-          <h2>正在读取本地游戏库</h2>
-          <p>Game Shift 正在初始化本地数据库并加载游戏列表。</p>
-        </div>
-      </section>
+      <EmptyState
+        v-if="isLoading"
+        label="正在加载游戏库"
+        eyebrow="正在加载"
+        title="正在读取本地游戏库"
+        description="Game Shift 正在初始化本地数据库并加载游戏列表。"
+      >
+        <template #icon><Sparkles :size="15" /></template>
+      </EmptyState>
 
-      <section v-else-if="errorMessage" class="empty-state" aria-label="游戏库加载失败">
-        <div class="empty-copy">
-          <p class="eyebrow">
-            <Sparkles :size="15" />
-            加载失败
-          </p>
-          <h2>无法读取本地游戏库</h2>
-          <p>{{ errorMessage }}</p>
-        </div>
-        <div class="empty-actions">
-          <button class="secondary-action" type="button" @click="gamesStore.loadGames()">重试</button>
-        </div>
-      </section>
+      <EmptyState
+        v-else-if="errorMessage"
+        label="游戏库加载失败"
+        eyebrow="加载失败"
+        title="无法读取本地游戏库"
+        :description="errorMessage"
+      >
+        <template #icon><Sparkles :size="15" /></template>
+        <template #actions>
+          <BaseButton variant="secondary" @click="gamesStore.loadGames()">重试</BaseButton>
+        </template>
+      </EmptyState>
 
-      <section v-else-if="games.length === 0" class="empty-state" aria-label="空游戏库">
-        <div class="empty-copy">
-          <p class="eyebrow">
-            <Sparkles :size="15" />
-            尚未导入游戏
-          </p>
-          <h2>从扫描本地目录开始建立你的游戏库</h2>
-          <p>扫描结果会先进入候选列表，确认后才会写入本地数据库。</p>
-        </div>
-        <div class="empty-actions">
-          <button class="primary-action" type="button">
-            <FolderSearch :size="17" />
+      <EmptyState
+        v-else-if="games.length === 0"
+        label="空游戏库"
+        eyebrow="尚未导入游戏"
+        title="从扫描本地目录开始建立你的游戏库"
+        description="扫描结果会先进入候选列表，确认后才会写入本地数据库。"
+      >
+        <template #icon><Sparkles :size="15" /></template>
+        <template #actions>
+          <BaseButton variant="primary">
+            <template #icon><FolderSearch :size="17" /></template>
             扫描目录
-          </button>
-          <button class="secondary-action" type="button">
-            <Plus :size="17" />
+          </BaseButton>
+          <BaseButton variant="secondary">
+            <template #icon><Plus :size="17" /></template>
             手动添加
-          </button>
-        </div>
-      </section>
+          </BaseButton>
+        </template>
+      </EmptyState>
 
       <section v-else class="game-area" :class="viewMode">
         <article v-for="game in visibleGames" :key="game.id" class="game-item">
@@ -140,7 +140,7 @@
             <h2>{{ game.name }}</h2>
             <p>{{ game.exePath }}</p>
           </div>
-          <button class="primary-action compact" type="button">启动</button>
+          <BaseButton variant="primary" size="sm">启动</BaseButton>
         </article>
       </section>
     </section>
