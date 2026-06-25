@@ -19,9 +19,14 @@
 - [x] 创建 Game Shift 主界面空状态
 - [x] 创建游戏模块基础类型 `Game`
 - [x] 创建游戏模块基础 store
+- [x] 集成 EditorConfig
+- [x] 配置 .gitattributes 统一 LF 换行
+- [x] 集成 Prettier
+- [x] 集成 ESLint
+- [x] 接入 `@vueuse/core`
+- [x] 接入 `@lucide/vue` 图标
 - [x] 前端生产构建验证通过
 - [x] Rust / Tauri `cargo check` 验证通过
-
 
 ## 2.1 UI 技术策略
 
@@ -48,6 +53,9 @@
 - [x] 配置 `.gitignore`
 - [x] 生成 `pnpm-lock.yaml`
 - [x] 生成 `Cargo.lock`
+- [x] 配置 EditorConfig
+- [x] 配置 Prettier
+- [x] 配置 ESLint
 - [ ] 清理默认 Tauri 图标并替换为 Game Shift 图标
 - [ ] 增加基础错误提示组件
 - [ ] 增加基础确认弹窗组件
@@ -281,6 +289,26 @@
 - [ ] 手动测试关闭后数据仍存在
 - [ ] 编写 MVP 验收记录
 
+### 3.16 阶段十六：代码规范与工程约束
+
+模块目标：统一代码风格和基础质量检查。
+
+- [x] 集成 ESLint
+- [x] 集成 Prettier
+- [x] 集成 EditorConfig
+- [x] 配置 .gitattributes 统一 LF 换行
+- [x] 配置 Vue / TypeScript lint 规则
+- [x] 配置 Prettier 格式化规则
+- [x] 按项目约定更新 Prettier 配置
+- [x] 配置 `lint` 脚本
+- [x] 配置 `lint:fix` 脚本
+- [x] 配置 `format` 脚本
+- [x] 配置 `format:check` 脚本
+- [x] 配置 `check` 汇总检查脚本
+- [x] 配置 Git 文本换行规范
+- [ ] 接入 Git hooks
+- [ ] 接入提交信息规范
+
 ## 4. 页面清单
 
 ### 4.1 主界面 / 游戏库页面
@@ -424,6 +452,8 @@
 - [ ] 时间格式化工具
 - [ ] 路径显示工具
 - [ ] command 错误格式化工具
+- [ ] ESLint 规则维护
+- [ ] Prettier 格式维护
 - [ ] 防抖搜索工具
 
 ## 7. 推荐开发顺序

@@ -1,30 +1,30 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { storeToRefs } from "pinia";
-import {
-  Clock3,
-  FolderSearch,
-  Gamepad2,
-  Grid2X2,
-  Heart,
-  LayoutList,
-  Library,
-  Plus,
-  Search,
-  Sparkles,
-} from "@lucide/vue";
-import { useGamesStore } from "./modules/games/stores/games";
+  import { computed, ref } from 'vue'
+  import { storeToRefs } from 'pinia'
+  import {
+    Clock3,
+    FolderSearch,
+    Gamepad2,
+    Grid2X2,
+    Heart,
+    LayoutList,
+    Library,
+    Plus,
+    Search,
+    Sparkles
+  } from '@lucide/vue'
+  import { useGamesStore } from './modules/games/stores/games'
 
-const gamesStore = useGamesStore();
-const { games, searchText, activeFilter } = storeToRefs(gamesStore);
-const viewMode = ref<"grid" | "list">("grid");
+  const gamesStore = useGamesStore()
+  const { games, searchText, activeFilter } = storeToRefs(gamesStore)
+  const viewMode = ref<'grid' | 'list'>('grid')
 
-const visibleGames = computed(() => gamesStore.filteredGames);
-const filterItems = [
-  { key: "all", label: "全部", icon: Library },
-  { key: "favorite", label: "收藏", icon: Heart },
-  { key: "recent", label: "最近", icon: Clock3 },
-] as const;
+  const visibleGames = computed(() => gamesStore.filteredGames)
+  const filterItems = [
+    { key: 'all', label: '全部', icon: Library },
+    { key: 'favorite', label: '收藏', icon: Heart },
+    { key: 'recent', label: '最近', icon: Clock3 }
+  ] as const
 </script>
 
 <template>
@@ -85,7 +85,10 @@ const filterItems = [
 
       <section v-if="games.length === 0" class="empty-state" aria-label="空游戏库">
         <div class="empty-copy">
-          <p class="eyebrow"><Sparkles :size="15" /> 尚未导入游戏</p>
+          <p class="eyebrow">
+            <Sparkles :size="15" />
+            尚未导入游戏
+          </p>
           <h2>从扫描本地目录开始建立你的游戏库</h2>
           <p>扫描结果会先进入候选列表，确认后才会写入本地数据库。</p>
         </div>
