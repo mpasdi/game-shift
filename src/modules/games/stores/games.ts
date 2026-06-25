@@ -1,17 +1,22 @@
 import { defineStore } from 'pinia'
+import { listGames } from '../api'
 import type { Game, GameFilter } from '../types/game'
 
 interface GamesState {
   games: Game[]
   searchText: string
   activeFilter: GameFilter
+  isLoading: boolean
+  errorMessage: string | null
 }
 
 export const useGamesStore = defineStore('games', {
   state: (): GamesState => ({
     games: [],
     searchText: '',
-    activeFilter: 'all'
+    activeFilter: 'all',
+    isLoading: false,
+    errorMessage: null
   }),
   getters: {
     filteredGames(state): Game[] {
@@ -32,6 +37,18 @@ export const useGamesStore = defineStore('games', {
     }
   },
   actions: {
+    async loadGames() {
+      this.isLoading = true
+      this.errorMessage = null
+
+      try {
+        this.games = await listGames()
+      } catch (error) {
+        this.errorMessage = error instanceof Error ? error.message : String(error)
+      } finally {
+        this.isLoading = false
+      }
+    },
     setFilter(filter: GameFilter) {
       this.activeFilter = filter
     },

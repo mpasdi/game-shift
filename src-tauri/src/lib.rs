@@ -1,3 +1,6 @@
+mod db;
+mod games;
+
 #[derive(serde::Serialize)]
 struct AppInfo {
     name: &'static str,
@@ -16,7 +19,11 @@ fn app_info() -> AppInfo {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![app_info])
+        .setup(|app| {
+            db::initialize(app.handle())?;
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![app_info, games::list_games_command])
         .run(tauri::generate_context!())
         .expect("error while running Game Shift");
 }

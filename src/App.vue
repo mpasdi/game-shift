@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
+  import { computed, onMounted, ref } from 'vue'
   import { storeToRefs } from 'pinia'
   import {
     Clock3,
@@ -16,7 +16,7 @@
   import { useGamesStore } from './modules/games/stores/games'
 
   const gamesStore = useGamesStore()
-  const { games, searchText, activeFilter } = storeToRefs(gamesStore)
+  const { games, searchText, activeFilter, isLoading, errorMessage } = storeToRefs(gamesStore)
   const viewMode = ref<'grid' | 'list'>('grid')
 
   const visibleGames = computed(() => gamesStore.filteredGames)
@@ -25,6 +25,10 @@
     { key: 'favorite', label: '收藏', icon: Heart },
     { key: 'recent', label: '最近', icon: Clock3 }
   ] as const
+
+  onMounted(() => {
+    void gamesStore.loadGames()
+  })
 </script>
 
 <template>
@@ -83,7 +87,32 @@
         </div>
       </header>
 
-      <section v-if="games.length === 0" class="empty-state" aria-label="空游戏库">
+      <section v-if="isLoading" class="empty-state" aria-label="正在加载游戏库">
+        <div class="empty-copy">
+          <p class="eyebrow">
+            <Sparkles :size="15" />
+            正在加载
+          </p>
+          <h2>正在读取本地游戏库</h2>
+          <p>Game Shift 正在初始化本地数据库并加载游戏列表。</p>
+        </div>
+      </section>
+
+      <section v-else-if="errorMessage" class="empty-state" aria-label="游戏库加载失败">
+        <div class="empty-copy">
+          <p class="eyebrow">
+            <Sparkles :size="15" />
+            加载失败
+          </p>
+          <h2>无法读取本地游戏库</h2>
+          <p>{{ errorMessage }}</p>
+        </div>
+        <div class="empty-actions">
+          <button class="secondary-action" type="button" @click="gamesStore.loadGames()">重试</button>
+        </div>
+      </section>
+
+      <section v-else-if="games.length === 0" class="empty-state" aria-label="空游戏库">
         <div class="empty-copy">
           <p class="eyebrow">
             <Sparkles :size="15" />
