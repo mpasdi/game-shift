@@ -10,10 +10,14 @@
     LayoutList,
     Library,
     Plus,
+    RefreshCw,
     Search,
     Sparkles
   } from '@lucide/vue'
+  import AddGameDialog from './modules/games/components/AddGameDialog.vue'
+  import GameList from './modules/games/components/GameList.vue'
   import { useGamesStore } from './modules/games/stores/games'
+  import type { CreateGamePayload, Game, UpdateGamePayload } from './modules/games/types/game'
   import BaseButton from './shared/components/BaseButton.vue'
   import EmptyState from './shared/components/EmptyState.vue'
   import IconButton from './shared/components/IconButton.vue'
@@ -22,8 +26,12 @@
   const gamesStore = useGamesStore()
   const { games, searchText, activeFilter, isLoading, errorMessage } = storeToRefs(gamesStore)
   const viewMode = ref<'grid' | 'list'>('grid')
+  const isGameDialogOpen = ref(false)
+  const editingGame = ref<Game | null>(null)
 
   const visibleGames = computed(() => gamesStore.filteredGames)
+  const dialogMode = computed(() => (editingGame.value ? 'edit' : 'create'))
+  const hasActiveSearchOrFilter = computed(() => searchText.value.trim() !== '' || activeFilter.value !== 'all')
   const filterItems = [
     { key: 'all', label: '全部', icon: Library },
     { key: 'favorite', label: '收藏', icon: Heart },
@@ -33,6 +41,34 @@
   onMounted(() => {
     void gamesStore.loadGames()
   })
+
+  function openCreateGameDialog() {
+    editingGame.value = null
+    isGameDialogOpen.value = true
+  }
+
+  function openEditGameDialog(game: Game) {
+    editingGame.value = game
+    isGameDialogOpen.value = true
+  }
+
+  function closeGameDialog() {
+    isGameDialogOpen.value = false
+    editingGame.value = null
+  }
+
+  async function submitGame(payload: CreateGamePayload | UpdateGamePayload) {
+    if (isUpdateGamePayload(payload)) {
+      await gamesStore.updateGame(payload)
+    } else {
+      await gamesStore.createGame(payload)
+    }
+    closeGameDialog()
+  }
+
+  function isUpdateGamePayload(payload: CreateGamePayload | UpdateGamePayload): payload is UpdateGamePayload {
+    return 'id' in payload
+  }
 </script>
 
 <template>
@@ -79,11 +115,15 @@
               <LayoutList :size="17" />
             </IconButton>
           </div>
+          <BaseButton variant="secondary" :loading="isLoading" @click="gamesStore.refreshGames()">
+            <template #icon><RefreshCw :size="17" /></template>
+            刷新
+          </BaseButton>
           <BaseButton variant="secondary">
             <template #icon><FolderSearch :size="17" /></template>
             扫描目录
           </BaseButton>
-          <BaseButton variant="primary">
+          <BaseButton variant="primary" @click="openCreateGameDialog">
             <template #icon><Plus :size="17" /></template>
             手动添加
           </BaseButton>
@@ -126,23 +166,34 @@
             <template #icon><FolderSearch :size="17" /></template>
             扫描目录
           </BaseButton>
-          <BaseButton variant="secondary">
+          <BaseButton variant="secondary" @click="openCreateGameDialog">
             <template #icon><Plus :size="17" /></template>
             手动添加
           </BaseButton>
         </template>
       </EmptyState>
 
-      <section v-else class="game-area" :class="viewMode">
-        <article v-for="game in visibleGames" :key="game.id" class="game-item">
-          <div class="game-icon">{{ game.name.slice(0, 1).toUpperCase() }}</div>
-          <div class="game-meta">
-            <h2>{{ game.name }}</h2>
-            <p>{{ game.exePath }}</p>
-          </div>
-          <BaseButton variant="primary" size="sm">启动</BaseButton>
-        </article>
-      </section>
+      <EmptyState
+        v-else-if="visibleGames.length === 0"
+        label="没有匹配的游戏"
+        eyebrow="无结果"
+        title="没有找到匹配的游戏"
+        :description="hasActiveSearchOrFilter ? '可以调整搜索关键词或切换左侧筛选条件。' : '当前游戏库暂无可展示内容。'"
+      >
+        <template #icon><Sparkles :size="15" /></template>
+      </EmptyState>
+
+      <GameList v-else :games="visibleGames" :view-mode="viewMode" @edit="openEditGameDialog" />
     </section>
+
+    <AddGameDialog
+      :open="isGameDialogOpen"
+      :mode="dialogMode"
+      :game="editingGame"
+      :saving="gamesStore.isSaving"
+      :error-message="gamesStore.errorMessage"
+      @close="closeGameDialog"
+      @submit="submitGame"
+    />
   </main>
 </template>

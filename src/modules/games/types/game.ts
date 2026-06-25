@@ -21,3 +21,8 @@ export interface CreateGamePayload {
   workDir?: string | null
   args?: string | null
 }
+
+export interface UpdateGamePayload extends CreateGamePayload {
+  id: string
+  favorite: boolean
+}

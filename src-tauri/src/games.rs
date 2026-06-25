@@ -32,14 +32,30 @@ pub struct CreateGamePayload {
     args: Option<String>,
 }
 
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateGamePayload {
+    id: String,
+    name: String,
+    exe_path: String,
+    work_dir: Option<String>,
+    args: Option<String>,
+    favorite: bool,
+}
+
 pub fn list_games(app: &AppHandle) -> Result<Vec<Game>, String> {
     let connection = db::open_connection(app)?;
     query_games(&connection)
 }
 
+pub fn get_game(app: &AppHandle, id: &str) -> Result<Option<Game>, String> {
+    let connection = db::open_connection(app)?;
+    get_game_by_id(&connection, id)
+}
+
 pub fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, String> {
     let connection = db::open_connection(app)?;
-    let input = normalize_create_payload(payload)?;
+    let input = normalize_game_fields(payload.name, payload.exe_path, payload.work_dir, payload.args)?;
 
     if exe_path_exists(&connection, &input.exe_path)? {
         return Err("该游戏启动路径已存在".to_string());
@@ -82,28 +98,79 @@ pub fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, 
     get_game_by_id(&connection, &id)?.ok_or_else(|| "游戏创建后无法读取".to_string())
 }
 
-fn normalize_create_payload(payload: CreateGamePayload) -> Result<NormalizedCreateGame, String> {
-    let name = payload.name.trim().to_string();
+pub fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, String> {
+    let connection = db::open_connection(app)?;
+    let id = payload.id.trim().to_string();
+    if id.is_empty() {
+        return Err("游戏 ID 不能为空".to_string());
+    }
+
+    if get_game_by_id(&connection, &id)?.is_none() {
+        return Err("游戏不存在或已被删除".to_string());
+    }
+
+    let input = normalize_game_fields(payload.name, payload.exe_path, payload.work_dir, payload.args)?;
+    if exe_path_exists_for_other_game(&connection, &input.exe_path, &id)? {
+        return Err("该游戏启动路径已存在".to_string());
+    }
+
+    let now = current_timestamp_millis()?;
+    connection
+        .execute(
+            "
+            UPDATE games
+            SET name = ?1,
+                exe_path = ?2,
+                folder_path = ?3,
+                args = ?4,
+                work_dir = ?5,
+                favorite = ?6,
+                update_time = ?7
+            WHERE id = ?8
+            ",
+            params![
+                input.name,
+                input.exe_path,
+                input.folder_path,
+                input.args,
+                input.work_dir,
+                i64::from(payload.favorite),
+                now,
+                id
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+
+    get_game_by_id(&connection, &id)?.ok_or_else(|| "游戏更新后无法读取".to_string())
+}
+
+fn normalize_game_fields(
+    name: String,
+    exe_path: String,
+    work_dir: Option<String>,
+    args: Option<String>,
+) -> Result<NormalizedGameFields, String> {
+    let name = name.trim().to_string();
     if name.is_empty() {
         return Err("游戏名称不能为空".to_string());
     }
 
-    let exe_path = normalize_existing_exe_path(&payload.exe_path)?;
+    let exe_path = normalize_existing_exe_path(&exe_path)?;
     let folder_path = exe_path
         .parent()
         .ok_or_else(|| "无法识别游戏所在目录".to_string())?
         .to_path_buf();
-    let work_dir = match payload.work_dir.map(|value| value.trim().to_string()) {
+    let work_dir = match work_dir.map(|value| value.trim().to_string()) {
         Some(value) if !value.is_empty() => normalize_existing_directory(&value)?,
         _ => folder_path.clone(),
     };
 
-    Ok(NormalizedCreateGame {
+    Ok(NormalizedGameFields {
         name,
         exe_path: path_to_string(exe_path)?,
         folder_path: path_to_string(folder_path)?,
         work_dir: Some(path_to_string(work_dir)?),
-        args: payload.args.and_then(|value| {
+        args: args.and_then(|value| {
             let trimmed = value.trim().to_string();
             (!trimmed.is_empty()).then_some(trimmed)
         }),
@@ -152,6 +219,18 @@ fn exe_path_exists(connection: &Connection, exe_path: &str) -> Result<bool, Stri
         .query_row(
             "SELECT COUNT(1) FROM games WHERE exe_path = ?1",
             params![exe_path],
+            |row| row.get(0),
+        )
+        .map_err(|error| error.to_string())?;
+
+    Ok(count > 0)
+}
+
+fn exe_path_exists_for_other_game(connection: &Connection, exe_path: &str, id: &str) -> Result<bool, String> {
+    let count: i64 = connection
+        .query_row(
+            "SELECT COUNT(1) FROM games WHERE exe_path = ?1 AND id <> ?2",
+            params![exe_path, id],
             |row| row.get(0),
         )
         .map_err(|error| error.to_string())?;
@@ -244,7 +323,7 @@ fn current_timestamp_millis() -> Result<i64, String> {
     i64::try_from(duration.as_millis()).map_err(|_| "当前时间戳超出范围".to_string())
 }
 
-struct NormalizedCreateGame {
+struct NormalizedGameFields {
     name: String,
     exe_path: String,
     folder_path: String,
@@ -258,6 +337,16 @@ pub fn list_games_command(app: AppHandle) -> Result<Vec<Game>, String> {
 }
 
 #[tauri::command]
+pub fn get_game_command(app: AppHandle, id: String) -> Result<Option<Game>, String> {
+    get_game(&app, &id)
+}
+
+#[tauri::command]
 pub fn create_game_command(app: AppHandle, payload: CreateGamePayload) -> Result<Game, String> {
     create_game(&app, payload)
+}
+
+#[tauri::command]
+pub fn update_game_command(app: AppHandle, payload: UpdateGamePayload) -> Result<Game, String> {
+    update_game(&app, payload)
 }
