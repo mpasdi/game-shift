@@ -40,32 +40,41 @@
     width: 38px;
     min-width: 38px;
     height: 36px;
-    border: 0;
+    border: 1px solid transparent;
+    border-radius: 8px;
     background: transparent;
     color: var(--text-muted);
+    line-height: 0;
+    padding: 0;
     place-items: center;
     transition:
       background 160ms ease,
-      color 160ms ease,
-      transform 160ms ease;
+      border-color 160ms ease,
+      color 160ms ease;
   }
 
   .icon-button:hover {
-    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--border);
+    background: var(--surface);
     color: var(--text);
   }
 
   .icon-button:active {
-    transform: scale(0.94);
+    background: var(--surface-hover);
   }
 
   .icon-button--active {
+    border-color: var(--accent-border);
     background: var(--accent-soft);
-    color: #ddd6fe;
+    color: var(--accent-strong);
   }
 
   .icon-button--danger:hover {
     background: var(--danger-soft);
     color: #fecdd3;
+  }
+
+  .icon-button :deep(svg) {
+    display: block;
   }
 </style>

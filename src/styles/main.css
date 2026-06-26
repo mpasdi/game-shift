@@ -7,30 +7,33 @@
     -apple-system,
     BlinkMacSystemFont,
     sans-serif;
-  color: #f5f2ff;
-  background: #17131f;
+  font-size: 15px;
+  color: #f6f3f8;
+  background: #111015;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --bg: #17131f;
-  --bg-deep: #0f0d14;
-  --panel: rgba(32, 28, 41, 0.58);
-  --panel-strong: rgba(42, 36, 56, 0.72);
-  --surface: rgba(255, 255, 255, 0.07);
-  --surface-hover: rgba(255, 255, 255, 0.11);
-  --border: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.18);
-  --text: #f5f2ff;
-  --text-muted: rgba(245, 242, 255, 0.68);
-  --text-subtle: rgba(245, 242, 255, 0.44);
-  --accent: #8b5cf6;
-  --accent-strong: #a78bfa;
-  --accent-soft: rgba(139, 92, 246, 0.24);
-  --danger: #fb7185;
-  --danger-soft: rgba(251, 113, 133, 0.15);
-  --focus-ring: rgba(167, 139, 250, 0.34);
-  --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  --bg: #111015;
+  --bg-deep: #0b0a0f;
+  --sidebar: #151219;
+  --panel: rgba(31, 28, 37, 0.88);
+  --panel-strong: rgba(39, 35, 47, 0.94);
+  --surface: rgba(255, 255, 255, 0.055);
+  --surface-hover: rgba(255, 255, 255, 0.085);
+  --border: rgba(255, 255, 255, 0.095);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #f6f3f8;
+  --text-muted: rgba(246, 243, 248, 0.66);
+  --text-subtle: rgba(246, 243, 248, 0.42);
+  --accent: #7c5cff;
+  --accent-strong: #9d8cff;
+  --accent-soft: rgba(124, 92, 255, 0.16);
+  --accent-border: rgba(157, 140, 255, 0.36);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.13);
+  --focus-ring: rgba(124, 92, 255, 0.26);
+  --shadow: 0 20px 54px rgba(0, 0, 0, 0.36);
 }
 
 * {
@@ -49,9 +52,9 @@ body,
 body {
   overflow-x: hidden;
   background:
-    linear-gradient(135deg, rgba(139, 92, 246, 0.16), transparent 36%),
-    linear-gradient(45deg, rgba(245, 158, 11, 0.09), transparent 42%),
-    linear-gradient(180deg, #231b2c 0%, #17131f 48%, #0f0d14 100%);
+    radial-gradient(circle at 18% 0%, rgba(124, 92, 255, 0.14), transparent 34%),
+    radial-gradient(circle at 0% 100%, rgba(245, 158, 11, 0.06), transparent 28%),
+    linear-gradient(180deg, #17131d 0%, var(--bg) 46%, var(--bg-deep) 100%);
 }
 
 button,

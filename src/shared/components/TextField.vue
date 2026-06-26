@@ -39,10 +39,9 @@
     min-height: 38px;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--surface);
     color: var(--text);
     padding: 0 12px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
     transition:
       border-color 160ms ease,
       background 160ms ease,
@@ -51,17 +50,17 @@
 
   .text-field:hover {
     border-color: var(--border-strong);
-    background: rgba(255, 255, 255, 0.09);
+    background: var(--surface-hover);
   }
 
   .text-field:focus-within {
-    border-color: rgba(167, 139, 250, 0.76);
+    border-color: var(--accent-border);
     box-shadow: 0 0 0 3px var(--focus-ring);
   }
 
   .text-field--readonly {
-    border-color: rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.045);
+    border-color: var(--border);
+    background: rgba(255, 255, 255, 0.035);
   }
 
   .text-field--readonly .text-field__label {
@@ -70,7 +69,7 @@
     align-items: center;
     margin: 0 12px 0 -12px;
     border-right: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.035);
     color: var(--text-muted);
     padding: 0 12px;
   }

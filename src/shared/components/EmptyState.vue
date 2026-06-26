@@ -31,7 +31,7 @@
     min-height: 300px;
     border: 1px dashed var(--border-strong);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.045);
+    background: rgba(255, 255, 255, 0.035);
     padding: 42px 24px;
     text-align: center;
     animation: section-in 180ms ease-out both;
@@ -61,7 +61,7 @@
     gap: 7px;
     align-items: center;
     margin: 0 0 7px;
-    color: var(--accent-strong);
+    color: var(--text-subtle);
     font-size: 12px;
     font-weight: 720;
     letter-spacing: 0;

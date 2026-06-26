@@ -235,11 +235,10 @@
         <section v-if="isHome" class="library-section library-section--favorites">
           <div class="section-heading">
             <div>
-              <p class="section-kicker">
+              <h2 class="section-title">
                 <Heart :size="14" />
                 收藏游戏
-              </p>
-              <h2>常玩收藏</h2>
+              </h2>
             </div>
             <button class="link-button" type="button" @click="setNav(navItems[2])">查看更多</button>
           </div>
@@ -254,20 +253,18 @@
             :games="favoriteGames"
             view-mode="grid"
             action-mode="quick"
-            @edit="openEditGameDialog"
+            :show-manage-actions="false"
             @toggle-favorite="toggleFavorite"
-            @remove="openRemoveGameDialog"
           />
         </section>
 
         <section class="library-section library-section--all">
           <div class="section-heading">
             <div>
-              <p class="section-kicker">
+              <h2 class="section-title">
                 <Library :size="14" />
-                {{ hasSearch ? 'Search' : 'Library' }}
-              </p>
-              <h2>{{ sectionTitle }}</h2>
+                <span>{{ sectionTitle }}</span>
+              </h2>
             </div>
             <div class="section-actions">
               <span>{{ sectionMeta }}</span>
@@ -306,8 +303,11 @@
 
           <GameList
             v-else
+            :class="{ 'favorite-grid': activeFilter === 'favorite' && viewMode === 'grid' }"
             :games="visibleGames"
             :view-mode="viewMode"
+            :action-mode="activeFilter === 'favorite' && viewMode === 'grid' ? 'quick' : 'full'"
+            :show-manage-actions="activeFilter !== 'favorite'"
             @edit="openEditGameDialog"
             @toggle-favorite="toggleFavorite"
             @remove="openRemoveGameDialog"
@@ -340,7 +340,7 @@
 <style scoped>
   .side-nav {
     display: grid;
-    gap: 8px;
+    gap: 6px;
     margin-top: 28px;
   }
 
@@ -370,8 +370,8 @@
 
   .side-nav__item:hover,
   .side-nav__item--active {
-    border-color: rgba(167, 139, 250, 0.22);
-    background: linear-gradient(90deg, rgba(139, 92, 246, 0.25), rgba(255, 255, 255, 0.045));
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
     color: var(--text);
   }
 
@@ -385,7 +385,7 @@
     gap: 4px;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.055);
+    background: var(--surface);
     padding: 14px;
   }
 
@@ -421,7 +421,7 @@
   .library-shell {
     display: grid;
     width: 100%;
-    gap: 26px;
+    gap: 24px;
   }
 
   .library-section {
@@ -440,8 +440,21 @@
   .section-heading h2 {
     margin: 0;
     color: var(--text);
-    font-size: 19px;
+    font-size: 14px;
+    font-weight: 700;
     line-height: 1.2;
+  }
+
+  .section-title {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+  }
+
+  .section-title svg {
+    width: 15px;
+    height: 15px;
+    color: var(--accent-strong);
   }
 
   .section-actions > span,
@@ -459,17 +472,6 @@
     color: var(--accent-strong);
   }
 
-  .section-kicker {
-    display: inline-flex;
-    gap: 7px;
-    align-items: center;
-    margin: 0 0 7px;
-    color: var(--accent-strong);
-    font-size: 12px;
-    font-weight: 720;
-    letter-spacing: 0;
-  }
-
   .section-empty {
     display: flex;
     gap: 10px;
@@ -477,22 +479,19 @@
     min-height: 70px;
     border: 1px dashed var(--border-strong);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.045);
+    background: var(--surface);
     color: var(--text-muted);
     padding: 18px;
   }
 
   .section-empty svg {
-    color: var(--accent-strong);
+    color: var(--text-subtle);
   }
 
   .segmented {
     display: inline-flex;
+    gap: 6px;
     height: 36px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-    background: rgba(255, 255, 255, 0.055);
   }
 
   @keyframes section-in {

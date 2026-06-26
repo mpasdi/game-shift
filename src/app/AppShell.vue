@@ -38,9 +38,14 @@
     grid-template-columns: 210px minmax(0, 1fr);
     min-height: 100vh;
     background:
-      linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
-    background-size: 48px 48px;
+      linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+      radial-gradient(circle at 0 0, rgba(124, 92, 255, 0.055), transparent 320px);
+    background-size:
+      56px 56px,
+      56px 56px,
+      auto,
+      auto;
   }
 
   .sidebar {
@@ -49,10 +54,9 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
-    border-right: 1px solid var(--border);
-    background: rgba(16, 13, 22, 0.56);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--sidebar);
     padding: 26px 18px 22px;
-    backdrop-filter: blur(22px);
   }
 
   .brand-block {
@@ -70,11 +74,11 @@
     width: 30px;
     height: 30px;
     place-items: center;
-    border: 1px solid rgba(167, 139, 250, 0.34);
+    border: 1px solid var(--accent-border);
     border-radius: 8px;
-    background: linear-gradient(135deg, var(--accent), #6d28d9);
+    background: linear-gradient(135deg, var(--accent), #5b44d8);
     color: #ffffff;
-    box-shadow: 0 12px 28px rgba(139, 92, 246, 0.28);
+    box-shadow: 0 10px 22px rgba(31, 24, 86, 0.34);
   }
 
   .sidebar-spacer {
@@ -112,8 +116,8 @@
     grid-template-columns: minmax(260px, 1fr) auto;
     gap: 14px;
     align-items: center;
-    padding-bottom: 20px;
-    backdrop-filter: blur(18px);
+    padding-bottom: 16px;
+    background: linear-gradient(180deg, rgba(17, 16, 21, 0.66) 0%, rgba(17, 16, 21, 0.42) 64%, transparent 100%);
   }
 
   @media (max-width: 960px) {

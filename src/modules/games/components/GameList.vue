@@ -7,9 +7,11 @@
       games: Game[]
       viewMode: 'grid' | 'list'
       actionMode?: 'full' | 'quick'
+      showManageActions?: boolean
     }>(),
     {
-      actionMode: 'full'
+      actionMode: 'full',
+      showManageActions: true
     }
   )
 
@@ -18,6 +20,16 @@
     toggleFavorite: [game: Game]
     remove: [game: Game]
   }>()
+
+  function emitEdit(game: Game) {
+    if (!props.showManageActions) return
+    emit('edit', game)
+  }
+
+  function emitRemove(game: Game) {
+    if (!props.showManageActions) return
+    emit('remove', game)
+  }
 </script>
 
 <template>
@@ -28,9 +40,10 @@
       :game="game"
       :view-mode="props.viewMode"
       :action-mode="props.actionMode"
-      @edit="emit('edit', $event)"
+      :show-manage-actions="props.showManageActions"
+      @edit="emitEdit"
       @toggle-favorite="emit('toggleFavorite', $event)"
-      @remove="emit('remove', $event)"
+      @remove="emitRemove"
     />
   </section>
 </template>
@@ -42,7 +55,7 @@
   }
 
   .game-area.grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, 240px);
   }
 
   .game-area.list {
@@ -51,7 +64,7 @@
     overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.045);
+    background: rgba(255, 255, 255, 0.035);
   }
 
   .game-area.favorite-strip {
@@ -63,5 +76,15 @@
     overflow-x: auto;
     padding-bottom: 4px;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  .game-area.favorite-grid {
+    grid-template-columns: repeat(auto-fill, 154px);
+  }
+
+  @media (max-width: 720px) {
+    .game-area.grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 </style>

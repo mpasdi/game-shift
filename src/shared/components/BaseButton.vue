@@ -42,9 +42,9 @@
     justify-content: center;
     border: 1px solid transparent;
     border-radius: 8px;
+    color: var(--text);
     white-space: nowrap;
     transition:
-      transform 160ms ease,
       border-color 160ms ease,
       background 160ms ease,
       color 160ms ease,
@@ -62,12 +62,8 @@
     font-size: 13px;
   }
 
-  .base-button:hover:not(:disabled) {
-    transform: translateY(-1px);
-  }
-
   .base-button:active:not(:disabled) {
-    transform: translateY(0) scale(0.98);
+    background: var(--surface-hover);
   }
 
   .base-button:disabled {
@@ -75,15 +71,15 @@
   }
 
   .base-button--primary {
-    background: linear-gradient(135deg, #a78bfa, #7c3aed);
+    background: linear-gradient(180deg, #8d73ff, #6d50e8);
     color: #ffffff;
     font-weight: 760;
-    box-shadow: 0 14px 34px rgba(124, 58, 237, 0.3);
+    box-shadow: 0 12px 28px rgba(41, 30, 110, 0.34);
   }
 
   .base-button--secondary {
     border-color: var(--border);
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--surface);
     color: var(--text);
   }
 
@@ -96,11 +92,12 @@
   .base-button--ghost:hover:not(:disabled),
   .base-button--secondary:hover:not(:disabled) {
     border-color: var(--border-strong);
-    background: rgba(255, 255, 255, 0.11);
+    background: var(--surface-hover);
     color: var(--text);
   }
 
   .base-button--danger {
+    border-color: rgba(248, 113, 113, 0.2);
     background: var(--danger-soft);
     color: #fecdd3;
   }
