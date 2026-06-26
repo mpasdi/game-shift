@@ -10,6 +10,7 @@
   const emit = defineEmits<{
     edit: [game: Game]
     toggleFavorite: [game: Game]
+    remove: [game: Game]
   }>()
 </script>
 
@@ -22,6 +23,7 @@
       :view-mode="props.viewMode"
       @edit="emit('edit', $event)"
       @toggle-favorite="emit('toggleFavorite', $event)"
+      @remove="emit('remove', $event)"
     />
   </section>
 </template>

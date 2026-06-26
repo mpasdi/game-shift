@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { createGame, listGames, updateGame } from '../api'
+import { createGame, deleteGame, listGames, updateGame } from '../api'
 import type { CreateGamePayload, Game, GameFilter, UpdateGamePayload } from '../types/game'
 
 interface GamesState {
@@ -78,6 +78,20 @@ export const useGamesStore = defineStore('games', {
         const game = await updateGame(payload)
         await this.loadGames()
         return game
+      } catch (error) {
+        this.errorMessage = error instanceof Error ? error.message : String(error)
+        throw error
+      } finally {
+        this.isSaving = false
+      }
+    },
+    async deleteGame(id: string) {
+      this.isSaving = true
+      this.errorMessage = null
+
+      try {
+        await deleteGame(id)
+        await this.loadGames()
       } catch (error) {
         this.errorMessage = error instanceof Error ? error.message : String(error)
         throw error

@@ -625,3 +625,52 @@ svg {
       'actions actions';
   }
 }
+
+.confirm-dialog {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.confirm-dialog__icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 8px;
+  background: #fbeaea;
+  color: var(--danger);
+}
+
+.confirm-dialog__content {
+  min-width: 0;
+}
+
+.confirm-dialog__title {
+  margin: 0;
+  color: #17202a;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.confirm-dialog__description {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.confirm-dialog__path {
+  margin: 12px 0 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: #3d4b55;
+  font-size: 12px;
+  padding: 9px 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

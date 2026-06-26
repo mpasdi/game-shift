@@ -143,6 +143,23 @@ pub fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, 
 
     get_game_by_id(&connection, &id)?.ok_or_else(|| "游戏更新后无法读取".to_string())
 }
+pub fn delete_game(app: &AppHandle, id: &str) -> Result<(), String> {
+    let connection = db::open_connection(app)?;
+    let id = id.trim();
+    if id.is_empty() {
+        return Err("游戏 ID 不能为空".to_string());
+    }
+
+    let affected_rows = connection
+        .execute("DELETE FROM games WHERE id = ?1", params![id])
+        .map_err(|error| error.to_string())?;
+
+    if affected_rows == 0 {
+        return Err("游戏不存在或已被删除".to_string());
+    }
+
+    Ok(())
+}
 
 fn normalize_game_fields(
     name: String,
@@ -362,4 +379,10 @@ pub fn create_game_command(app: AppHandle, payload: CreateGamePayload) -> Result
 pub fn update_game_command(app: AppHandle, payload: UpdateGamePayload) -> Result<Game, String> {
     update_game(&app, payload)
 }
+
+#[tauri::command]
+pub fn delete_game_command(app: AppHandle, id: String) -> Result<(), String> {
+    delete_game(&app, &id)
+}
+
 

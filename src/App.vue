@@ -16,6 +16,7 @@
   } from '@lucide/vue'
   import AddGameDialog from './modules/games/components/AddGameDialog.vue'
   import GameList from './modules/games/components/GameList.vue'
+  import RemoveGameDialog from './modules/games/components/RemoveGameDialog.vue'
   import { useGamesStore } from './modules/games/stores/games'
   import type { CreateGamePayload, Game, UpdateGamePayload } from './modules/games/types/game'
   import BaseButton from './shared/components/BaseButton.vue'
@@ -28,6 +29,7 @@
   const viewMode = ref<'grid' | 'list'>('grid')
   const isGameDialogOpen = ref(false)
   const editingGame = ref<Game | null>(null)
+  const removingGame = ref<Game | null>(null)
 
   const visibleGames = computed(() => gamesStore.filteredGames)
   const dialogMode = computed(() => (editingGame.value ? 'edit' : 'create'))
@@ -64,6 +66,20 @@
       await gamesStore.createGame(payload)
     }
     closeGameDialog()
+  }
+  function openRemoveGameDialog(game: Game) {
+    removingGame.value = game
+  }
+
+  function closeRemoveGameDialog() {
+    removingGame.value = null
+  }
+
+  async function confirmRemoveGame() {
+    if (!removingGame.value) return
+
+    await gamesStore.deleteGame(removingGame.value.id)
+    closeRemoveGameDialog()
   }
   async function toggleFavorite(game: Game) {
     await gamesStore.updateGame({
@@ -199,6 +215,7 @@
         :view-mode="viewMode"
         @edit="openEditGameDialog"
         @toggle-favorite="toggleFavorite"
+        @remove="openRemoveGameDialog"
       />
     </section>
 
@@ -210,6 +227,15 @@
       :error-message="gamesStore.errorMessage"
       @close="closeGameDialog"
       @submit="submitGame"
+    />
+
+    <RemoveGameDialog
+      :open="Boolean(removingGame)"
+      :game="removingGame"
+      :deleting="gamesStore.isSaving"
+      :error-message="gamesStore.errorMessage"
+      @close="closeRemoveGameDialog"
+      @confirm="confirmRemoveGame"
     />
   </main>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import { computed } from 'vue'
-  import { Heart, Pencil, Play } from '@lucide/vue'
+  import { Heart, Pencil, Play, Trash2 } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
   import IconButton from '../../../shared/components/IconButton.vue'
   import type { Game } from '../types/game'
@@ -13,6 +13,7 @@
   const emit = defineEmits<{
     edit: [game: Game]
     toggleFavorite: [game: Game]
+    remove: [game: Game]
   }>()
 
   const initial = computed(() => props.game.name.trim().slice(0, 1).toUpperCase() || 'G')
@@ -63,6 +64,9 @@
       </BaseButton>
       <IconButton label="编辑游戏" @click="emit('edit', props.game)">
         <Pencil :size="16" />
+      </IconButton>
+      <IconButton label="移除游戏" variant="danger" @click="emit('remove', props.game)">
+        <Trash2 :size="16" />
       </IconButton>
     </div>
   </article>

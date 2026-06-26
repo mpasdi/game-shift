@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  type IconButtonVariant = 'plain' | 'active'
+  type IconButtonVariant = 'plain' | 'active' | 'danger'
 
   withDefaults(
     defineProps<{
