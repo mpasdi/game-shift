@@ -12,6 +12,7 @@
 
   const emit = defineEmits<{
     edit: [game: Game]
+    toggleFavorite: [game: Game]
   }>()
 
   const initial = computed(() => props.game.name.trim().slice(0, 1).toUpperCase() || 'G')
@@ -34,7 +35,6 @@
     <div class="game-card__content">
       <div class="game-card__title-row">
         <h2>{{ props.game.name }}</h2>
-        <span v-if="props.game.favorite" class="game-card__favorite" title="收藏游戏"><Heart :size="15" /></span>
       </div>
       <p class="game-card__path" :title="props.game.exePath">{{ exeFileName }}</p>
       <dl class="game-card__stats">
@@ -50,6 +50,13 @@
     </div>
 
     <div class="game-card__actions">
+      <IconButton
+        :label="props.game.favorite ? '取消收藏' : '收藏游戏'"
+        :variant="props.game.favorite ? 'active' : 'plain'"
+        @click="emit('toggleFavorite', props.game)"
+      >
+        <Heart :size="16" :fill="props.game.favorite ? 'currentColor' : 'none'" />
+      </IconButton>
       <BaseButton variant="primary" size="sm" disabled>
         <template #icon><Play :size="15" /></template>
         启动

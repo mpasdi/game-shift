@@ -1,10 +1,11 @@
 <script setup lang="ts">
-  defineProps<{
+  const props = defineProps<{
     id: string
     modelValue: string
     placeholder?: string
     label?: string
     type?: 'text' | 'search'
+    readonly?: boolean
   }>()
 
   const emit = defineEmits<{
@@ -13,17 +14,18 @@
 </script>
 
 <template>
-  <label class="text-field" :for="id">
+  <label class="text-field" :class="{ 'text-field--readonly': props.readonly }" :for="props.id">
     <span v-if="$slots.icon" class="text-field__icon">
       <slot name="icon" />
     </span>
-    <span v-if="label" class="text-field__label">{{ label }}</span>
+    <span v-if="props.label" class="text-field__label">{{ props.label }}</span>
     <input
-      :id="id"
+      :id="props.id"
       class="text-field__input"
-      :type="type ?? 'text'"
-      :value="modelValue"
-      :placeholder="placeholder"
+      :type="props.type ?? 'text'"
+      :value="props.modelValue"
+      :placeholder="props.placeholder"
+      :readonly="props.readonly"
       @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />
   </label>

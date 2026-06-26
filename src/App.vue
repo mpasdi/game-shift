@@ -65,6 +65,16 @@
     }
     closeGameDialog()
   }
+  async function toggleFavorite(game: Game) {
+    await gamesStore.updateGame({
+      id: game.id,
+      name: game.name,
+      exePath: game.exePath,
+      workDir: game.workDir,
+      args: game.args,
+      favorite: !game.favorite
+    })
+  }
 
   function isUpdateGamePayload(payload: CreateGamePayload | UpdateGamePayload): payload is UpdateGamePayload {
     return 'id' in payload
@@ -183,7 +193,13 @@
         <template #icon><Sparkles :size="15" /></template>
       </EmptyState>
 
-      <GameList v-else :games="visibleGames" :view-mode="viewMode" @edit="openEditGameDialog" />
+      <GameList
+        v-else
+        :games="visibleGames"
+        :view-mode="viewMode"
+        @edit="openEditGameDialog"
+        @toggle-favorite="toggleFavorite"
+      />
     </section>
 
     <AddGameDialog

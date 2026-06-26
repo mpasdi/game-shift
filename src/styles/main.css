@@ -176,6 +176,32 @@ svg {
   box-shadow: 0 8px 18px rgba(42, 55, 65, 0.05);
 }
 
+.text-field--readonly {
+  border-color: #bdcbd2;
+  background: #eef4f6;
+  box-shadow: inset 0 0 0 1px rgba(216, 224, 228, 0.58);
+}
+
+.text-field--readonly:focus-within {
+  border-color: #8eb3bf;
+  outline: 2px solid rgba(8, 145, 178, 0.16);
+  outline-offset: 1px;
+}
+
+.text-field--readonly:hover {
+  border-color: #aabdc5;
+}
+
+.text-field--readonly .text-field__label {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  margin: 0 10px 0 -12px;
+  border-right: 1px solid #d2dde2;
+  background: #e3ebee;
+  color: #51636d;
+  padding: 0 12px;
+}
 .text-field__icon {
   display: inline-flex;
   color: var(--text-muted);
@@ -196,6 +222,11 @@ svg {
   background: transparent;
   color: inherit;
   padding: 0 0 0 12px;
+}
+
+.text-field__input:read-only {
+  cursor: text;
+  color: #26343d;
 }
 
 .icon-button {
@@ -534,11 +565,6 @@ svg {
   white-space: nowrap;
 }
 
-.game-card__favorite {
-  display: inline-flex;
-  color: var(--accent-strong);
-}
-
 .game-card__path {
   margin: 5px 0 0;
   overflow: hidden;
@@ -589,26 +615,6 @@ svg {
 
 .game-card__actions .icon-button:hover {
   background: var(--surface-muted);
-}
-
-.checkbox-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #25313a;
-  font-size: 14px;
-}
-
-.checkbox-row input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent);
-}
-
-.checkbox-row span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
 
 @media (max-width: 640px) {

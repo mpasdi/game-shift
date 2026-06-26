@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
   import { open as openDialog } from '@tauri-apps/plugin-dialog'
-  import { FileSearch, Heart } from '@lucide/vue'
+  import { FileSearch, FolderOpen } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
   import BaseModal from '../../../shared/components/BaseModal.vue'
   import TextField from '../../../shared/components/TextField.vue'
@@ -31,8 +31,7 @@
     name: '',
     exePath: '',
     workDir: '',
-    args: '',
-    favorite: false
+    args: ''
   })
   const localError = ref<string | null>(null)
 
@@ -73,6 +72,18 @@
     if (!form.name.trim()) form.name = inferGameName(selected)
   }
 
+  async function chooseWorkDir() {
+    const selected = await openDialog({
+      multiple: false,
+      directory: true,
+      defaultPath: form.workDir || getFolderPath(form.exePath) || undefined
+    })
+
+    if (typeof selected !== 'string') return
+
+    form.workDir = selected
+  }
+
   function submitForm() {
     localError.value = validateForm()
     if (localError.value) return
@@ -92,7 +103,7 @@
       emit('submit', {
         ...basePayload,
         id: props.game.id,
-        favorite: form.favorite
+        favorite: props.game.favorite
       })
       return
     }
@@ -105,7 +116,6 @@
     form.exePath = game.exePath
     form.workDir = game.workDir ?? game.folderPath
     form.args = game.args ?? ''
-    form.favorite = game.favorite
     localError.value = null
   }
 
@@ -114,14 +124,13 @@
     form.exePath = ''
     form.workDir = ''
     form.args = ''
-    form.favorite = false
     localError.value = null
   }
 
   function validateForm() {
-    if (!form.name.trim()) return '游戏名称不能为空'
     if (!form.exePath.trim()) return '请选择游戏启动程序'
     if (!form.exePath.trim().toLowerCase().endsWith('.exe')) return '启动程序必须是 .exe 文件'
+    if (!form.name.trim()) return '游戏名称不能为空'
     return null
   }
 
@@ -146,26 +155,31 @@
 <template>
   <BaseModal :open="props.open" :title="modalTitle" @close="emit('close')">
     <form class="game-form" @submit.prevent="submitForm">
-      <TextField id="game-name" v-model="form.name" label="游戏名称" placeholder="例如：Elden Ring" />
-
       <div class="path-field">
-        <TextField id="game-exe" v-model="form.exePath" label="启动程序" placeholder="选择游戏 .exe 文件" />
+        <TextField id="game-exe" v-model="form.exePath" label="启动程序" placeholder="选择游戏 .exe 文件" readonly />
         <BaseButton variant="secondary" type="button" @click="chooseExePath">
           <template #icon><FileSearch :size="17" /></template>
           选择
         </BaseButton>
       </div>
 
-      <TextField id="game-work-dir" v-model="form.workDir" label="工作目录" placeholder="默认使用 .exe 所在目录" />
-      <TextField id="game-args" v-model="form.args" label="启动参数" placeholder="可选，例如 -windowed" />
+      <TextField id="game-name" v-model="form.name" label="游戏名称" placeholder="例如：Elden Ring" />
 
-      <label v-if="isEditing" class="checkbox-row">
-        <input v-model="form.favorite" type="checkbox" />
-        <span>
-          <Heart :size="16" />
-          收藏游戏
-        </span>
-      </label>
+      <div class="path-field">
+        <TextField
+          id="game-work-dir"
+          v-model="form.workDir"
+          label="工作目录"
+          placeholder="默认使用 .exe 所在目录"
+          readonly
+        />
+        <BaseButton variant="secondary" type="button" @click="chooseWorkDir">
+          <template #icon><FolderOpen :size="17" /></template>
+          选择
+        </BaseButton>
+      </div>
+
+      <TextField id="game-args" v-model="form.args" label="启动参数" placeholder="可选，例如 -windowed" />
 
       <p v-if="displayedError" class="form-error">{{ displayedError }}</p>
     </form>

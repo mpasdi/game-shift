@@ -209,9 +209,21 @@ fn has_exe_extension(path: &Path) -> bool {
 }
 
 fn path_to_string(path: PathBuf) -> Result<String, String> {
-    path.into_os_string()
+    let path = path
+        .into_os_string()
         .into_string()
-        .map_err(|_| "路径包含无效 Unicode 字符".to_string())
+        .map_err(|_| "路径包含无效 Unicode 字符".to_string())?;
+
+    Ok(strip_windows_extended_path_prefix(path))
+}
+
+fn strip_windows_extended_path_prefix(path: String) -> String {
+    if let Some(stripped) = path.strip_prefix(r"\\?\UNC\") {
+        return format!(r"\\{}", stripped);
+    }
+
+    path.strip_prefix(r"\\?\")
+        .map_or(path.clone(), ToString::to_string)
 }
 
 fn exe_path_exists(connection: &Connection, exe_path: &str) -> Result<bool, String> {
@@ -302,11 +314,11 @@ fn map_game_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Game> {
     Ok(Game {
         id: row.get(0)?,
         name: row.get(1)?,
-        exe_path: row.get(2)?,
-        folder_path: row.get(3)?,
+        exe_path: strip_windows_extended_path_prefix(row.get(2)?),
+        folder_path: strip_windows_extended_path_prefix(row.get(3)?),
         icon: row.get(4)?,
         args: row.get(5)?,
-        work_dir: row.get(6)?,
+        work_dir: row.get::<_, Option<String>>(6)?.map(strip_windows_extended_path_prefix),
         favorite: row.get::<_, i64>(7)? != 0,
         play_count: row.get(8)?,
         last_play_time: row.get(9)?,
@@ -350,3 +362,4 @@ pub fn create_game_command(app: AppHandle, payload: CreateGamePayload) -> Result
 pub fn update_game_command(app: AppHandle, payload: UpdateGamePayload) -> Result<Game, String> {
     update_game(&app, payload)
 }
+
