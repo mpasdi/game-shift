@@ -39,3 +39,53 @@
     </template>
   </BaseModal>
 </template>
+
+<style scoped>
+  .confirm-dialog {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .confirm-dialog__icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--danger-soft);
+    color: #fecdd3;
+  }
+
+  .confirm-dialog__content {
+    min-width: 0;
+  }
+
+  .confirm-dialog__title {
+    margin: 0;
+    color: var(--text);
+    font-weight: 760;
+  }
+
+  .confirm-dialog__description,
+  .confirm-dialog__path {
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .confirm-dialog__description {
+    margin: 8px 0 0;
+  }
+
+  .confirm-dialog__path {
+    overflow-wrap: anywhere;
+    margin: 10px 0 0;
+    font-size: 13px;
+  }
+
+  .form-error {
+    margin: 0;
+    color: #fecdd3;
+    font-size: 13px;
+  }
+</style>

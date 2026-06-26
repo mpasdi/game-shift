@@ -190,3 +190,34 @@
     </template>
   </BaseModal>
 </template>
+
+<style scoped>
+  .game-form {
+    display: grid;
+    gap: 14px;
+  }
+
+  .path-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .form-error {
+    margin: 0;
+    color: #fecdd3;
+    font-size: 13px;
+  }
+
+  @media (max-width: 720px) {
+    .path-field {
+      align-items: stretch;
+      grid-template-columns: 1fr;
+    }
+
+    .path-field :deep(.base-button) {
+      width: 100%;
+    }
+  }
+</style>

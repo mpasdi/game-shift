@@ -349,3 +349,326 @@
     />
   </main>
 </template>
+
+<style scoped>
+  .app-shell {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    min-height: 100vh;
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    border-right: 1px solid var(--border);
+    background: rgba(16, 13, 22, 0.56);
+    padding: 26px 18px 22px;
+    backdrop-filter: blur(22px);
+  }
+
+  .brand-block {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    min-height: 34px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 750;
+  }
+
+  .brand-mark {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border: 1px solid rgba(167, 139, 250, 0.34);
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #6d28d9);
+    color: #ffffff;
+    box-shadow: 0 12px 28px rgba(139, 92, 246, 0.28);
+  }
+
+  .side-nav {
+    display: grid;
+    gap: 8px;
+    margin-top: 28px;
+  }
+
+  .side-nav__item,
+  .settings-entry,
+  .link-button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+  }
+
+  .side-nav__item {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    min-height: 38px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--text-muted);
+    padding: 0 10px;
+    text-align: left;
+    transition:
+      background 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease;
+  }
+
+  .side-nav__item:hover,
+  .side-nav__item--active {
+    border-color: rgba(167, 139, 250, 0.22);
+    background: linear-gradient(90deg, rgba(139, 92, 246, 0.25), rgba(255, 255, 255, 0.045));
+    color: var(--text);
+  }
+
+  .side-nav__item small {
+    color: var(--text-subtle);
+    font-size: 11px;
+  }
+
+  .sidebar-spacer {
+    flex: 1;
+  }
+
+  .play-summary {
+    display: grid;
+    gap: 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.055);
+    padding: 14px;
+  }
+
+  .play-summary p,
+  .play-summary span {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .play-summary strong {
+    color: var(--text);
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  .settings-entry {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    min-height: 38px;
+    margin-top: 14px;
+    border-radius: 8px;
+    color: var(--text-muted);
+    padding: 0 10px;
+  }
+
+  .settings-entry:hover {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .workspace {
+    min-width: 0;
+    padding: 22px clamp(18px, 3vw, 34px) 34px;
+  }
+
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding-bottom: 20px;
+    backdrop-filter: blur(18px);
+  }
+
+  .top-search {
+    min-width: 0;
+  }
+
+  .top-search :deep(.text-field) {
+    width: min(720px, 100%);
+  }
+
+  .top-actions,
+  .empty-actions,
+  .section-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .library-shell {
+    display: grid;
+    width: 100%;
+    gap: 26px;
+  }
+
+  .library-section {
+    display: grid;
+    gap: 14px;
+    animation: section-in 180ms ease-out both;
+  }
+
+  .section-heading {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .section-heading h2 {
+    margin: 0;
+    color: var(--text);
+    font-size: 19px;
+    line-height: 1.2;
+  }
+
+  .section-actions > span,
+  .section-heading > span,
+  .link-button {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .link-button {
+    padding: 5px 0;
+  }
+
+  .link-button:hover {
+    color: var(--accent-strong);
+  }
+
+  .section-kicker {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    margin: 0 0 7px;
+    color: var(--accent-strong);
+    font-size: 12px;
+    font-weight: 720;
+    letter-spacing: 0;
+  }
+
+  .section-empty {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    min-height: 70px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.045);
+    color: var(--text-muted);
+    padding: 18px;
+  }
+
+  .section-empty svg {
+    color: var(--accent-strong);
+  }
+
+  .segmented {
+    display: inline-flex;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.055);
+  }
+
+  @keyframes section-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (max-width: 960px) {
+    .app-shell {
+      grid-template-columns: 74px minmax(0, 1fr);
+    }
+
+    .sidebar {
+      padding: 20px 12px;
+    }
+
+    .brand-block span,
+    .side-nav__item span,
+    .side-nav__item small,
+    .play-summary,
+    .settings-entry span {
+      display: none;
+    }
+
+    .side-nav__item {
+      grid-template-columns: 1fr;
+      justify-items: center;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .app-shell {
+      grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+      position: static;
+      height: auto;
+      border-right: 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .side-nav {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      margin-top: 16px;
+    }
+
+    .side-nav__item {
+      min-height: 42px;
+    }
+
+    .workspace {
+      padding: 16px 14px 26px;
+    }
+
+    .top-bar {
+      grid-template-columns: 1fr;
+    }
+
+    .top-actions,
+    .section-heading {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .top-actions,
+    .empty-actions,
+    .section-actions {
+      width: 100%;
+    }
+
+    .top-actions :deep(.base-button),
+    .empty-actions :deep(.base-button) {
+      width: 100%;
+    }
+  }
+</style>
