@@ -1,14 +1,20 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
   import { computed } from 'vue'
   import { Heart, Pencil, Play, Trash2 } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
   import IconButton from '../../../shared/components/IconButton.vue'
   import type { Game } from '../types/game'
 
-  const props = defineProps<{
-    game: Game
-    viewMode: 'grid' | 'list'
-  }>()
+  const props = withDefaults(
+    defineProps<{
+      game: Game
+      viewMode: 'grid' | 'list'
+      actionMode?: 'full' | 'quick'
+    }>(),
+    {
+      actionMode: 'full'
+    }
+  )
 
   const emit = defineEmits<{
     edit: [game: Game]
@@ -30,7 +36,7 @@
 </script>
 
 <template>
-  <article class="game-card" :class="`game-card--${props.viewMode}`">
+  <article class="game-card" :class="[`game-card--${props.viewMode}`, `game-card--actions-${props.actionMode}`]">
     <div class="game-card__icon" aria-hidden="true">{{ initial }}</div>
 
     <div class="game-card__content">
@@ -62,10 +68,15 @@
         <template #icon><Play :size="15" /></template>
         启动
       </BaseButton>
-      <IconButton label="编辑游戏" @click="emit('edit', props.game)">
+      <IconButton v-if="props.actionMode === 'full'" label="编辑游戏" @click="emit('edit', props.game)">
         <Pencil :size="16" />
       </IconButton>
-      <IconButton label="移除游戏" variant="danger" @click="emit('remove', props.game)">
+      <IconButton
+        v-if="props.actionMode === 'full'"
+        label="移除游戏"
+        variant="danger"
+        @click="emit('remove', props.game)"
+      >
         <Trash2 :size="16" />
       </IconButton>
     </div>

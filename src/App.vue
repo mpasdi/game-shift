@@ -1,48 +1,83 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
   import { computed, onMounted, ref } from 'vue'
   import { storeToRefs } from 'pinia'
   import {
     Clock3,
+    Folder,
     FolderSearch,
     Gamepad2,
     Grid2X2,
     Heart,
+    Home,
     LayoutList,
     Library,
     Plus,
     RefreshCw,
     Search,
+    Settings,
     Sparkles
   } from '@lucide/vue'
   import AddGameDialog from './modules/games/components/AddGameDialog.vue'
   import GameList from './modules/games/components/GameList.vue'
   import RemoveGameDialog from './modules/games/components/RemoveGameDialog.vue'
   import { useGamesStore } from './modules/games/stores/games'
-  import type { CreateGamePayload, Game, UpdateGamePayload } from './modules/games/types/game'
+  import type { CreateGamePayload, Game, GameFilter, UpdateGamePayload } from './modules/games/types/game'
   import BaseButton from './shared/components/BaseButton.vue'
   import EmptyState from './shared/components/EmptyState.vue'
   import IconButton from './shared/components/IconButton.vue'
   import TextField from './shared/components/TextField.vue'
 
+  type NavId = 'home' | 'all' | 'favorite' | 'recent'
+
+  interface NavItem {
+    id: NavId
+    filter: GameFilter
+    label: string
+    icon: unknown
+  }
+
   const gamesStore = useGamesStore()
   const { games, searchText, activeFilter, isLoading, errorMessage } = storeToRefs(gamesStore)
-  const viewMode = ref<'grid' | 'list'>('grid')
+  const viewMode = ref<'grid' | 'list'>('list')
+  const activeNav = ref<NavId>('home')
   const isGameDialogOpen = ref(false)
   const editingGame = ref<Game | null>(null)
   const removingGame = ref<Game | null>(null)
 
   const visibleGames = computed(() => gamesStore.filteredGames)
+  const favoriteGames = computed(() => games.value.filter((game) => game.favorite))
+  const recentGamesCount = computed(() => games.value.filter((game) => game.lastPlayTime).length)
   const dialogMode = computed(() => (editingGame.value ? 'edit' : 'create'))
-  const hasActiveSearchOrFilter = computed(() => searchText.value.trim() !== '' || activeFilter.value !== 'all')
-  const filterItems = [
-    { key: 'all', label: '全部', icon: Library },
-    { key: 'favorite', label: '收藏', icon: Heart },
-    { key: 'recent', label: '最近', icon: Clock3 }
-  ] as const
+  const hasSearch = computed(() => searchText.value.trim() !== '')
+  const isHome = computed(() => activeNav.value === 'home' && !hasSearch.value)
+  const sectionTitle = computed(() => {
+    if (hasSearch.value) return '搜索结果'
+    if (activeFilter.value === 'favorite') return '收藏游戏'
+    if (activeFilter.value === 'recent') return '最近游玩'
+    return '全部游戏'
+  })
+  const sectionMeta = computed(() => {
+    if (hasSearch.value) return `${visibleGames.value.length} 个匹配`
+    if (activeFilter.value === 'favorite') return `${favoriteGames.value.length} 个收藏`
+    if (activeFilter.value === 'recent') return `${recentGamesCount.value} 条记录`
+    return `${games.value.length} 个游戏`
+  })
+
+  const navItems: NavItem[] = [
+    { id: 'home', filter: 'all', label: '首页', icon: Home },
+    { id: 'all', filter: 'all', label: '全部游戏', icon: Library },
+    { id: 'favorite', filter: 'favorite', label: '收藏游戏', icon: Heart },
+    { id: 'recent', filter: 'recent', label: '最近游玩', icon: Clock3 }
+  ]
 
   onMounted(() => {
     void gamesStore.loadGames()
   })
+
+  function setNav(item: NavItem) {
+    activeNav.value = item.id
+    gamesStore.setFilter(item.filter)
+  }
 
   function openCreateGameDialog() {
     editingGame.value = null
@@ -67,6 +102,7 @@
     }
     closeGameDialog()
   }
+
   function openRemoveGameDialog(game: Game) {
     removingGame.value = game
   }
@@ -81,6 +117,7 @@
     await gamesStore.deleteGame(removingGame.value.id)
     closeRemoveGameDialog()
   }
+
   async function toggleFavorite(game: Game) {
     await gamesStore.updateGame({
       id: game.id,
@@ -99,124 +136,197 @@
 
 <template>
   <main class="app-shell">
-    <aside class="sidebar" aria-label="游戏筛选">
+    <aside class="sidebar" aria-label="主导航">
       <div class="brand-block">
-        <div class="brand-mark"><Gamepad2 :size="22" /></div>
-        <div>
-          <h1>Game Shift</h1>
-          <p>本地游戏启动器</p>
-        </div>
+        <div class="brand-mark"><Gamepad2 :size="20" /></div>
+        <span>Game Shift</span>
       </div>
 
-      <nav class="filter-list">
+      <nav class="side-nav" aria-label="游戏库筛选">
         <button
-          v-for="item in filterItems"
-          :key="item.key"
-          class="filter-button"
-          :class="{ active: activeFilter === item.key }"
+          v-for="item in navItems"
+          :key="item.id"
+          class="side-nav__item"
+          :class="{ 'side-nav__item--active': activeNav === item.id && !hasSearch }"
           type="button"
-          @click="gamesStore.setFilter(item.key)"
+          @click="setNav(item)"
         >
-          <span class="button-label">
-            <component :is="item.icon" :size="17" />
-            {{ item.label }}
-          </span>
-          <span class="filter-count">{{ gamesStore.countByFilter(item.key) }}</span>
+          <component :is="item.icon" :size="16" />
+          <span>{{ item.label }}</span>
+          <small v-if="item.id !== 'home'">{{ gamesStore.countByFilter(item.filter) }}</small>
+        </button>
+
+        <button class="side-nav__item" type="button">
+          <Folder :size="16" />
+          <span>分类</span>
         </button>
       </nav>
+
+      <div class="sidebar-spacer" />
+
+      <div class="play-summary">
+        <p>游戏库</p>
+        <strong>{{ games.length }}</strong>
+        <span>本地记录</span>
+      </div>
+
+      <button class="settings-entry" type="button">
+        <Settings :size="16" />
+        <span>设置</span>
+      </button>
     </aside>
 
-    <section class="workspace" aria-label="游戏库">
-      <header class="toolbar">
-        <TextField id="game-search" v-model="searchText" type="search" placeholder="输入游戏名称或 exe 文件名">
-          <template #icon><Search :size="17" /></template>
-        </TextField>
+    <section class="workspace">
+      <header class="top-bar">
+        <div class="top-search">
+          <TextField id="game-search" v-model="searchText" type="search" placeholder="搜索游戏 / 启动程序 / 路径">
+            <template #icon><Search :size="17" /></template>
+          </TextField>
+        </div>
 
-        <div class="toolbar-actions">
-          <div class="segmented" aria-label="视图切换">
-            <IconButton label="网格视图" :variant="viewMode === 'grid' ? 'active' : 'plain'" @click="viewMode = 'grid'">
-              <Grid2X2 :size="17" />
-            </IconButton>
-            <IconButton label="列表视图" :variant="viewMode === 'list' ? 'active' : 'plain'" @click="viewMode = 'list'">
-              <LayoutList :size="17" />
-            </IconButton>
-          </div>
-          <BaseButton variant="secondary" :loading="isLoading" @click="gamesStore.refreshGames()">
-            <template #icon><RefreshCw :size="17" /></template>
-            刷新
+        <div class="top-actions">
+          <BaseButton variant="primary" @click="openCreateGameDialog">
+            <template #icon><Plus :size="16" /></template>
+            添加游戏
           </BaseButton>
           <BaseButton variant="secondary">
-            <template #icon><FolderSearch :size="17" /></template>
+            <template #icon><FolderSearch :size="16" /></template>
             扫描目录
           </BaseButton>
-          <BaseButton variant="primary" @click="openCreateGameDialog">
-            <template #icon><Plus :size="17" /></template>
-            手动添加
-          </BaseButton>
+          <IconButton label="刷新游戏库" :variant="isLoading ? 'active' : 'plain'" @click="gamesStore.refreshGames()">
+            <RefreshCw :size="17" />
+          </IconButton>
         </div>
       </header>
 
-      <EmptyState
-        v-if="isLoading"
-        label="正在加载游戏库"
-        eyebrow="正在加载"
-        title="正在读取本地游戏库"
-        description="Game Shift 正在初始化本地数据库并加载游戏列表。"
-      >
-        <template #icon><Sparkles :size="15" /></template>
-      </EmptyState>
+      <section class="library-shell" aria-label="游戏库">
+        <EmptyState
+          v-if="isLoading"
+          label="正在加载游戏库"
+          eyebrow="正在加载"
+          title="正在读取本地游戏库"
+          description="Game Shift 正在初始化本地数据库并加载游戏列表。"
+        >
+          <template #icon><Sparkles :size="15" /></template>
+        </EmptyState>
 
-      <EmptyState
-        v-else-if="errorMessage"
-        label="游戏库加载失败"
-        eyebrow="加载失败"
-        title="无法读取本地游戏库"
-        :description="errorMessage"
-      >
-        <template #icon><Sparkles :size="15" /></template>
-        <template #actions>
-          <BaseButton variant="secondary" @click="gamesStore.loadGames()">重试</BaseButton>
+        <EmptyState
+          v-else-if="errorMessage"
+          label="游戏库加载失败"
+          eyebrow="加载失败"
+          title="无法读取本地游戏库"
+          :description="errorMessage"
+        >
+          <template #icon><Sparkles :size="15" /></template>
+          <template #actions>
+            <BaseButton variant="secondary" @click="gamesStore.loadGames()">重试</BaseButton>
+          </template>
+        </EmptyState>
+
+        <EmptyState
+          v-else-if="games.length === 0"
+          label="空游戏库"
+          eyebrow="尚未导入游戏"
+          title="从第一个启动程序开始"
+          description="选择本地 .exe 后，Game Shift 会保存到本地数据库。目录扫描将在后续阶段接入。"
+        >
+          <template #icon><Sparkles :size="15" /></template>
+          <template #actions>
+            <BaseButton variant="primary" @click="openCreateGameDialog">
+              <template #icon><Plus :size="17" /></template>
+              手动添加
+            </BaseButton>
+            <BaseButton variant="secondary">
+              <template #icon><FolderSearch :size="17" /></template>
+              扫描目录
+            </BaseButton>
+          </template>
+        </EmptyState>
+
+        <template v-else>
+          <section v-if="isHome" class="library-section library-section--favorites">
+            <div class="section-heading">
+              <div>
+                <p class="section-kicker">
+                  <Heart :size="14" />
+                  收藏游戏
+                </p>
+                <h2>常玩收藏</h2>
+              </div>
+              <button class="link-button" type="button" @click="setNav(navItems[2])">查看更多</button>
+            </div>
+
+            <div v-if="favoriteGames.length === 0" class="section-empty">
+              <Heart :size="18" />
+              <span>点击游戏卡片上的爱心，把常玩的游戏放到这里。</span>
+            </div>
+            <GameList
+              v-else
+              class="favorite-strip"
+              :games="favoriteGames"
+              view-mode="grid"
+              action-mode="quick"
+              @edit="openEditGameDialog"
+              @toggle-favorite="toggleFavorite"
+              @remove="openRemoveGameDialog"
+            />
+          </section>
+
+          <section class="library-section library-section--all">
+            <div class="section-heading">
+              <div>
+                <p class="section-kicker">
+                  <Library :size="14" />
+                  {{ hasSearch ? 'Search' : 'Library' }}
+                </p>
+                <h2>{{ sectionTitle }}</h2>
+              </div>
+              <div class="section-actions">
+                <span>{{ sectionMeta }}</span>
+                <div class="segmented" aria-label="视图切换">
+                  <IconButton
+                    label="网格视图"
+                    :variant="viewMode === 'grid' ? 'active' : 'plain'"
+                    @click="viewMode = 'grid'"
+                  >
+                    <Grid2X2 :size="17" />
+                  </IconButton>
+                  <IconButton
+                    label="列表视图"
+                    :variant="viewMode === 'list' ? 'active' : 'plain'"
+                    @click="viewMode = 'list'"
+                  >
+                    <LayoutList :size="17" />
+                  </IconButton>
+                </div>
+              </div>
+            </div>
+
+            <EmptyState
+              v-if="visibleGames.length === 0"
+              label="没有匹配的游戏"
+              eyebrow="无结果"
+              :title="activeFilter === 'recent' ? '还没有最近游玩记录' : '没有找到匹配的游戏'"
+              :description="
+                activeFilter === 'recent'
+                  ? '启动游戏功能完成后，这里会按最近游玩时间展示。'
+                  : '可以调整搜索关键词，或手动添加新的启动程序。'
+              "
+            >
+              <template #icon><Search :size="15" /></template>
+            </EmptyState>
+
+            <GameList
+              v-else
+              :games="visibleGames"
+              :view-mode="viewMode"
+              @edit="openEditGameDialog"
+              @toggle-favorite="toggleFavorite"
+              @remove="openRemoveGameDialog"
+            />
+          </section>
         </template>
-      </EmptyState>
-
-      <EmptyState
-        v-else-if="games.length === 0"
-        label="空游戏库"
-        eyebrow="尚未导入游戏"
-        title="从扫描本地目录开始建立你的游戏库"
-        description="扫描结果会先进入候选列表，确认后才会写入本地数据库。"
-      >
-        <template #icon><Sparkles :size="15" /></template>
-        <template #actions>
-          <BaseButton variant="primary">
-            <template #icon><FolderSearch :size="17" /></template>
-            扫描目录
-          </BaseButton>
-          <BaseButton variant="secondary" @click="openCreateGameDialog">
-            <template #icon><Plus :size="17" /></template>
-            手动添加
-          </BaseButton>
-        </template>
-      </EmptyState>
-
-      <EmptyState
-        v-else-if="visibleGames.length === 0"
-        label="没有匹配的游戏"
-        eyebrow="无结果"
-        title="没有找到匹配的游戏"
-        :description="hasActiveSearchOrFilter ? '可以调整搜索关键词或切换左侧筛选条件。' : '当前游戏库暂无可展示内容。'"
-      >
-        <template #icon><Sparkles :size="15" /></template>
-      </EmptyState>
-
-      <GameList
-        v-else
-        :games="visibleGames"
-        :view-mode="viewMode"
-        @edit="openEditGameDialog"
-        @toggle-favorite="toggleFavorite"
-        @remove="openRemoveGameDialog"
-      />
+      </section>
     </section>
 
     <AddGameDialog
