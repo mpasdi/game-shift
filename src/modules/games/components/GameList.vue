@@ -8,15 +8,18 @@
       viewMode: 'grid' | 'list'
       actionMode?: 'full' | 'quick'
       showManageActions?: boolean
+      launchingGameIds?: string[]
     }>(),
     {
       actionMode: 'full',
-      showManageActions: true
+      showManageActions: true,
+      launchingGameIds: () => []
     }
   )
 
   const emit = defineEmits<{
     edit: [game: Game]
+    launch: [game: Game]
     toggleFavorite: [game: Game]
     remove: [game: Game]
   }>()
@@ -41,7 +44,9 @@
       :view-mode="props.viewMode"
       :action-mode="props.actionMode"
       :show-manage-actions="props.showManageActions"
+      :is-launching="props.launchingGameIds.includes(game.id)"
       @edit="emitEdit"
+      @launch="emit('launch', $event)"
       @toggle-favorite="emit('toggleFavorite', $event)"
       @remove="emitRemove"
     />

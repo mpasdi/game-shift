@@ -40,3 +40,11 @@ export async function deleteGame(id: string) {
 
   return invoke<void>('delete_game_command', { id })
 }
+
+export async function launchGame(id: string) {
+  if (!isTauriRuntime()) {
+    throw new Error('当前环境不支持启动本地游戏，请在 Tauri 桌面应用中使用')
+  }
+
+  return invoke<Game>('launch_game_command', { id })
+}

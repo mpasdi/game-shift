@@ -63,7 +63,24 @@
     background: var(--surface-hover);
   }
 
+  .icon-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+  }
+
+  .icon-button:disabled:hover {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-muted);
+  }
+
   .icon-button--active {
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+  }
+
+  .icon-button--active:disabled {
     border-color: var(--accent-border);
     background: var(--accent-soft);
     color: var(--accent-strong);

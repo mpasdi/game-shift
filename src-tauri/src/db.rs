@@ -7,7 +7,10 @@ use tauri::{AppHandle, Manager};
 const DATABASE_FILE_NAME: &str = "game-shift.sqlite3";
 
 pub fn database_path(app: &AppHandle) -> Result<PathBuf, String> {
-    let data_dir = app.path().app_data_dir().map_err(|error| error.to_string())?;
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| error.to_string())?;
     fs::create_dir_all(&data_dir).map_err(|error| error.to_string())?;
     Ok(data_dir.join(DATABASE_FILE_NAME))
 }

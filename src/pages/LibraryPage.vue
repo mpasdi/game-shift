@@ -36,7 +36,7 @@
   }
 
   const gamesStore = useGamesStore()
-  const { games, searchText, activeFilter, isLoading, errorMessage } = storeToRefs(gamesStore)
+  const { games, searchText, activeFilter, isLoading, launchingGameIds, errorMessage } = storeToRefs(gamesStore)
   const viewMode = ref<'grid' | 'list'>('list')
   const activeNav = ref<NavId>('home')
   const isGameDialogOpen = ref(false)
@@ -132,6 +132,10 @@
       args: game.args,
       favorite: !game.favorite
     })
+  }
+
+  async function launchGame(game: Game) {
+    await gamesStore.launchGame(game.id)
   }
 
   function isUpdateGamePayload(payload: CreateGamePayload | UpdateGamePayload): payload is UpdateGamePayload {
@@ -260,6 +264,8 @@
             view-mode="grid"
             action-mode="quick"
             :show-manage-actions="false"
+            :launching-game-ids="launchingGameIds"
+            @launch="launchGame"
             @toggle-favorite="toggleFavorite"
           />
         </section>
@@ -314,7 +320,9 @@
             :view-mode="viewMode"
             :action-mode="activeFilter === 'favorite' && viewMode === 'grid' ? 'quick' : 'full'"
             :show-manage-actions="activeFilter !== 'favorite'"
+            :launching-game-ids="launchingGameIds"
             @edit="openEditGameDialog"
+            @launch="launchGame"
             @toggle-favorite="toggleFavorite"
             @remove="openRemoveGameDialog"
           />

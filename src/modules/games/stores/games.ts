@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
-import { createGame, deleteGame, listGames, updateGame } from '../api'
+import { createGame, deleteGame, launchGame, listGames, updateGame } from '../api'
 import type { CreateGamePayload, Game, GameFilter, UpdateGamePayload } from '../types/game'
+
+const LAUNCH_COOLDOWN_MS = 3000
 
 interface GamesState {
   games: Game[]
@@ -8,6 +10,7 @@ interface GamesState {
   activeFilter: GameFilter
   isLoading: boolean
   isSaving: boolean
+  launchingGameIds: string[]
   errorMessage: string | null
 }
 
@@ -18,6 +21,7 @@ export const useGamesStore = defineStore('games', {
     activeFilter: 'all',
     isLoading: false,
     isSaving: false,
+    launchingGameIds: [],
     errorMessage: null
   }),
   getters: {
@@ -97,6 +101,25 @@ export const useGamesStore = defineStore('games', {
         throw error
       } finally {
         this.isSaving = false
+      }
+    },
+    async launchGame(id: string) {
+      if (this.launchingGameIds.includes(id)) return null
+
+      this.launchingGameIds.push(id)
+      this.errorMessage = null
+
+      try {
+        const game = await launchGame(id)
+        await this.loadGames()
+        return game
+      } catch (error) {
+        this.errorMessage = error instanceof Error ? error.message : String(error)
+        throw error
+      } finally {
+        window.setTimeout(() => {
+          this.launchingGameIds = this.launchingGameIds.filter((gameId) => gameId !== id)
+        }, LAUNCH_COOLDOWN_MS)
       }
     },
     setFilter(filter: GameFilter) {

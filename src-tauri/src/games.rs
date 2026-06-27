@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::{params, Connection, OptionalExtension};
@@ -55,7 +56,12 @@ pub fn get_game(app: &AppHandle, id: &str) -> Result<Option<Game>, String> {
 
 pub fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, String> {
     let connection = db::open_connection(app)?;
-    let input = normalize_game_fields(payload.name, payload.exe_path, payload.work_dir, payload.args)?;
+    let input = normalize_game_fields(
+        payload.name,
+        payload.exe_path,
+        payload.work_dir,
+        payload.args,
+    )?;
 
     if exe_path_exists(&connection, &input.exe_path)? {
         return Err("该游戏启动路径已存在".to_string());
@@ -109,7 +115,12 @@ pub fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, 
         return Err("游戏不存在或已被删除".to_string());
     }
 
-    let input = normalize_game_fields(payload.name, payload.exe_path, payload.work_dir, payload.args)?;
+    let input = normalize_game_fields(
+        payload.name,
+        payload.exe_path,
+        payload.work_dir,
+        payload.args,
+    )?;
     if exe_path_exists_for_other_game(&connection, &input.exe_path, &id)? {
         return Err("该游戏启动路径已存在".to_string());
     }
@@ -159,6 +170,89 @@ pub fn delete_game(app: &AppHandle, id: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+pub fn launch_game(app: &AppHandle, id: &str) -> Result<Game, String> {
+    let connection = db::open_connection(app)?;
+    let id = id.trim();
+    if id.is_empty() {
+        return Err("游戏 ID 不能为空".to_string());
+    }
+
+    let game =
+        get_game_by_id(&connection, id)?.ok_or_else(|| "游戏不存在或已被删除".to_string())?;
+    let exe_path = normalize_existing_exe_path(&game.exe_path)?;
+    let work_dir = match game.work_dir.as_deref() {
+        Some(value) if !value.trim().is_empty() => normalize_existing_directory(value)?,
+        _ => exe_path
+            .parent()
+            .ok_or_else(|| "无法识别游戏所在目录".to_string())?
+            .to_path_buf(),
+    };
+
+    let mut command = Command::new(&exe_path);
+    command.current_dir(work_dir);
+    if let Some(args) = game.args.as_deref() {
+        command.args(parse_launch_args(args)?);
+    }
+
+    command
+        .spawn()
+        .map_err(|error| format!("启动游戏失败：{error}"))?;
+
+    let now = current_timestamp_millis()?;
+    connection
+        .execute(
+            "
+            UPDATE games
+            SET play_count = play_count + 1,
+                last_play_time = ?1,
+                update_time = ?2
+            WHERE id = ?3
+            ",
+            params![now, now, id],
+        )
+        .map_err(|error| error.to_string())?;
+
+    get_game_by_id(&connection, id)?.ok_or_else(|| "游戏启动后无法读取".to_string())
+}
+
+fn parse_launch_args(args: &str) -> Result<Vec<String>, String> {
+    let mut parsed = Vec::new();
+    let mut current = String::new();
+    let mut in_quotes = false;
+    let mut escaping = false;
+
+    for character in args.chars() {
+        if escaping {
+            current.push(character);
+            escaping = false;
+            continue;
+        }
+
+        match character {
+            '\\' if in_quotes => escaping = true,
+            '"' => in_quotes = !in_quotes,
+            value if value.is_whitespace() && !in_quotes => {
+                if !current.is_empty() {
+                    parsed.push(std::mem::take(&mut current));
+                }
+            }
+            value => current.push(value),
+        }
+    }
+
+    if escaping {
+        current.push('\\');
+    }
+    if in_quotes {
+        return Err("启动参数中的引号未闭合".to_string());
+    }
+    if !current.is_empty() {
+        parsed.push(current);
+    }
+
+    Ok(parsed)
 }
 
 fn normalize_game_fields(
@@ -255,7 +349,11 @@ fn exe_path_exists(connection: &Connection, exe_path: &str) -> Result<bool, Stri
     Ok(count > 0)
 }
 
-fn exe_path_exists_for_other_game(connection: &Connection, exe_path: &str, id: &str) -> Result<bool, String> {
+fn exe_path_exists_for_other_game(
+    connection: &Connection,
+    exe_path: &str,
+    id: &str,
+) -> Result<bool, String> {
     let count: i64 = connection
         .query_row(
             "SELECT COUNT(1) FROM games WHERE exe_path = ?1 AND id <> ?2",
@@ -335,7 +433,9 @@ fn map_game_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Game> {
         folder_path: strip_windows_extended_path_prefix(row.get(3)?),
         icon: row.get(4)?,
         args: row.get(5)?,
-        work_dir: row.get::<_, Option<String>>(6)?.map(strip_windows_extended_path_prefix),
+        work_dir: row
+            .get::<_, Option<String>>(6)?
+            .map(strip_windows_extended_path_prefix),
         favorite: row.get::<_, i64>(7)? != 0,
         play_count: row.get(8)?,
         last_play_time: row.get(9)?,
@@ -385,4 +485,7 @@ pub fn delete_game_command(app: AppHandle, id: String) -> Result<(), String> {
     delete_game(&app, &id)
 }
 
-
+#[tauri::command]
+pub fn launch_game_command(app: AppHandle, id: String) -> Result<Game, String> {
+    launch_game(&app, &id)
+}

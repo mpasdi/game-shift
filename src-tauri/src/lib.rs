@@ -30,9 +30,9 @@ pub fn run() {
             games::get_game_command,
             games::create_game_command,
             games::update_game_command,
-            games::delete_game_command
+            games::delete_game_command,
+            games::launch_game_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running Game Shift");
 }
-

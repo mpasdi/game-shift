@@ -10,15 +10,18 @@
       viewMode: 'grid' | 'list'
       actionMode?: 'full' | 'quick'
       showManageActions?: boolean
+      isLaunching?: boolean
     }>(),
     {
       actionMode: 'full',
-      showManageActions: true
+      showManageActions: true,
+      isLaunching: false
     }
   )
 
   const emit = defineEmits<{
     edit: [game: Game]
+    launch: [game: Game]
     toggleFavorite: [game: Game]
     remove: [game: Game]
   }>()
@@ -67,7 +70,7 @@
       >
         <Star :size="16" :fill="props.game.favorite ? 'currentColor' : 'none'" />
       </IconButton>
-      <IconButton label="启动游戏" variant="active" disabled>
+      <IconButton label="启动游戏" variant="active" :disabled="props.isLaunching" @click="emit('launch', props.game)">
         <Play :size="15" />
       </IconButton>
       <IconButton v-if="props.showManageActions" label="编辑游戏" @click="emit('edit', props.game)">
