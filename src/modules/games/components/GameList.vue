@@ -55,7 +55,7 @@
   }
 
   .game-area.grid {
-    grid-template-columns: repeat(auto-fill, 240px);
+    grid-template-columns: repeat(auto-fill, 168px);
   }
 
   .game-area.list {

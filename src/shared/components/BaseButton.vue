@@ -97,9 +97,10 @@
   }
 
   .base-button--danger {
-    border-color: rgba(248, 113, 113, 0.2);
-    background: var(--danger-soft);
-    color: #fecdd3;
+    border-color: rgba(248, 113, 113, 0.28);
+    background: linear-gradient(180deg, #fb5576, #e3375e);
+    color: #ffffff;
+    font-weight: 760;
   }
 
   .base-button__icon,

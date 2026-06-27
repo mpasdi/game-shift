@@ -103,10 +103,10 @@
   }
 
   .game-card--grid {
-    min-height: 136px;
-    grid-template-columns: 50px minmax(0, 1fr);
-    align-content: start;
-    row-gap: 14px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    min-height: 300px;
+    padding: 10px;
   }
 
   .game-card--list {
@@ -200,15 +200,16 @@
 
   .game-card--grid .game-card__actions {
     grid-column: 1 / -1;
-    justify-content: flex-end;
-    gap: 8px;
+    display: flex;
+    justify-content: space-between;
+    gap: 0;
     margin-top: 0;
   }
 
   .game-card--grid .game-card__actions :deep(.icon-button) {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
   }
 
   .game-card--grid.game-card--actions-full .game-card__actions :deep(.icon-button:first-child) {
@@ -218,6 +219,30 @@
     width: 30px;
     min-width: 30px;
     height: 30px;
+  }
+
+  .game-card--grid.game-card--actions-full .game-card__icon {
+    width: 100%;
+    height: 190px;
+    border-radius: 8px;
+    background:
+      radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.13), transparent 28%),
+      linear-gradient(160deg, rgba(124, 92, 255, 0.34), rgba(20, 18, 27, 0.94));
+    font-size: 38px;
+  }
+
+  .game-card--grid.game-card--actions-full .game-card__content {
+    display: grid;
+    gap: 5px;
+  }
+
+  .game-card--grid.game-card--actions-full .game-card__title-row h2 {
+    font-size: 13px;
+  }
+
+  .game-card--grid.game-card--actions-full .game-card__meta {
+    margin: 0;
+    font-size: 11px;
   }
 
   .game-card--list .game-card__icon {
@@ -260,8 +285,20 @@
 
   .game-card--list .game-card__actions {
     grid-column: 6;
+    display: grid;
+    grid-template-columns: repeat(4, 28px);
     justify-content: flex-end;
     gap: 6px;
+  }
+
+  .game-card--list .game-card__actions :deep(.icon-button:nth-child(1)) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .game-card--list .game-card__actions :deep(.icon-button:nth-child(2)) {
+    grid-column: 1;
+    grid-row: 1;
   }
 
   .game-card--list .game-card__actions :deep(.icon-button) {

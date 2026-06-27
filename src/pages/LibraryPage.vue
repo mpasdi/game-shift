@@ -6,14 +6,14 @@
     Folder,
     FolderSearch,
     Grid2X2,
-    Heart,
     Home,
     LayoutList,
     Library,
     Plus,
     RefreshCw,
     Search,
-    Sparkles
+    Sparkles,
+    Star
   } from '@lucide/vue'
   import AppShell from '../app/AppShell.vue'
   import AddGameDialog from '../modules/games/components/AddGameDialog.vue'
@@ -55,6 +55,12 @@
     if (activeFilter.value === 'recent') return '最近游玩'
     return '全部游戏'
   })
+  const sectionIcon = computed(() => {
+    if (hasSearch.value) return Search
+    if (activeFilter.value === 'favorite') return Star
+    if (activeFilter.value === 'recent') return Clock3
+    return Library
+  })
   const sectionMeta = computed(() => {
     if (hasSearch.value) return `${visibleGames.value.length} 个匹配`
     if (activeFilter.value === 'favorite') return `${favoriteGames.value.length} 个收藏`
@@ -65,7 +71,7 @@
   const navItems: NavItem[] = [
     { id: 'home', filter: 'all', label: '首页', icon: Home },
     { id: 'all', filter: 'all', label: '全部游戏', icon: Library },
-    { id: 'favorite', filter: 'favorite', label: '收藏游戏', icon: Heart },
+    { id: 'favorite', filter: 'favorite', label: '收藏游戏', icon: Star },
     { id: 'recent', filter: 'recent', label: '最近游玩', icon: Clock3 }
   ]
 
@@ -236,7 +242,7 @@
           <div class="section-heading">
             <div>
               <h2 class="section-title">
-                <Heart :size="14" />
+                <Star :size="14" />
                 收藏游戏
               </h2>
             </div>
@@ -244,7 +250,7 @@
           </div>
 
           <div v-if="favoriteGames.length === 0" class="section-empty">
-            <Heart :size="18" />
+            <Star :size="18" />
             <span>点击游戏卡片上的爱心，把常玩的游戏放到这里。</span>
           </div>
           <GameList
@@ -262,7 +268,7 @@
           <div class="section-heading">
             <div>
               <h2 class="section-title">
-                <Library :size="14" />
+                <component :is="sectionIcon" :size="14" />
                 <span>{{ sectionTitle }}</span>
               </h2>
             </div>

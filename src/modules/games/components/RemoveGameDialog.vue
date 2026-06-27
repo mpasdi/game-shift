@@ -18,15 +18,15 @@
 </script>
 
 <template>
-  <BaseModal :open="props.open" title="移除游戏" @close="emit('close')">
+  <BaseModal :open="props.open" title="删除游戏" size="sm" @close="emit('close')">
     <div class="confirm-dialog">
       <div class="confirm-dialog__icon" aria-hidden="true">
-        <Trash2 :size="22" />
+        <Trash2 :size="30" />
       </div>
       <div class="confirm-dialog__content">
-        <p class="confirm-dialog__title">确认从游戏库移除 {{ props.game?.name ?? '该游戏' }}？</p>
+        <p class="confirm-dialog__title">确定要删除游戏吗？</p>
+        <p v-if="props.game" class="confirm-dialog__name">{{ props.game.name }}</p>
         <p class="confirm-dialog__description">只会删除 Game Shift 中的记录，不会删除本地磁盘上的游戏文件。</p>
-        <p v-if="props.game" class="confirm-dialog__path" :title="props.game.exePath">{{ props.game.exePath }}</p>
         <p v-if="props.errorMessage" class="form-error">{{ props.errorMessage }}</p>
       </div>
     </div>
@@ -42,19 +42,22 @@
 
 <style scoped>
   .confirm-dialog {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
+    display: grid;
+    gap: 16px;
+    justify-items: center;
+    padding: 8px 6px 4px;
+    text-align: center;
   }
 
   .confirm-dialog__icon {
     display: grid;
-    width: 42px;
-    height: 42px;
+    width: 68px;
+    height: 68px;
     place-items: center;
-    border-radius: 8px;
+    border: 1px solid rgba(248, 113, 113, 0.45);
+    border-radius: 999px;
     background: var(--danger-soft);
-    color: #fecdd3;
+    color: var(--danger);
   }
 
   .confirm-dialog__content {
@@ -67,20 +70,20 @@
     font-weight: 760;
   }
 
-  .confirm-dialog__description,
-  .confirm-dialog__path {
+  .confirm-dialog__name {
+    margin: 10px 0 0;
+    color: var(--danger);
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  .confirm-dialog__description {
     color: var(--text-muted);
     line-height: 1.6;
   }
 
   .confirm-dialog__description {
     margin: 8px 0 0;
-  }
-
-  .confirm-dialog__path {
-    overflow-wrap: anywhere;
-    margin: 10px 0 0;
-    font-size: 13px;
   }
 
   .form-error {

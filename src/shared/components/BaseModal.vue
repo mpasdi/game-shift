@@ -1,8 +1,14 @@
 <script setup lang="ts">
-  defineProps<{
-    open: boolean
-    title: string
-  }>()
+  withDefaults(
+    defineProps<{
+      open: boolean
+      title: string
+      size?: 'sm' | 'md' | 'lg'
+    }>(),
+    {
+      size: 'md'
+    }
+  )
 
   const emit = defineEmits<{
     close: []
@@ -12,7 +18,7 @@
 <template>
   <Teleport to="body">
     <div v-if="open" class="modal-backdrop" role="presentation" @click.self="emit('close')">
-      <section class="modal-panel" role="dialog" aria-modal="true" :aria-label="title">
+      <section class="modal-panel" :class="`modal-panel--${size}`" role="dialog" aria-modal="true" :aria-label="title">
         <header class="modal-header">
           <h2>{{ title }}</h2>
           <button class="modal-close" type="button" aria-label="关闭" @click="emit('close')">×</button>
@@ -49,6 +55,18 @@
     background: var(--panel-strong);
     box-shadow: var(--shadow);
     animation: modal-in 180ms ease-out both;
+  }
+
+  .modal-panel--sm {
+    width: min(420px, 100%);
+  }
+
+  .modal-panel--sm .modal-footer {
+    justify-content: center;
+  }
+
+  .modal-panel--lg {
+    width: min(760px, 100%);
   }
 
   .modal-header,

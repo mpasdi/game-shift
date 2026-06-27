@@ -39,6 +39,7 @@
   const modalTitle = computed(() => (isEditing.value ? '编辑游戏' : '手动添加游戏'))
   const submitText = computed(() => (isEditing.value ? '保存修改' : '保存'))
   const displayedError = computed(() => localError.value || props.errorMessage || null)
+  const previewInitial = computed(() => form.name.trim().slice(0, 1).toUpperCase() || 'G')
 
   watch(
     () => [props.open, props.game, props.mode] as const,
@@ -153,36 +154,49 @@
 </script>
 
 <template>
-  <BaseModal :open="props.open" :title="modalTitle" @close="emit('close')">
-    <form class="game-form" @submit.prevent="submitForm">
-      <div class="path-field">
-        <TextField id="game-exe" v-model="form.exePath" label="启动程序" placeholder="选择游戏 .exe 文件" readonly />
-        <BaseButton variant="secondary" type="button" @click="chooseExePath">
-          <template #icon><FileSearch :size="17" /></template>
-          选择
-        </BaseButton>
-      </div>
+  <BaseModal :open="props.open" :title="modalTitle" size="lg" @close="emit('close')">
+    <div class="game-dialog">
+      <aside class="cover-preview" aria-label="游戏封面预览">
+        <div class="cover-preview__art" aria-hidden="true">{{ previewInitial }}</div>
+        <BaseButton variant="secondary" type="button" size="sm" disabled>更换封面</BaseButton>
+      </aside>
 
-      <TextField id="game-name" v-model="form.name" label="游戏名称" placeholder="例如：Elden Ring" />
+      <form class="game-form" @submit.prevent="submitForm">
+        <TextField id="game-name" v-model="form.name" label="游戏名称" placeholder="例如：Elden Ring" />
 
-      <div class="path-field">
-        <TextField
-          id="game-work-dir"
-          v-model="form.workDir"
-          label="工作目录"
-          placeholder="默认使用 .exe 所在目录"
-          readonly
-        />
-        <BaseButton variant="secondary" type="button" @click="chooseWorkDir">
-          <template #icon><FolderOpen :size="17" /></template>
-          选择
-        </BaseButton>
-      </div>
+        <div class="path-field">
+          <TextField
+            id="game-exe"
+            v-model="form.exePath"
+            label="可执行文件"
+            placeholder="选择游戏 .exe 文件"
+            readonly
+          />
+          <BaseButton variant="secondary" type="button" @click="chooseExePath">
+            <template #icon><FileSearch :size="17" /></template>
+            选择
+          </BaseButton>
+        </div>
 
-      <TextField id="game-args" v-model="form.args" label="启动参数" placeholder="可选，例如 -windowed" />
+        <div class="path-field">
+          <TextField
+            id="game-work-dir"
+            v-model="form.workDir"
+            label="工作目录"
+            placeholder="默认使用 .exe 所在目录"
+            readonly
+          />
+          <BaseButton variant="secondary" type="button" @click="chooseWorkDir">
+            <template #icon><FolderOpen :size="17" /></template>
+            选择
+          </BaseButton>
+        </div>
 
-      <p v-if="displayedError" class="form-error">{{ displayedError }}</p>
-    </form>
+        <TextField id="game-args" v-model="form.args" label="启动参数" placeholder="可选，例如 -windowed" />
+
+        <p v-if="displayedError" class="form-error">{{ displayedError }}</p>
+      </form>
+    </div>
 
     <template #footer>
       <BaseButton variant="primary" type="button" :loading="saving" @click="submitForm">{{ submitText }}</BaseButton>
@@ -194,6 +208,32 @@
   .game-form {
     display: grid;
     gap: 16px;
+  }
+
+  .game-dialog {
+    display: grid;
+    grid-template-columns: 156px minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+  }
+
+  .cover-preview {
+    display: grid;
+    gap: 10px;
+  }
+
+  .cover-preview__art {
+    display: grid;
+    aspect-ratio: 3 / 4;
+    place-items: center;
+    border: 1px solid var(--accent-border);
+    border-radius: 8px;
+    background:
+      radial-gradient(circle at 50% 20%, rgba(157, 140, 255, 0.26), transparent 42%),
+      linear-gradient(145deg, rgba(124, 92, 255, 0.32), rgba(255, 255, 255, 0.055));
+    color: var(--text);
+    font-size: 42px;
+    font-weight: 850;
   }
 
   .path-field {
@@ -210,6 +250,15 @@
   }
 
   @media (max-width: 720px) {
+    .game-dialog {
+      grid-template-columns: 1fr;
+    }
+
+    .cover-preview {
+      grid-template-columns: 112px minmax(0, 1fr);
+      align-items: end;
+    }
+
     .path-field {
       align-items: stretch;
       grid-template-columns: 1fr;
