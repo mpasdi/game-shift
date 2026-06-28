@@ -16,10 +16,12 @@
 
       <slot name="summary" />
 
-      <button class="settings-entry" type="button">
-        <Settings :size="16" />
-        <span>设置</span>
-      </button>
+      <slot name="settings">
+        <button class="settings-entry" type="button">
+          <Settings :size="16" />
+          <span>设置</span>
+        </button>
+      </slot>
     </aside>
 
     <section class="workspace">

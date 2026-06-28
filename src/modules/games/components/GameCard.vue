@@ -29,8 +29,9 @@
   const initial = computed(() => props.game.name.trim().slice(0, 1).toUpperCase() || 'G')
   const exeFileName = computed(() => props.game.exePath.split(/[\\/]/).pop() ?? props.game.exePath)
   const lastPlayText = computed(() => {
-    if (!props.game.lastPlayTime) return '尚未启动'
+    if (!props.game.lastPlayTime) return '无启动记录'
     return new Intl.DateTimeFormat('zh-CN', {
+      year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
@@ -113,7 +114,7 @@
   }
 
   .game-card--list {
-    grid-template-columns: 34px minmax(220px, 360px) 120px 54px minmax(0, 1fr) auto;
+    grid-template-columns: 34px minmax(220px, 360px) 150px 54px minmax(0, 1fr) auto;
     column-gap: 18px;
     align-items: center;
     min-height: 54px;
@@ -240,7 +241,13 @@
   }
 
   .game-card--grid.game-card--actions-full .game-card__title-row h2 {
+    display: -webkit-box;
+    min-height: 34px;
     font-size: 13px;
+    line-height: 1.3;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .game-card--grid.game-card--actions-full .game-card__meta {
@@ -333,7 +340,13 @@
   }
 
   .game-card--actions-quick .game-card__title-row h2 {
+    display: -webkit-box;
+    min-height: 34px;
     font-size: 13px;
+    line-height: 1.3;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .game-card--actions-quick .game-card__path {
