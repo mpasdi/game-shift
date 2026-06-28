@@ -27,7 +27,8 @@
     :type="type"
     :disabled="disabled || loading"
   >
-    <span v-if="$slots.icon" class="base-button__icon">
+    <span v-if="loading" class="base-button__spinner" aria-hidden="true" />
+    <span v-else-if="$slots.icon" class="base-button__icon">
       <slot name="icon" />
     </span>
     <span class="base-button__label"><slot /></span>
@@ -70,6 +71,15 @@
     opacity: 0.52;
   }
 
+  .base-button__spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 999px;
+    animation: button-spin 680ms linear infinite;
+  }
+
   .base-button--primary {
     background: linear-gradient(180deg, #8d73ff, #6d50e8);
     color: #ffffff;
@@ -107,5 +117,11 @@
   .base-button__label {
     display: inline-flex;
     align-items: center;
+  }
+
+  @keyframes button-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>

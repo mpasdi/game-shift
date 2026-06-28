@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { createGame, deleteGame, launchGame, listGames, updateGame } from '../api'
-import type { CreateGamePayload, Game, GameFilter, UpdateGamePayload } from '../types/game'
+import { createGame, deleteGame, launchGame, listGames, scanGames, updateGame } from '../api'
+import type { CreateGamePayload, Game, GameFilter, ScanCandidate, UpdateGamePayload } from '../types/game'
 
 const LAUNCH_COOLDOWN_MS = 3000
 
@@ -10,6 +10,7 @@ interface GamesState {
   activeFilter: GameFilter
   isLoading: boolean
   isSaving: boolean
+  isScanning: boolean
   launchingGameIds: string[]
   errorMessage: string | null
 }
@@ -21,6 +22,7 @@ export const useGamesStore = defineStore('games', {
     activeFilter: 'all',
     isLoading: false,
     isSaving: false,
+    isScanning: false,
     launchingGameIds: [],
     errorMessage: null
   }),
@@ -120,6 +122,19 @@ export const useGamesStore = defineStore('games', {
         window.setTimeout(() => {
           this.launchingGameIds = this.launchingGameIds.filter((gameId) => gameId !== id)
         }, LAUNCH_COOLDOWN_MS)
+      }
+    },
+    async scanGames(directory: string): Promise<ScanCandidate[]> {
+      this.isScanning = true
+      this.errorMessage = null
+
+      try {
+        return await scanGames(directory)
+      } catch (error) {
+        this.errorMessage = error instanceof Error ? error.message : String(error)
+        throw error
+      } finally {
+        this.isScanning = false
       }
     },
     setFilter(filter: GameFilter) {

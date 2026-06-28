@@ -26,3 +26,11 @@ export interface UpdateGamePayload extends CreateGamePayload {
   id: string
   favorite: boolean
 }
+
+export interface ScanCandidate {
+  name: string
+  exePath: string
+  folderPath: string
+  exeFileName: string
+  exists: boolean
+}

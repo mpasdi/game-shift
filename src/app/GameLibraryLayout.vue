@@ -2,6 +2,7 @@
   import { computed, onMounted, provide, ref } from 'vue'
   import { RouterLink, RouterView, useRoute } from 'vue-router'
   import { storeToRefs } from 'pinia'
+  import { open as openDialog } from '@tauri-apps/plugin-dialog'
   import {
     Clock3,
     Folder,
@@ -18,10 +19,17 @@
   import AppShell from './AppShell.vue'
   import AddGameDialog from '../modules/games/components/AddGameDialog.vue'
   import RemoveGameDialog from '../modules/games/components/RemoveGameDialog.vue'
+  import ScanResultsDialog from '../modules/games/components/ScanResultsDialog.vue'
   import { gameLibraryActionsKey } from '../modules/games/composables/useGameLibraryActions'
   import type { GameViewMode } from '../modules/games/composables/useGameLibraryActions'
   import { useGamesStore } from '../modules/games/stores/games'
-  import type { CreateGamePayload, Game, GameFilter, UpdateGamePayload } from '../modules/games/types/game'
+  import type {
+    CreateGamePayload,
+    Game,
+    GameFilter,
+    ScanCandidate,
+    UpdateGamePayload
+  } from '../modules/games/types/game'
   import { routeNames } from '../router/routeNames'
   import BaseButton from '../shared/components/BaseButton.vue'
   import EmptyState from '../shared/components/EmptyState.vue'
@@ -42,6 +50,10 @@
   const isGameDialogOpen = ref(false)
   const editingGame = ref<Game | null>(null)
   const removingGame = ref<Game | null>(null)
+  const isScanResultsOpen = ref(false)
+  const scanCandidates = ref<ScanCandidate[]>([])
+  const scanErrorMessage = ref<string | null>(null)
+  const isImportingScanResults = ref(false)
 
   const dialogMode = computed(() => (editingGame.value ? 'edit' : 'create'))
   const shouldShowEmptyLibrary = computed(() => games.value.length === 0 && route.name !== 'settings')
@@ -110,6 +122,54 @@
 
   async function launchGame(game: Game) {
     await gamesStore.launchGame(game.id)
+  }
+
+  async function scanDirectory() {
+    const selected = await openDialog({
+      multiple: false,
+      directory: true
+    })
+
+    if (typeof selected !== 'string') return
+
+    scanErrorMessage.value = null
+    scanCandidates.value = []
+    try {
+      scanCandidates.value = await gamesStore.scanGames(selected)
+      isScanResultsOpen.value = true
+    } catch (error) {
+      scanErrorMessage.value = error instanceof Error ? error.message : String(error)
+      isScanResultsOpen.value = true
+    }
+  }
+
+  function closeScanResultsDialog() {
+    if (isImportingScanResults.value) return
+    isScanResultsOpen.value = false
+    scanErrorMessage.value = null
+  }
+
+  async function importScanCandidates(candidates: ScanCandidate[]) {
+    isImportingScanResults.value = true
+    scanErrorMessage.value = null
+
+    try {
+      for (const candidate of candidates) {
+        await gamesStore.createGame({
+          name: candidate.name,
+          exePath: candidate.exePath,
+          workDir: candidate.folderPath,
+          args: null
+        })
+      }
+      isScanResultsOpen.value = false
+      scanErrorMessage.value = null
+      await gamesStore.loadGames()
+    } catch (error) {
+      scanErrorMessage.value = error instanceof Error ? error.message : String(error)
+    } finally {
+      isImportingScanResults.value = false
+    }
   }
 
   function setViewMode(nextViewMode: GameViewMode) {
@@ -182,7 +242,7 @@
           <template #icon><Plus :size="16" /></template>
           添加游戏
         </BaseButton>
-        <BaseButton variant="secondary">
+        <BaseButton variant="secondary" :loading="gamesStore.isScanning" @click="scanDirectory">
           <template #icon><FolderSearch :size="16" /></template>
           扫描目录
         </BaseButton>
@@ -229,7 +289,7 @@
             <template #icon><Plus :size="17" /></template>
             手动添加
           </BaseButton>
-          <BaseButton variant="secondary">
+          <BaseButton variant="secondary" :loading="gamesStore.isScanning" @click="scanDirectory">
             <template #icon><FolderSearch :size="17" /></template>
             扫描目录
           </BaseButton>
@@ -257,6 +317,15 @@
     :error-message="gamesStore.errorMessage"
     @close="closeRemoveGameDialog"
     @confirm="confirmRemoveGame"
+  />
+
+  <ScanResultsDialog
+    :open="isScanResultsOpen"
+    :candidates="scanCandidates"
+    :importing="isImportingScanResults"
+    :error-message="scanErrorMessage"
+    @close="closeScanResultsDialog"
+    @import="importScanCandidates"
   />
 </template>
 

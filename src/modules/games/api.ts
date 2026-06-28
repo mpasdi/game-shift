@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { CreateGamePayload, Game, UpdateGamePayload } from './types/game'
+import type { CreateGamePayload, Game, ScanCandidate, UpdateGamePayload } from './types/game'
 
 function isTauriRuntime() {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
@@ -47,4 +47,12 @@ export async function launchGame(id: string) {
   }
 
   return invoke<Game>('launch_game_command', { id })
+}
+
+export async function scanGames(directory: string) {
+  if (!isTauriRuntime()) {
+    throw new Error('当前环境不支持扫描本地目录，请在 Tauri 桌面应用中使用')
+  }
+
+  return invoke<ScanCandidate[]>('scan_games_command', { directory })
 }
