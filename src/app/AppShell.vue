@@ -1,12 +1,13 @@
 <script setup lang="ts">
-  import { Gamepad2, Settings } from '@lucide/vue'
+  import { Settings } from '@lucide/vue'
+  import brandIconUrl from '../assets/brand-icon.png'
 </script>
 
 <template>
   <main class="app-shell">
     <aside class="sidebar" aria-label="主导航">
       <div class="brand-block">
-        <div class="brand-mark"><Gamepad2 :size="20" /></div>
+        <img class="brand-mark" :src="brandIconUrl" alt="" aria-hidden="true" />
         <span>Game Shift</span>
       </div>
 
