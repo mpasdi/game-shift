@@ -38,6 +38,30 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-color: rgba(157, 140, 255, 0.58) rgba(255, 255, 255, 0.045);
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.045);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(157, 140, 255, 0.58);
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(183, 171, 255, 0.78);
+  background-clip: content-box;
 }
 
 html,

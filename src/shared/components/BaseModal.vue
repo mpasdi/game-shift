@@ -4,9 +4,11 @@
       open: boolean
       title: string
       size?: 'sm' | 'md' | 'lg'
+      bodyScrollable?: boolean
     }>(),
     {
-      size: 'md'
+      size: 'md',
+      bodyScrollable: true
     }
   )
 
@@ -23,7 +25,7 @@
           <h2>{{ title }}</h2>
           <button class="modal-close" type="button" aria-label="关闭" @click="emit('close')">×</button>
         </header>
-        <div class="modal-body">
+        <div class="modal-body" :class="{ 'modal-body--fixed': !bodyScrollable }">
           <slot />
         </div>
         <footer v-if="$slots.footer" class="modal-footer">
@@ -48,7 +50,10 @@
   }
 
   .modal-panel {
+    display: flex;
     width: min(560px, 100%);
+    flex-direction: column;
+    max-height: min(760px, calc(100vh - 44px));
     overflow: hidden;
     border: 1px solid var(--border-strong);
     border-radius: 8px;
@@ -109,7 +114,13 @@
   }
 
   .modal-body {
+    min-height: 0;
+    overflow: auto;
     padding: 24px;
+  }
+
+  .modal-body--fixed {
+    overflow: visible;
   }
 
   .modal-footer {

@@ -66,16 +66,19 @@
 </script>
 
 <template>
-  <BaseModal :open="props.open" title="扫描结果" size="lg" @close="emit('close')">
+  <BaseModal :open="props.open" title="扫描结果" size="lg" :body-scrollable="false" @close="emit('close')">
     <div class="scan-dialog">
       <div class="scan-summary">
-        <div>
+        <div class="scan-summary-item">
+          <span>全部程序</span>
+
           <strong>{{ props.candidates.length }}</strong>
-          <span>个候选程序</span>
         </div>
-        <div>
+
+        <div class="scan-summary-item scan-summary-item--selected">
+          <span>已选程序</span>
+
           <strong>{{ selectedCount }}</strong>
-          <span>个待导入</span>
         </div>
       </div>
 
@@ -125,7 +128,7 @@
         :disabled="selectedCount === 0"
         @click="importSelected"
       >
-        导入 {{ selectedCount }} 个
+        导入
       </BaseButton>
     </template>
   </BaseModal>
@@ -135,27 +138,41 @@
   .scan-dialog {
     display: grid;
     gap: 14px;
+    min-height: 0;
   }
 
   .scan-summary {
-    display: flex;
-    gap: 12px;
+    display: inline-flex;
+    width: fit-content;
+    gap: 6px;
     align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.026);
+    padding: 5px;
   }
 
-  .scan-summary div {
+  .scan-summary-item {
     display: inline-flex;
     gap: 6px;
     align-items: baseline;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    padding: 8px 10px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 6px 8px;
   }
 
   .scan-summary strong {
     color: var(--text);
-    font-size: 18px;
+    font-size: 16px;
+  }
+
+  .scan-summary-item--selected {
+    background: rgba(139, 92, 246, 0.16);
+  }
+
+  .scan-summary-item--selected strong,
+  .scan-summary-item--selected span {
+    color: var(--accent-strong);
   }
 
   .scan-summary span,
@@ -171,7 +188,9 @@
   }
 
   .scan-table {
-    overflow: hidden;
+    max-height: min(520px, calc(100vh - 320px));
+    min-height: 0;
+    overflow: auto;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.03);
@@ -191,9 +210,16 @@
     border-bottom: 0;
   }
 
+  .scan-table .scan-row:not(.scan-row--head):last-child {
+    border-bottom: 0;
+  }
+
   .scan-row--head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     min-height: 38px;
-    background: rgba(255, 255, 255, 0.035);
+    background: rgba(32, 29, 42, 0.98);
     color: var(--text-muted);
     font-size: 12px;
     font-weight: 700;
