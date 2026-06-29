@@ -133,16 +133,17 @@
     display: flex;
     gap: 10px;
     align-items: center;
-    min-height: 70px;
-    border: 1px dashed var(--border-strong);
+    min-height: 58px;
+    border: 1px solid rgba(255, 255, 255, 0.075);
     border-radius: 8px;
-    background: var(--surface);
+    background: rgba(255, 255, 255, 0.025);
     color: var(--text-muted);
-    padding: 18px;
+    padding: 14px 16px;
   }
 
   .section-empty svg {
-    color: var(--text-subtle);
+    flex: 0 0 auto;
+    color: var(--accent-strong);
   }
 
   @keyframes section-in {

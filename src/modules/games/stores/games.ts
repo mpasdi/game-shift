@@ -4,6 +4,18 @@ import type { CreateGamePayload, Game, GameFilter, ScanCandidate, UpdateGamePayl
 
 const LAUNCH_COOLDOWN_MS = 3000
 
+function sortGames(left: Game, right: Game, filter: GameFilter) {
+  if (filter === 'recent') {
+    return (right.lastPlayTime ?? 0) - (left.lastPlayTime ?? 0)
+  }
+
+  if (Number(right.favorite) !== Number(left.favorite)) {
+    return Number(right.favorite) - Number(left.favorite)
+  }
+
+  return right.createTime - left.createTime
+}
+
 interface GamesState {
   games: Game[]
   searchText: string
@@ -37,12 +49,7 @@ export const useGamesStore = defineStore('games', {
           const exeFileName = game.exePath.split(/[\\/]/).pop() ?? game.exePath
           return game.name.toLowerCase().includes(keyword) || exeFileName.toLowerCase().includes(keyword)
         })
-        .sort((left, right) => {
-          if (Number(right.favorite) !== Number(left.favorite)) {
-            return Number(right.favorite) - Number(left.favorite)
-          }
-          return (right.lastPlayTime ?? right.createTime) - (left.lastPlayTime ?? left.createTime)
-        })
+        .sort((left, right) => sortGames(left, right, state.activeFilter))
     }
   },
   actions: {
@@ -67,7 +74,7 @@ export const useGamesStore = defineStore('games', {
 
       try {
         const game = await createGame(payload)
-        await this.loadGames()
+        this.upsertGame(game)
         return game
       } catch (error) {
         this.errorMessage = error instanceof Error ? error.message : String(error)
@@ -82,7 +89,7 @@ export const useGamesStore = defineStore('games', {
 
       try {
         const game = await updateGame(payload)
-        await this.loadGames()
+        this.upsertGame(game)
         return game
       } catch (error) {
         this.errorMessage = error instanceof Error ? error.message : String(error)
@@ -97,7 +104,7 @@ export const useGamesStore = defineStore('games', {
 
       try {
         await deleteGame(id)
-        await this.loadGames()
+        this.games = this.games.filter((game) => game.id !== id)
       } catch (error) {
         this.errorMessage = error instanceof Error ? error.message : String(error)
         throw error
@@ -113,7 +120,7 @@ export const useGamesStore = defineStore('games', {
 
       try {
         const game = await launchGame(id)
-        await this.loadGames()
+        this.upsertGame(game)
         return game
       } catch (error) {
         this.errorMessage = error instanceof Error ? error.message : String(error)
@@ -136,6 +143,15 @@ export const useGamesStore = defineStore('games', {
       } finally {
         this.isScanning = false
       }
+    },
+    upsertGame(game: Game) {
+      const index = this.games.findIndex((item) => item.id === game.id)
+      if (index >= 0) {
+        this.games[index] = game
+        return
+      }
+
+      this.games.push(game)
     },
     setFilter(filter: GameFilter) {
       this.activeFilter = filter

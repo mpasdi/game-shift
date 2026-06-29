@@ -281,7 +281,7 @@
         label="空游戏库"
         eyebrow="尚未导入游戏"
         title="从第一个启动程序开始"
-        description="选择本地 .exe 后，Game Shift 会保存到本地数据库。目录扫描将在后续阶段接入。"
+        description="选择本地 .exe 后，Game Shift 会保存到本地数据库。也可以直接扫描目录，批量导入可启动的 .exe。"
       >
         <template #icon><Sparkles :size="15" /></template>
         <template #actions>

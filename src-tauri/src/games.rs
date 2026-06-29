@@ -749,7 +749,6 @@ fn query_games(connection: &Connection) -> Result<Vec<Game>, String> {
                 update_time
             FROM games
             ORDER BY favorite DESC,
-                     COALESCE(last_play_time, create_time) DESC,
                      create_time DESC
             ",
         )
