@@ -5,7 +5,7 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::{params, Connection, OptionalExtension};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::db;
 
@@ -17,6 +17,7 @@ pub struct Game {
     exe_path: String,
     folder_path: String,
     icon: Option<String>,
+    cover: Option<String>,
     args: Option<String>,
     work_dir: Option<String>,
     favorite: bool,
@@ -58,10 +59,52 @@ pub struct ScanCandidate {
 
 pub fn list_games(app: &AppHandle) -> Result<Vec<Game>, String> {
     let connection = db::open_connection(app)?;
-    query_games(&connection)
+    let mut games = query_games(&connection)?;
+    for game in &mut games {
+        ensure_game_visual_assets(app, &connection, game)?;
+    }
+
+    Ok(games)
 }
 
-pub fn scan_games(app: &AppHandle, directory: &str) -> Result<Vec<ScanCandidate>, String> {
+fn ensure_game_visual_assets(
+    app: &AppHandle,
+    connection: &Connection,
+    game: &mut Game,
+) -> Result<(), String> {
+    let mut changed = false;
+
+    if game.icon.is_none() {
+        game.icon = extract_game_icon(app, &game.exe_path, &game.id)?;
+        changed |= game.icon.is_some();
+    }
+
+    if game.cover.is_none() {
+        game.cover = detect_and_cache_cover(app, &game.folder_path, &game.id)?;
+        changed |= game.cover.is_some();
+    }
+
+    if changed {
+        let now = current_timestamp_millis()?;
+        connection
+            .execute(
+                "
+                UPDATE games
+                SET icon = ?1,
+                    cover = ?2,
+                    update_time = ?3
+                WHERE id = ?4
+                ",
+                params![game.icon, game.cover, now, game.id],
+            )
+            .map_err(|error| error.to_string())?;
+        game.update_time = now;
+    }
+
+    Ok(())
+}
+
+fn scan_games(app: &AppHandle, directory: &str) -> Result<Vec<ScanCandidate>, String> {
     let connection = db::open_connection(app)?;
     let root = normalize_existing_directory(directory)?;
     let existing_exe_paths = query_existing_exe_paths(&connection)?;
@@ -97,6 +140,8 @@ pub fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, 
 
     let now = current_timestamp_millis()?;
     let id = format!("game-{}", now);
+    let icon = extract_game_icon(app, &input.exe_path, &id)?;
+    let cover = detect_and_cache_cover(app, &input.folder_path, &id)?;
 
     connection
         .execute(
@@ -107,6 +152,7 @@ pub fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, 
                 exe_path,
                 folder_path,
                 icon,
+                cover,
                 args,
                 work_dir,
                 favorite,
@@ -114,13 +160,15 @@ pub fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, 
                 last_play_time,
                 create_time,
                 update_time
-            ) VALUES (?1, ?2, ?3, ?4, NULL, ?5, ?6, 0, 0, NULL, ?7, ?8)
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, 0, NULL, ?9, ?10)
             ",
             params![
                 id,
                 input.name,
                 input.exe_path,
                 input.folder_path,
+                icon,
+                cover,
                 input.args,
                 input.work_dir,
                 now,
@@ -139,9 +187,8 @@ pub fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, 
         return Err("游戏 ID 不能为空".to_string());
     }
 
-    if get_game_by_id(&connection, &id)?.is_none() {
-        return Err("游戏不存在或已被删除".to_string());
-    }
+    let existing_game =
+        get_game_by_id(&connection, &id)?.ok_or_else(|| "游戏不存在或已被删除".to_string())?;
 
     let input = normalize_game_fields(
         payload.name,
@@ -154,6 +201,17 @@ pub fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, 
     }
 
     let now = current_timestamp_millis()?;
+    let icon = if existing_game.exe_path != input.exe_path || existing_game.icon.is_none() {
+        extract_game_icon(app, &input.exe_path, &id)?.or(existing_game.icon)
+    } else {
+        existing_game.icon
+    };
+    let cover = if existing_game.folder_path != input.folder_path || existing_game.cover.is_none() {
+        detect_and_cache_cover(app, &input.folder_path, &id)?.or(existing_game.cover)
+    } else {
+        existing_game.cover
+    };
+
     connection
         .execute(
             "
@@ -161,16 +219,20 @@ pub fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, 
             SET name = ?1,
                 exe_path = ?2,
                 folder_path = ?3,
-                args = ?4,
-                work_dir = ?5,
-                favorite = ?6,
-                update_time = ?7
-            WHERE id = ?8
+                icon = ?4,
+                cover = ?5,
+                args = ?6,
+                work_dir = ?7,
+                favorite = ?8,
+                update_time = ?9
+            WHERE id = ?10
             ",
             params![
                 input.name,
                 input.exe_path,
                 input.folder_path,
+                icon,
+                cover,
                 input.args,
                 input.work_dir,
                 i64::from(payload.favorite),
@@ -314,6 +376,132 @@ fn normalize_game_fields(
             (!trimmed.is_empty()).then_some(trimmed)
         }),
     })
+}
+
+fn game_asset_dir(app: &AppHandle, game_id: &str) -> Result<PathBuf, String> {
+    let directory = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| error.to_string())?
+        .join("assets")
+        .join("games")
+        .join(game_id);
+    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    Ok(directory)
+}
+
+fn detect_and_cache_cover(
+    app: &AppHandle,
+    folder_path: &str,
+    game_id: &str,
+) -> Result<Option<String>, String> {
+    let folder = PathBuf::from(folder_path);
+    let Some(source) = find_cover_candidate(&folder) else {
+        return Ok(None);
+    };
+
+    let extension = source
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("png")
+        .to_ascii_lowercase();
+    let target = game_asset_dir(app, game_id)?.join(format!("cover.{extension}"));
+    fs::copy(&source, &target).map_err(|error| error.to_string())?;
+
+    path_to_string(target).map(Some)
+}
+
+fn find_cover_candidate(folder: &Path) -> Option<PathBuf> {
+    const FILE_STEMS: &[&str] = &[
+        "cover",
+        "poster",
+        "capsule",
+        "header",
+        "library",
+        "background",
+        "hero",
+    ];
+    const EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp"];
+    const SUBDIRECTORIES: &[&str] = &[".", "images", "image", "assets", "media", "launcher"];
+
+    for subdirectory in SUBDIRECTORIES {
+        let directory = if *subdirectory == "." {
+            folder.to_path_buf()
+        } else {
+            folder.join(subdirectory)
+        };
+        if !directory.is_dir() {
+            continue;
+        }
+
+        for stem in FILE_STEMS {
+            for extension in EXTENSIONS {
+                let candidate = directory.join(format!("{stem}.{extension}"));
+                if candidate.is_file() {
+                    return Some(candidate);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+fn extract_game_icon(
+    app: &AppHandle,
+    exe_path: &str,
+    game_id: &str,
+) -> Result<Option<String>, String> {
+    extract_game_icon_for_platform(app, exe_path, game_id)
+}
+
+#[cfg(target_os = "windows")]
+fn extract_game_icon_for_platform(
+    app: &AppHandle,
+    exe_path: &str,
+    game_id: &str,
+) -> Result<Option<String>, String> {
+    let target = game_asset_dir(app, game_id)?.join("icon.ico");
+    let command = format!(
+        "Add-Type -AssemblyName System.Drawing; \
+         $icon=[System.Drawing.Icon]::ExtractAssociatedIcon('{exe_path}'); \
+         if ($null -eq $icon) {{ exit 2 }}; \
+         $stream=[System.IO.File]::Open('{target_path}', [System.IO.FileMode]::Create); \
+         try {{ $icon.Save($stream) }} finally {{ $stream.Dispose(); $icon.Dispose() }}",
+        exe_path = escape_powershell_single_quoted(exe_path),
+        target_path = escape_powershell_single_quoted(&path_to_string(target.clone())?),
+    );
+
+    let status = Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &command,
+        ])
+        .status()
+        .map_err(|error| error.to_string())?;
+
+    if status.success() && target.is_file() {
+        path_to_string(target).map(Some)
+    } else {
+        Ok(None)
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn extract_game_icon_for_platform(
+    _app: &AppHandle,
+    _exe_path: &str,
+    _game_id: &str,
+) -> Result<Option<String>, String> {
+    Ok(None)
+}
+
+fn escape_powershell_single_quoted(value: &str) -> String {
+    value.replace('\'', "''")
 }
 
 fn normalize_existing_exe_path(path: &str) -> Result<PathBuf, String> {
@@ -523,6 +711,7 @@ fn get_game_by_id(connection: &Connection, id: &str) -> Result<Option<Game>, Str
                 exe_path,
                 folder_path,
                 icon,
+                cover,
                 args,
                 work_dir,
                 favorite,
@@ -550,6 +739,7 @@ fn query_games(connection: &Connection) -> Result<Vec<Game>, String> {
                 exe_path,
                 folder_path,
                 icon,
+                cover,
                 args,
                 work_dir,
                 favorite,
@@ -580,15 +770,16 @@ fn map_game_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Game> {
         exe_path: strip_windows_extended_path_prefix(row.get(2)?),
         folder_path: strip_windows_extended_path_prefix(row.get(3)?),
         icon: row.get(4)?,
-        args: row.get(5)?,
+        cover: row.get(5)?,
+        args: row.get(6)?,
         work_dir: row
-            .get::<_, Option<String>>(6)?
+            .get::<_, Option<String>>(7)?
             .map(strip_windows_extended_path_prefix),
-        favorite: row.get::<_, i64>(7)? != 0,
-        play_count: row.get(8)?,
-        last_play_time: row.get(9)?,
-        create_time: row.get(10)?,
-        update_time: row.get(11)?,
+        favorite: row.get::<_, i64>(8)? != 0,
+        play_count: row.get(9)?,
+        last_play_time: row.get(10)?,
+        create_time: row.get(11)?,
+        update_time: row.get(12)?,
     })
 }
 

@@ -6,6 +6,7 @@ export interface Game {
   exePath: string
   folderPath: string
   icon?: string | null
+  cover?: string | null
   args?: string | null
   workDir?: string | null
   favorite: boolean

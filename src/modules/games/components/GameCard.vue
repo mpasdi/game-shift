@@ -1,5 +1,6 @@
 ﻿<script setup lang="ts">
   import { computed } from 'vue'
+  import { convertFileSrc } from '@tauri-apps/api/core'
   import { Pencil, Play, Star, Trash2 } from '@lucide/vue'
   import IconButton from '../../../shared/components/IconButton.vue'
   import type { Game } from '../types/game'
@@ -39,11 +40,21 @@
     }).format(new Date(props.game.lastPlayTime))
   })
   const cardMetaText = computed(() => `${lastPlayText.value} · ${props.game.playCount} 次`)
+  const coverSrc = computed(() => toLocalAssetSrc(props.game.cover))
+  const iconSrc = computed(() => toLocalAssetSrc(props.game.icon))
+
+  function toLocalAssetSrc(path?: string | null) {
+    return path ? convertFileSrc(path) : null
+  }
 </script>
 
 <template>
   <article class="game-card" :class="[`game-card--${props.viewMode}`, `game-card--actions-${props.actionMode}`]">
-    <div class="game-card__icon" aria-hidden="true">{{ initial }}</div>
+    <div class="game-card__icon" aria-hidden="true">
+      <img v-if="props.viewMode !== 'list' && coverSrc" class="game-card__cover-image" :src="coverSrc" alt="" />
+      <img v-else-if="iconSrc" class="game-card__logo-image" :src="iconSrc" alt="" />
+      <span v-else>{{ initial }}</span>
+    </div>
 
     <div class="game-card__content">
       <div class="game-card__title-row">
@@ -139,9 +150,22 @@
     border: 1px solid var(--accent-border);
     border-radius: 8px;
     background: linear-gradient(135deg, rgba(124, 92, 255, 0.22), rgba(255, 255, 255, 0.06));
+    overflow: hidden;
     color: #f5f3ff;
     font-size: 20px;
     font-weight: 850;
+  }
+
+  .game-card__cover-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .game-card__logo-image {
+    width: 62%;
+    height: 62%;
+    object-fit: contain;
   }
 
   .game-card__content {
@@ -235,6 +259,11 @@
     font-size: 38px;
   }
 
+  .game-card--grid.game-card--actions-full .game-card__logo-image {
+    width: 60px;
+    height: 60px;
+  }
+
   .game-card--grid.game-card--actions-full .game-card__content {
     display: grid;
     gap: 5px;
@@ -259,6 +288,11 @@
     width: 30px;
     height: 30px;
     font-size: 13px;
+  }
+
+  .game-card--list .game-card__logo-image {
+    width: 22px;
+    height: 22px;
   }
 
   .game-card--list .game-card__content {
@@ -332,6 +366,11 @@
       linear-gradient(145deg, rgba(124, 92, 255, 0.28), rgba(46, 73, 86, 0.16)),
       linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
     font-size: 32px;
+  }
+
+  .game-card--actions-quick .game-card__logo-image {
+    width: 48px;
+    height: 48px;
   }
 
   .game-card--actions-quick .game-card__content {

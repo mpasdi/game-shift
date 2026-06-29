@@ -35,6 +35,7 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 exe_path TEXT NOT NULL UNIQUE,
                 folder_path TEXT NOT NULL,
                 icon TEXT,
+                cover TEXT,
                 args TEXT,
                 work_dir TEXT,
                 favorite INTEGER NOT NULL DEFAULT 0,
@@ -55,5 +56,36 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
             );
             ",
         )
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+
+    ensure_column(connection, "games", "cover", "TEXT")
+}
+
+fn ensure_column(
+    connection: &Connection,
+    table_name: &str,
+    column_name: &str,
+    column_type: &str,
+) -> Result<(), String> {
+    let mut statement = connection
+        .prepare(&format!("PRAGMA table_info({table_name})"))
+        .map_err(|error| error.to_string())?;
+    let columns = statement
+        .query_map([], |row| row.get::<_, String>(1))
+        .map_err(|error| error.to_string())?;
+
+    for column in columns {
+        if column.map_err(|error| error.to_string())? == column_name {
+            return Ok(());
+        }
+    }
+
+    connection
+        .execute(
+            &format!("ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"),
+            [],
+        )
+        .map_err(|error| error.to_string())?;
+
+    Ok(())
 }
