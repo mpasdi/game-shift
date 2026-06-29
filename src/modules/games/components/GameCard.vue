@@ -272,6 +272,7 @@
   .game-card--grid.game-card--actions-full .game-card__title-row h2 {
     display: -webkit-box;
     min-height: 34px;
+    overflow-wrap: anywhere;
     font-size: 13px;
     line-height: 1.3;
     white-space: normal;
@@ -376,11 +377,13 @@
   .game-card--actions-quick .game-card__content {
     display: grid;
     gap: 3px;
+    padding-right: 34px;
   }
 
   .game-card--actions-quick .game-card__title-row h2 {
     display: -webkit-box;
     min-height: 34px;
+    overflow-wrap: anywhere;
     font-size: 13px;
     line-height: 1.3;
     white-space: normal;
@@ -389,6 +392,9 @@
   }
 
   .game-card--actions-quick .game-card__path {
+    display: flex;
+    align-items: center;
+    min-height: 28px;
     margin: 0;
     font-size: 11px;
   }

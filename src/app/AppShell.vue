@@ -30,7 +30,9 @@
         <slot name="toolbar" />
       </header>
 
-      <slot />
+      <div class="workspace-body">
+        <slot />
+      </div>
     </section>
   </main>
 </template>
@@ -39,7 +41,8 @@
   .app-shell {
     display: grid;
     grid-template-columns: 210px minmax(0, 1fr);
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     background:
       linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
@@ -107,20 +110,33 @@
   }
 
   .workspace {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
     min-width: 0;
-    padding: 22px clamp(18px, 3vw, 34px) 34px;
+    min-height: 0;
   }
 
   .top-bar {
-    position: sticky;
-    top: 0;
     z-index: 20;
     display: grid;
     grid-template-columns: minmax(260px, 1fr) auto;
     gap: 14px;
     align-items: center;
-    padding-bottom: 16px;
+    padding: 22px clamp(18px, 3vw, 34px) 16px;
     background: linear-gradient(180deg, rgba(17, 16, 21, 0.66) 0%, rgba(17, 16, 21, 0.42) 64%, transparent 100%);
+  }
+
+  .workspace-body {
+    min-height: 0;
+    overflow: auto;
+    padding: 0 clamp(18px, 3vw, 34px) 34px;
+    scrollbar-width: none;
+  }
+
+  .workspace-body::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 
   @media (max-width: 960px) {
@@ -141,6 +157,9 @@
   @media (max-width: 720px) {
     .app-shell {
       grid-template-columns: 1fr;
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
     }
 
     .sidebar {
@@ -151,11 +170,17 @@
     }
 
     .workspace {
-      padding: 16px 14px 26px;
+      min-height: 0;
     }
 
     .top-bar {
       grid-template-columns: 1fr;
+      padding: 16px 14px;
+    }
+
+    .workspace-body {
+      overflow: visible;
+      padding: 0 14px 26px;
     }
   }
 </style>
