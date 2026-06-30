@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
   import type { Game } from '../types/game'
   import GameGridCard from './GameGridCard.vue'
   import GameQuickCard from './GameQuickCard.vue'
@@ -89,6 +89,7 @@
 
   .game-area.list {
     grid-template-columns: minmax(0, 1fr);
+    width: 100%;
     gap: 0;
     overflow: hidden;
     border: 1px solid var(--border);

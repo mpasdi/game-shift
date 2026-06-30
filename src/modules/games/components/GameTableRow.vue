@@ -91,7 +91,7 @@
 <style scoped>
   .game-table-row {
     display: grid;
-    grid-template-columns: 34px minmax(220px, 360px) 150px 54px minmax(0, 1fr) auto;
+    grid-template-columns: 34px minmax(180px, 2fr) minmax(150px, 1fr) minmax(54px, 0.45fr) auto;
     column-gap: 18px;
     align-items: center;
     min-height: 54px;
@@ -135,7 +135,6 @@
   }
 
   .game-table-row__actions {
-    grid-column: 6;
     justify-self: end;
     display: flex;
     justify-content: flex-end;
@@ -166,21 +165,5 @@
 
   .game-table-row__actions :deep(.game-table-row__action--favorite svg) {
     color: var(--accent-strong);
-  }
-
-  @media (max-width: 720px) {
-    .game-table-row {
-      grid-template-columns: 48px minmax(0, 1fr);
-      column-gap: 12px;
-    }
-
-    .game-table-row__stat {
-      grid-column: 2;
-    }
-
-    .game-table-row__actions {
-      grid-column: 2;
-      justify-content: flex-start;
-    }
   }
 </style>

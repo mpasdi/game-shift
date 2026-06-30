@@ -11,13 +11,7 @@
   import { gameLibraryActionsKey } from '../modules/games/composables/useGameLibraryActions'
   import type { GameViewMode } from '../modules/games/composables/useGameLibraryActions'
   import { useGamesStore } from '../modules/games/stores/games'
-  import type {
-    CreateGamePayload,
-    Game,
-    GameFilter,
-    ScanCandidate,
-    UpdateGamePayload
-  } from '../modules/games/types/game'
+  import type { CreateGamePayload, Game, ScanCandidate, UpdateGamePayload } from '../modules/games/types/game'
   import { routeNames } from '../router/routeNames'
   import BaseButton from '../shared/components/BaseButton.vue'
   import EmptyState from '../shared/components/EmptyState.vue'
@@ -26,7 +20,6 @@
 
   interface NavItem {
     name: string
-    filter?: GameFilter
     label: string
     icon: unknown
   }
@@ -47,10 +40,10 @@
   const shouldShowEmptyLibrary = computed(() => games.value.length === 0 && route.name !== 'settings')
 
   const navItems: NavItem[] = [
-    { name: routeNames.home, filter: 'all', label: '首页', icon: Home },
-    { name: routeNames.games, filter: 'all', label: '全部游戏', icon: Library },
-    { name: routeNames.favorites, filter: 'favorite', label: '收藏游戏', icon: Star },
-    { name: routeNames.recent, filter: 'recent', label: '最近游玩', icon: Clock3 }
+    { name: routeNames.home, label: '首页', icon: Home },
+    { name: routeNames.games, label: '全部游戏', icon: Library },
+    { name: routeNames.favorites, label: '收藏游戏', icon: Star },
+    { name: routeNames.recent, label: '最近游玩', icon: Clock3 }
   ]
 
   onMounted(() => {
@@ -192,9 +185,6 @@
           <a class="side-nav__item" :class="{ 'side-nav__item--active': isExactActive }" :href="href" @click="navigate">
             <component :is="item.icon" :size="16" />
             <span>{{ item.label }}</span>
-            <small v-if="item.name !== routeNames.home && item.filter">
-              {{ gamesStore.countByFilter(item.filter) }}
-            </small>
           </a>
         </RouterLink>
       </nav>
@@ -352,11 +342,6 @@
     color: var(--text);
   }
 
-  .side-nav__item small {
-    color: var(--text-subtle);
-    font-size: var(--font-size-xs);
-  }
-
   .play-summary {
     display: grid;
     gap: 4px;
@@ -400,11 +385,12 @@
   }
 
   .top-search {
+    width: 400px;
     min-width: 0;
   }
 
   .top-search :deep(.text-field) {
-    width: min(720px, 100%);
+    width: 100%;
   }
 
   .top-actions {
@@ -421,7 +407,6 @@
 
   @media (max-width: 960px) {
     .side-nav__item span,
-    .side-nav__item small,
     .play-summary,
     .settings-entry span {
       display: none;
