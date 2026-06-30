@@ -112,7 +112,7 @@
     align-items: center;
     margin: 0;
     color: var(--text);
-    font-size: 14px;
+    font-size: var(--font-size-md);
     font-weight: 700;
     line-height: 1.2;
   }
@@ -131,7 +131,7 @@
 
   .section-actions > span {
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: var(--font-size-sm);
   }
 
   .segmented {

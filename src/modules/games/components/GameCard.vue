@@ -172,7 +172,7 @@
     overflow: hidden;
     color: #f5f3ff;
     font-size: 20px;
-    font-weight: 850;
+    font-weight: 800;
   }
 
   .game-card__cover-image {
@@ -195,7 +195,7 @@
     overflow: hidden;
     margin: 0;
     color: var(--text);
-    font-size: 15px;
+    font-size: var(--font-size-md);
     line-height: 1.28;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -205,7 +205,7 @@
     overflow: hidden;
     margin: 5px 0 10px;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: var(--font-size-sm);
     line-height: 1.3;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -215,7 +215,7 @@
     overflow: hidden;
     margin: 6px 0 0;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: var(--font-size-sm);
     line-height: 1.35;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -229,13 +229,13 @@
 
   .game-card__stats dt {
     color: var(--text-subtle);
-    font-size: 11px;
+    font-size: var(--font-size-xs);
   }
 
   .game-card__stats dd {
     margin: 3px 0 0;
     color: rgba(245, 242, 255, 0.84);
-    font-size: 12px;
+    font-size: var(--font-size-sm);
     font-weight: 700;
   }
 
@@ -342,7 +342,7 @@
 
   .game-card--grid.game-card--actions-full .game-card__meta {
     margin: 0;
-    font-size: 11px;
+    font-size: var(--font-size-xs);
   }
 
   .game-card--list .game-card__icon {
@@ -384,7 +384,7 @@
 
   .game-card--list .game-card__stats dd {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--font-size-sm);
     line-height: 1.15;
   }
 
@@ -469,7 +469,7 @@
     align-items: center;
     min-height: 28px;
     margin: 0;
-    font-size: 11px;
+    font-size: var(--font-size-xs);
   }
 
   .game-card--actions-quick .game-card__stats {

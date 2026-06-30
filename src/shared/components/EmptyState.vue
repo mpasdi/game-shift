@@ -79,7 +79,7 @@
   .empty-copy h2 {
     margin: 0;
     color: var(--text);
-    font-size: 17px;
+    font-size: var(--font-size-lg);
     line-height: 1.25;
   }
 
@@ -90,14 +90,14 @@
   .empty-copy p {
     margin: 0;
     color: var(--text-muted);
-    font-size: 13px;
+    font-size: var(--font-size-md);
     line-height: 1.55;
   }
 
   .eyebrow {
     color: var(--text-subtle);
-    font-size: 11px;
-    font-weight: 720;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
     letter-spacing: 0;
   }
 

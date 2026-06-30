@@ -233,7 +233,7 @@
       linear-gradient(145deg, rgba(124, 92, 255, 0.32), rgba(255, 255, 255, 0.055));
     color: var(--text);
     font-size: 42px;
-    font-weight: 850;
+    font-weight: 800;
   }
 
   .path-field {
@@ -246,7 +246,7 @@
   .form-error {
     margin: 0;
     color: #fecdd3;
-    font-size: 13px;
+    font-size: var(--font-size-md);
   }
 
   @media (max-width: 720px) {

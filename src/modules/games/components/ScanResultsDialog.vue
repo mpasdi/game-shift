@@ -163,7 +163,7 @@
 
   .scan-summary strong {
     color: var(--text);
-    font-size: 16px;
+    font-size: var(--font-size-lg);
   }
 
   .scan-summary-item--selected {
@@ -178,13 +178,13 @@
   .scan-summary span,
   .scan-empty {
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: var(--font-size-sm);
   }
 
   .scan-error {
     margin: 0;
     color: #fecdd3;
-    font-size: 13px;
+    font-size: var(--font-size-md);
   }
 
   .scan-table {
@@ -221,7 +221,7 @@
     min-height: 38px;
     background: rgba(32, 29, 42, 0.98);
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: var(--font-size-sm);
     font-weight: 700;
   }
 
@@ -282,12 +282,12 @@
 
   .path-cell strong {
     color: rgba(245, 242, 255, 0.9);
-    font-size: 12px;
+    font-size: var(--font-size-sm);
   }
 
   .path-cell span {
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: var(--font-size-xs);
   }
 
   .status-pill {
@@ -296,7 +296,7 @@
     border-radius: 999px;
     background: rgba(124, 92, 255, 0.13);
     color: var(--accent-strong);
-    font-size: 12px;
+    font-size: var(--font-size-sm);
     padding: 4px 8px;
   }
 

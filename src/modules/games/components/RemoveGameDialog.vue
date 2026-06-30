@@ -67,14 +67,14 @@
   .confirm-dialog__title {
     margin: 0;
     color: var(--text);
-    font-weight: 760;
+    font-weight: 700;
   }
 
   .confirm-dialog__name {
     margin: 10px 0 0;
     color: var(--danger);
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 700;
   }
 
   .confirm-dialog__description {
@@ -89,6 +89,6 @@
   .form-error {
     margin: 0;
     color: #fecdd3;
-    font-size: 13px;
+    font-size: var(--font-size-md);
   }
 </style>

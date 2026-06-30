@@ -7,7 +7,7 @@
     -apple-system,
     BlinkMacSystemFont,
     sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   color: #f6f3f8;
   background: #111015;
   font-synthesis: none;
@@ -34,6 +34,11 @@
   --danger-soft: rgba(248, 113, 113, 0.13);
   --focus-ring: rgba(124, 92, 255, 0.26);
   --shadow: 0 20px 54px rgba(0, 0, 0, 0.36);
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
 }
 
 * {

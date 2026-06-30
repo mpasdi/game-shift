@@ -367,7 +367,7 @@
 
   .side-nav__item small {
     color: var(--text-subtle);
-    font-size: 11px;
+    font-size: var(--font-size-xs);
   }
 
   .play-summary {
@@ -383,7 +383,7 @@
   .play-summary span {
     margin: 0;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: var(--font-size-sm);
   }
 
   .play-summary strong {

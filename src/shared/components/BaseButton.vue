@@ -37,6 +37,7 @@
 
 <style scoped>
   .base-button {
+    font-size: var(--font-size-md);
     display: inline-flex;
     gap: 8px;
     align-items: center;
@@ -83,7 +84,7 @@
   .base-button--primary {
     background: linear-gradient(180deg, #8d73ff, #6d50e8);
     color: #ffffff;
-    font-weight: 760;
+    font-weight: 700;
     box-shadow: 0 12px 28px rgba(41, 30, 110, 0.34);
   }
 
@@ -110,7 +111,7 @@
     border-color: rgba(248, 113, 113, 0.28);
     background: linear-gradient(180deg, #fb5576, #e3375e);
     color: #ffffff;
-    font-weight: 760;
+    font-weight: 700;
   }
 
   .base-button__icon,

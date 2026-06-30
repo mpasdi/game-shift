@@ -71,8 +71,8 @@
     align-items: center;
     min-height: 34px;
     color: var(--text);
-    font-size: 13px;
-    font-weight: 750;
+    font-size: var(--font-size-md);
+    font-weight: 700;
   }
 
   .brand-mark {

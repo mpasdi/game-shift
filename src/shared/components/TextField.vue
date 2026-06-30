@@ -82,7 +82,7 @@
   .text-field__label {
     margin-right: 8px;
     color: var(--text-muted);
-    font-size: 13px;
+    font-size: var(--font-size-sm);
     white-space: nowrap;
   }
 
