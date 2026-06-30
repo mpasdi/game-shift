@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
   import { computed } from 'vue'
   import { Pencil, Play, Trash2 } from '@lucide/vue'
   import IconButton from '../../../shared/components/IconButton.vue'
@@ -106,7 +106,7 @@
     overflow-wrap: anywhere;
     margin: 0;
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--font-size-md);
     line-height: 1.3;
     white-space: normal;
     -webkit-box-orient: vertical;

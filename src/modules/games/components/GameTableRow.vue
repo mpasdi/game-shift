@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
   import { computed } from 'vue'
   import { Pencil, Play, Star, Trash2 } from '@lucide/vue'
   import IconButton from '../../../shared/components/IconButton.vue'
@@ -136,8 +136,8 @@
 
   .game-table-row__actions {
     grid-column: 6;
-    display: grid;
-    grid-template-columns: repeat(4, 28px);
+    justify-self: end;
+    display: flex;
     justify-content: flex-end;
     gap: 6px;
   }

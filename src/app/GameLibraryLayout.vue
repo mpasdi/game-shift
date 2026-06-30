@@ -3,19 +3,7 @@
   import { RouterLink, RouterView, useRoute } from 'vue-router'
   import { storeToRefs } from 'pinia'
   import { open as openDialog } from '@tauri-apps/plugin-dialog'
-  import {
-    Clock3,
-    Folder,
-    FolderSearch,
-    Home,
-    Library,
-    Plus,
-    RefreshCw,
-    Search,
-    Settings,
-    Sparkles,
-    Star
-  } from '@lucide/vue'
+  import { Clock3, FolderSearch, Home, Library, Plus, RefreshCw, Search, Settings, Sparkles, Star } from '@lucide/vue'
   import AppShell from './AppShell.vue'
   import AddGameDialog from '../modules/games/components/AddGameDialog.vue'
   import RemoveGameDialog from '../modules/games/components/RemoveGameDialog.vue'
@@ -62,8 +50,7 @@
     { name: routeNames.home, filter: 'all', label: '首页', icon: Home },
     { name: routeNames.games, filter: 'all', label: '全部游戏', icon: Library },
     { name: routeNames.favorites, filter: 'favorite', label: '收藏游戏', icon: Star },
-    { name: routeNames.recent, filter: 'recent', label: '最近游玩', icon: Clock3 },
-    { name: routeNames.categories, label: '分类', icon: Folder }
+    { name: routeNames.recent, filter: 'recent', label: '最近游玩', icon: Clock3 }
   ]
 
   onMounted(() => {
