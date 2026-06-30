@@ -13,7 +13,7 @@ export default {
     },
     {
       value: 'style',
-      name: '样式:   🧣  代码样式（不影响功能，针对ui的改造）',
+      name: '样式:   🧣  ui样式（不影响功能，针对ui的改造/css的变更）',
       emoji: '🧣'
     },
     {

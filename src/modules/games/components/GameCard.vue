@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
   import { computed } from 'vue'
   import { convertFileSrc } from '@tauri-apps/api/core'
   import { Pencil, Play, Star, Trash2 } from '@lucide/vue'
@@ -75,14 +75,33 @@
     </div>
 
     <div class="game-card__actions">
+      <button
+        v-if="props.viewMode === 'grid'"
+        class="game-card__favorite-toggle"
+        :class="{ 'game-card__favorite-toggle--active': props.game.favorite }"
+        type="button"
+        :title="props.game.favorite ? '取消收藏' : '收藏游戏'"
+        :aria-label="props.game.favorite ? '取消收藏' : '收藏游戏'"
+        @click="emit('toggleFavorite', props.game)"
+      >
+        <Star :size="14" :fill="props.game.favorite ? 'currentColor' : 'none'" />
+      </button>
       <IconButton
+        v-else
+        class="game-card__action-button game-card__action-button--favorite"
         :label="props.game.favorite ? '取消收藏' : '收藏游戏'"
-        :variant="props.game.favorite ? 'active' : 'plain'"
+        variant="plain"
         @click="emit('toggleFavorite', props.game)"
       >
         <Star :size="16" :fill="props.game.favorite ? 'currentColor' : 'none'" />
       </IconButton>
-      <IconButton label="启动游戏" variant="active" :disabled="props.isLaunching" @click="emit('launch', props.game)">
+      <IconButton
+        class="game-card__action-button game-card__action-button--primary"
+        label="启动游戏"
+        variant="active"
+        :disabled="props.isLaunching"
+        @click="emit('launch', props.game)"
+      >
         <Play :size="15" />
       </IconButton>
       <IconButton v-if="props.showManageActions" label="编辑游戏" @click="emit('edit', props.game)">
@@ -225,6 +244,45 @@
     gap: 8px;
     align-items: center;
   }
+  .game-card__favorite-toggle {
+    display: grid;
+    position: absolute;
+    z-index: 2;
+    top: 12px;
+    right: 12px;
+    width: 26px;
+    height: 26px;
+    border: 1px solid rgba(168, 139, 250, 0.72);
+    border-radius: 999px;
+    background: rgba(40, 30, 66, 0.86);
+    color: #ddd6fe;
+    padding: 0;
+    place-items: center;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.26);
+    backdrop-filter: blur(10px);
+    transition:
+      background 160ms ease,
+      border-color 160ms ease;
+  }
+
+  .game-card__favorite-toggle:hover {
+    border-color: rgba(221, 214, 254, 0.86);
+    background: rgba(109, 67, 214, 0.94);
+    color: #fff;
+  }
+
+  .game-card__favorite-toggle--active {
+    border-color: rgba(139, 92, 246, 0.34);
+    background: linear-gradient(135deg, #8b5cf6, #6d5dfc);
+    color: #fff;
+  }
+
+  .game-card--actions-quick .game-card__favorite-toggle {
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+  }
 
   .game-card--grid .game-card__actions {
     grid-column: 1 / -1;
@@ -240,13 +298,15 @@
     height: 30px;
   }
 
-  .game-card--grid.game-card--actions-full .game-card__actions :deep(.icon-button:first-child) {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    width: 30px;
-    min-width: 30px;
-    height: 30px;
+  .game-card--grid .game-card__actions :deep(.game-card__action-button--primary) {
+    border-color: var(--accent-border);
+    background: rgba(13, 12, 17, 0.64);
+    color: var(--accent-strong);
+    backdrop-filter: blur(10px);
+  }
+
+  .game-card--grid .game-card__actions :deep(.game-card__action-button--primary:hover) {
+    background: rgba(33, 29, 47, 0.82);
   }
 
   .game-card--grid.game-card--actions-full .game-card__icon {
@@ -351,6 +411,19 @@
     min-width: 28px;
     height: 28px;
   }
+  .game-card--list .game-card__actions :deep(.game-card__action-button--favorite) {
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .game-card--list .game-card__actions :deep(.game-card__action-button--favorite:hover) {
+    border-color: var(--border);
+    background: var(--surface);
+  }
+
+  .game-card--list .game-card__actions :deep(.game-card__action-button--favorite svg) {
+    color: var(--accent-strong);
+  }
 
   .game-card--actions-quick {
     min-height: 190px;
@@ -415,12 +488,17 @@
     min-width: 28px;
     height: 28px;
     border-radius: 8px;
-    background: rgba(13, 12, 17, 0.64);
   }
 
-  .game-card--actions-quick .game-card__actions :deep(.icon-button:first-child) {
-    top: 8px;
-    margin-right: 0;
+  .game-card--actions-quick .game-card__actions :deep(.game-card__action-button--primary) {
+    border-color: var(--accent-border);
+    background: rgba(13, 12, 17, 0.64);
+    color: var(--accent-strong);
+    backdrop-filter: blur(10px);
+  }
+
+  .game-card--actions-quick .game-card__actions :deep(.game-card__action-button--primary:hover) {
+    background: rgba(33, 29, 47, 0.82);
   }
 
   .game-card--actions-quick .game-card__actions :deep(.icon-button:last-child) {
