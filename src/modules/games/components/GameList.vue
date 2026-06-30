@@ -1,6 +1,8 @@
 ﻿<script setup lang="ts">
-  import GameCard from './GameCard.vue'
   import type { Game } from '../types/game'
+  import GameGridCard from './GameGridCard.vue'
+  import GameQuickCard from './GameQuickCard.vue'
+  import GameTable from './GameTable.vue'
 
   const props = withDefaults(
     defineProps<{
@@ -37,14 +39,36 @@
 
 <template>
   <section class="game-area" :class="[props.viewMode, `game-area--actions-${props.actionMode}`]" aria-label="游戏列表">
-    <GameCard
-      v-for="game in props.games"
-      :key="game.id"
-      :game="game"
-      :view-mode="props.viewMode"
-      :action-mode="props.actionMode"
+    <template v-if="props.viewMode === 'grid' && props.actionMode === 'full'">
+      <GameGridCard
+        v-for="game in props.games"
+        :key="game.id"
+        :game="game"
+        :show-manage-actions="props.showManageActions"
+        :is-launching="props.launchingGameIds.includes(game.id)"
+        @edit="emitEdit"
+        @launch="emit('launch', $event)"
+        @toggle-favorite="emit('toggleFavorite', $event)"
+        @remove="emitRemove"
+      />
+    </template>
+
+    <template v-else-if="props.viewMode === 'grid'">
+      <GameQuickCard
+        v-for="game in props.games"
+        :key="game.id"
+        :game="game"
+        :is-launching="props.launchingGameIds.includes(game.id)"
+        @launch="emit('launch', $event)"
+        @toggle-favorite="emit('toggleFavorite', $event)"
+      />
+    </template>
+
+    <GameTable
+      v-else
+      :games="props.games"
       :show-manage-actions="props.showManageActions"
-      :is-launching="props.launchingGameIds.includes(game.id)"
+      :launching-game-ids="props.launchingGameIds"
       @edit="emitEdit"
       @launch="emit('launch', $event)"
       @toggle-favorite="emit('toggleFavorite', $event)"
