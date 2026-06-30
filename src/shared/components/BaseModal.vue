@@ -1,4 +1,5 @@
 <script setup lang="ts">
+  import { X } from '@lucide/vue'
   withDefaults(
     defineProps<{
       open: boolean
@@ -23,7 +24,9 @@
       <section class="modal-panel" :class="`modal-panel--${size}`" role="dialog" aria-modal="true" :aria-label="title">
         <header class="modal-header">
           <h2>{{ title }}</h2>
-          <button class="modal-close" type="button" aria-label="关闭" @click="emit('close')">×</button>
+          <button class="modal-close" type="button" aria-label="关闭" @click="emit('close')">
+            <X :size="16" :stroke-width="2.4" />
+          </button>
         </header>
         <div class="modal-body" :class="{ 'modal-body--fixed': !bodyScrollable }">
           <slot />
@@ -80,7 +83,7 @@
     gap: 10px;
     align-items: center;
     justify-content: flex-end;
-    padding: 12px 24px;
+    padding: 8px 24px;
   }
 
   .modal-header {
@@ -91,21 +94,21 @@
   .modal-header h2 {
     margin: 0;
     color: var(--text);
-    font-size: 18px;
+    font-size: 15px;
+    font-weight: 700;
     line-height: 1.25;
   }
 
   .modal-close {
     display: grid;
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     border: 0;
     border-radius: 8px;
     background: transparent;
     color: var(--text-muted);
     place-items: center;
-    font-size: 22px;
-    line-height: 1;
+    line-height: 0;
   }
 
   .modal-close:hover {

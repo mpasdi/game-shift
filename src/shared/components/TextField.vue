@@ -36,7 +36,7 @@
     display: flex;
     align-items: center;
     width: min(560px, 100%);
-    min-height: 38px;
+    min-height: 34px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface);
@@ -82,7 +82,7 @@
   .text-field__label {
     margin-right: 8px;
     color: var(--text-muted);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-md);
     white-space: nowrap;
   }
 

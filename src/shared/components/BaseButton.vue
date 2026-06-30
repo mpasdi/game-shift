@@ -54,13 +54,13 @@
   }
 
   .base-button--md {
-    min-height: 38px;
-    padding: 0 14px;
+    min-height: 34px;
+    padding: 0 12px;
   }
 
   .base-button--sm {
-    min-height: 32px;
-    padding: 0 11px;
+    min-height: 30px;
+    padding: 0 10px;
     font-size: 13px;
   }
 

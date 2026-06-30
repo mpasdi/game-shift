@@ -37,9 +37,9 @@
 <style scoped>
   .icon-button {
     display: grid;
-    width: 38px;
-    min-width: 38px;
-    height: 36px;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
     border: 1px solid transparent;
     border-radius: 8px;
     background: transparent;
