@@ -829,6 +829,11 @@ pub fn launch_game_command(app: AppHandle, id: String) -> Result<Game, String> {
 }
 
 #[tauri::command]
-pub fn scan_games_command(app: AppHandle, directory: String) -> Result<Vec<ScanCandidate>, String> {
-    scan_games(&app, &directory)
+pub async fn scan_games_command(
+    app: AppHandle,
+    directory: String,
+) -> Result<Vec<ScanCandidate>, String> {
+    tauri::async_runtime::spawn_blocking(move || scan_games(&app, &directory))
+        .await
+        .map_err(|error| error.to_string())?
 }
