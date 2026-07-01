@@ -148,6 +148,27 @@
       padding: 20px 12px;
     }
 
+    .brand-block,
+    .settings-entry {
+      justify-content: center;
+      padding-right: 0;
+      padding-left: 0;
+    }
+
+    .settings-entry {
+      display: grid;
+      width: 38px;
+      min-width: 38px;
+      height: 38px;
+      min-height: 38px;
+      margin-right: auto;
+      margin-left: auto;
+      padding: 0;
+      gap: 0;
+      place-items: center;
+      align-self: center;
+    }
+
     .brand-block span,
     .settings-entry span {
       display: none;

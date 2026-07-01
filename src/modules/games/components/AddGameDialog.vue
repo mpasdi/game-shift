@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
+  import { convertFileSrc } from '@tauri-apps/api/core'
   import { open as openDialog } from '@tauri-apps/plugin-dialog'
   import { FileSearch, FolderOpen } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
@@ -40,6 +41,9 @@
   const submitText = computed(() => (isEditing.value ? '保存修改' : '保存'))
   const displayedError = computed(() => localError.value || props.errorMessage || null)
   const previewInitial = computed(() => form.name.trim().slice(0, 1).toUpperCase() || 'G')
+  const previewCoverSrc = computed(() => toLocalAssetSrc(props.game?.cover))
+  const previewIconSrc = computed(() => toLocalAssetSrc(props.game?.icon))
+  const previewHint = computed(() => (isEditing.value ? '自动识别封面' : '保存后自动识别'))
 
   watch(
     () => [props.open, props.game, props.mode] as const,
@@ -83,6 +87,10 @@
     if (typeof selected !== 'string') return
 
     form.workDir = selected
+  }
+
+  function toLocalAssetSrc(path?: string | null) {
+    return path ? convertFileSrc(path) : null
   }
 
   function submitForm() {
@@ -157,8 +165,12 @@
   <BaseModal :open="props.open" :title="modalTitle" size="lg" @close="emit('close')">
     <div class="game-dialog">
       <aside class="cover-preview" aria-label="游戏封面预览">
-        <div class="cover-preview__art" aria-hidden="true">{{ previewInitial }}</div>
-        <BaseButton variant="secondary" type="button" size="sm" disabled>更换封面</BaseButton>
+        <div class="cover-preview__art" aria-hidden="true">
+          <img v-if="previewCoverSrc" class="cover-preview__image" :src="previewCoverSrc" alt="" />
+          <img v-else-if="previewIconSrc" class="cover-preview__icon" :src="previewIconSrc" alt="" />
+          <span v-else>{{ previewInitial }}</span>
+          <span class="cover-preview__hint">{{ previewHint }}</span>
+        </div>
       </aside>
 
       <form class="game-form" @submit.prevent="submitForm">
@@ -219,12 +231,13 @@
 
   .cover-preview {
     display: grid;
-    gap: 10px;
   }
 
   .cover-preview__art {
     display: grid;
-    aspect-ratio: 3 / 4;
+    position: relative;
+    overflow: hidden;
+    height: 180px;
     place-items: center;
     border: 1px solid var(--accent-border);
     border-radius: 8px;
@@ -234,6 +247,37 @@
     color: var(--text);
     font-size: 42px;
     font-weight: 800;
+  }
+
+  .cover-preview__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .cover-preview__icon {
+    width: 58%;
+    height: 58%;
+    object-fit: contain;
+  }
+
+  .cover-preview__hint {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    overflow: hidden;
+    border-radius: 5px;
+    background: rgba(12, 10, 18, 0.34);
+    color: var(--text-subtle);
+    padding: 3px 6px;
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
   }
 
   .path-field {
@@ -257,6 +301,10 @@
     .cover-preview {
       grid-template-columns: 112px minmax(0, 1fr);
       align-items: end;
+    }
+
+    .cover-preview__art {
+      height: 150px;
     }
 
     .path-field {
