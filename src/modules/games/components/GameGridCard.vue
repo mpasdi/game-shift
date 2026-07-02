@@ -41,56 +41,85 @@
 
 <template>
   <article class="game-grid-card">
-    <GameArtwork :game="props.game" variant="grid" />
-    <GameFavoriteToggle :active="props.game.favorite" @toggle="emit('toggleFavorite', props.game)" />
+    <div class="game-grid-card__media">
+      <GameArtwork :game="props.game" variant="grid" />
+      <GameFavoriteToggle :active="props.game.favorite" @toggle="emit('toggleFavorite', props.game)" />
 
-    <div class="game-grid-card__content">
-      <h2>{{ props.game.name }}</h2>
-      <p>{{ metaText }}</p>
-    </div>
+      <div class="game-grid-card__overlay">
+        <div class="game-grid-card__content">
+          <h2>{{ props.game.name }}</h2>
+          <p>{{ metaText }}</p>
+        </div>
 
-    <div class="game-grid-card__actions">
-      <IconButton
-        class="game-grid-card__primary-action"
-        label="启动游戏"
-        variant="active"
-        :disabled="props.isLaunching"
-        @click="emit('launch', props.game)"
-      >
-        <Play :size="15" />
-      </IconButton>
-      <IconButton v-if="props.showManageActions" label="编辑游戏" @click="emit('edit', props.game)">
-        <Pencil :size="16" />
-      </IconButton>
-      <IconButton v-if="props.showManageActions" label="移除游戏" variant="danger" @click="emit('remove', props.game)">
-        <Trash2 :size="16" />
-      </IconButton>
+        <div class="game-grid-card__actions">
+          <IconButton
+            class="game-grid-card__primary-action"
+            label="启动游戏"
+            variant="active"
+            :disabled="props.isLaunching"
+            @click="emit('launch', props.game)"
+          >
+            <Play :size="15" />
+          </IconButton>
+          <IconButton v-if="props.showManageActions" label="编辑游戏" @click="emit('edit', props.game)">
+            <Pencil :size="16" />
+          </IconButton>
+          <IconButton
+            v-if="props.showManageActions"
+            label="移除游戏"
+            variant="danger"
+            @click="emit('remove', props.game)"
+          >
+            <Trash2 :size="16" />
+          </IconButton>
+        </div>
+      </div>
     </div>
   </article>
 </template>
 
 <style scoped>
   .game-grid-card {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-    min-height: 300px;
+    min-width: 0;
     border: 1px solid var(--border);
     border-radius: 8px;
+    overflow: hidden;
     background: var(--surface);
-    padding: 10px;
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
     transition:
       border-color 170ms ease,
       background 170ms ease,
-      box-shadow 170ms ease;
+      box-shadow 170ms ease,
+      transform 170ms ease;
   }
 
   .game-grid-card:hover {
     border-color: var(--border-strong);
     background: var(--surface-hover);
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 16px 38px rgba(0, 0, 0, 0.24);
+  }
+
+  .game-grid-card__media {
+    position: relative;
+    overflow: hidden;
+    border-radius: inherit;
+    aspect-ratio: 2 / 3;
+  }
+
+  .game-grid-card__overlay {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    gap: 10px;
+    padding: 56px 10px 10px;
+    background: linear-gradient(
+      180deg,
+      rgba(11, 10, 15, 0) 0%,
+      rgba(11, 10, 15, 0.58) 42%,
+      rgba(11, 10, 15, 0.92) 100%
+    );
   }
 
   .game-grid-card__content {
@@ -101,25 +130,27 @@
 
   .game-grid-card__content h2 {
     display: -webkit-box;
-    min-height: 34px;
     overflow: hidden;
     overflow-wrap: anywhere;
     margin: 0;
     color: var(--text);
     font-size: var(--font-size-md);
     line-height: 1.3;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.44);
     white-space: normal;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    max-height: 36px;
   }
 
   .game-grid-card__content p {
     overflow: hidden;
     margin: 0;
-    color: var(--text-muted);
+    color: rgba(246, 243, 248, 0.72);
     font-size: var(--font-size-xs);
     line-height: 1.35;
     text-overflow: ellipsis;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.34);
     white-space: nowrap;
   }
 
@@ -134,26 +165,17 @@
     width: 30px;
     min-width: 30px;
     height: 30px;
+    background: rgba(13, 12, 17, 0.58);
+    backdrop-filter: blur(10px);
   }
 
   .game-grid-card__actions :deep(.game-grid-card__primary-action) {
     border-color: var(--accent-border);
-    background: rgba(13, 12, 17, 0.64);
+    background: rgba(13, 12, 17, 0.72);
     color: var(--accent-strong);
-    backdrop-filter: blur(10px);
   }
 
   .game-grid-card__actions :deep(.game-grid-card__primary-action:hover) {
-    background: rgba(33, 29, 47, 0.82);
-  }
-
-  @media (max-width: 720px) {
-    .game-grid-card {
-      grid-template-columns: 48px minmax(0, 1fr);
-    }
-
-    .game-grid-card__actions {
-      flex-wrap: wrap;
-    }
+    background: rgba(33, 29, 47, 0.9);
   }
 </style>

@@ -85,7 +85,6 @@
 
   .game-quick-card__content h2 {
     display: -webkit-box;
-    min-height: 34px;
     overflow: hidden;
     overflow-wrap: anywhere;
     margin: 0;
@@ -95,6 +94,7 @@
     white-space: normal;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    max-height: 36px;
   }
 
   .game-quick-card__content p {

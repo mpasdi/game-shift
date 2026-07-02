@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
   import { computed } from 'vue'
   import { convertFileSrc } from '@tauri-apps/api/core'
   import type { Game } from '../types/game'
@@ -40,7 +40,9 @@
 
   .game-artwork--grid {
     width: 100%;
-    height: 190px;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
     background:
       radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.13), transparent 28%),
       linear-gradient(160deg, rgba(124, 92, 255, 0.34), rgba(20, 18, 27, 0.94));

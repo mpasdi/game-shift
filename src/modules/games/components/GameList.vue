@@ -87,6 +87,11 @@
     grid-template-columns: repeat(auto-fill, 168px);
   }
 
+  .game-area.grid.game-area--actions-full {
+    grid-template-columns: repeat(auto-fill, 168px);
+    align-items: start;
+  }
+
   .game-area.list {
     grid-template-columns: minmax(0, 1fr);
     width: 100%;
