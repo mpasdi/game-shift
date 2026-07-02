@@ -99,6 +99,25 @@
   .text-field__input::placeholder {
     color: var(--text-subtle);
   }
+  .text-field__input[type='search']::-webkit-search-cancel-button {
+    width: 16px;
+    height: 16px;
+    margin-left: 8px;
+    background: var(--accent-strong);
+    cursor: pointer;
+    opacity: 0.9;
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E")
+      center / 14px 14px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E")
+      center / 14px 14px no-repeat;
+  }
+
+  .text-field__input[type='search']::-webkit-search-cancel-button:hover {
+    background: var(--text);
+    opacity: 1;
+  }
 
   .text-field__input:read-only {
     color: rgba(245, 242, 255, 0.82);

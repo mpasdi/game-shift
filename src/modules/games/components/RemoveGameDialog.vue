@@ -18,24 +18,22 @@
 </script>
 
 <template>
-  <BaseModal :open="props.open" title="删除游戏" size="sm" @close="emit('close')">
+  <BaseModal :open="props.open" title="移除游戏" size="sm" @close="emit('close')">
     <div class="confirm-dialog">
       <div class="confirm-dialog__icon" aria-hidden="true">
         <Trash2 :size="30" />
       </div>
       <div class="confirm-dialog__content">
-        <p class="confirm-dialog__title">确定要删除游戏吗？</p>
+        <p class="confirm-dialog__title">确定要移除这个游戏吗？</p>
         <p v-if="props.game" class="confirm-dialog__name">{{ props.game.name }}</p>
-        <p class="confirm-dialog__description">只会删除 Game Shift 中的记录，不会删除本地磁盘上的游戏文件。</p>
+        <p class="confirm-dialog__description">只会移除 Game Shift 中的记录，不会删除本地磁盘上的游戏文件。</p>
         <p v-if="props.errorMessage" class="form-error">{{ props.errorMessage }}</p>
       </div>
     </div>
 
     <template #footer>
       <BaseButton variant="secondary" type="button" :disabled="props.deleting" @click="emit('close')">取消</BaseButton>
-      <BaseButton variant="danger" type="button" :loading="props.deleting" @click="emit('confirm')">
-        确认移除
-      </BaseButton>
+      <BaseButton variant="danger" type="button" :loading="props.deleting" @click="emit('confirm')">移除</BaseButton>
     </template>
   </BaseModal>
 </template>
@@ -78,8 +76,9 @@
   }
 
   .confirm-dialog__description {
-    color: var(--text-muted);
-    line-height: 1.6;
+    color: var(--text-subtle);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
   }
 
   .confirm-dialog__description {

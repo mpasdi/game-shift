@@ -38,6 +38,7 @@
 
   const dialogMode = computed(() => (editingGame.value ? 'edit' : 'create'))
   const shouldShowEmptyLibrary = computed(() => games.value.length === 0 && route.name !== 'settings')
+  const shouldShowLibraryToolbar = computed(() => route.name !== routeNames.settings)
 
   const navItems: NavItem[] = [
     { name: routeNames.home, label: '首页', icon: Home },
@@ -172,7 +173,7 @@
 </script>
 
 <template>
-  <AppShell>
+  <AppShell :show-toolbar="shouldShowLibraryToolbar">
     <template #nav>
       <nav class="side-nav" aria-label="游戏库导航">
         <RouterLink
@@ -330,9 +331,18 @@
     padding: 0 10px;
     text-align: left;
     transition:
+      width 220ms ease,
+      min-height 220ms ease,
+      padding 220ms ease,
       background 160ms ease,
       border-color 160ms ease,
       color 160ms ease;
+  }
+
+  .side-nav__item span {
+    transition:
+      opacity 140ms ease,
+      transform 140ms ease;
   }
 
   .side-nav__item:hover,

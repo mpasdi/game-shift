@@ -1,6 +1,15 @@
 <script setup lang="ts">
   import { Settings } from '@lucide/vue'
   import brandIconUrl from '../assets/brand-icon.png'
+
+  withDefaults(
+    defineProps<{
+      showToolbar?: boolean
+    }>(),
+    {
+      showToolbar: true
+    }
+  )
 </script>
 
 <template>
@@ -26,7 +35,7 @@
     </aside>
 
     <section class="workspace">
-      <header class="top-bar">
+      <header v-if="showToolbar" class="top-bar">
         <slot name="toolbar" />
       </header>
 
@@ -39,8 +48,11 @@
 
 <style scoped>
   .app-shell {
+    --sidebar-expanded-width: 210px;
+    --sidebar-collapsed-width: 74px;
+    --workspace-max-width: 1360px;
     display: grid;
-    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-columns: var(--sidebar-expanded-width) minmax(0, 1fr);
     height: 100vh;
     overflow: hidden;
     background:
@@ -52,6 +64,7 @@
       56px 56px,
       auto,
       auto;
+    transition: grid-template-columns 220ms ease;
   }
 
   .sidebar {
@@ -63,6 +76,7 @@
     border-right: 1px solid rgba(255, 255, 255, 0.08);
     background: var(--sidebar);
     padding: 26px 18px 22px;
+    transition: padding 220ms ease;
   }
 
   .brand-block {
@@ -73,6 +87,7 @@
     color: var(--text);
     font-size: var(--font-size-md);
     font-weight: 700;
+    transition: gap 180ms ease;
   }
 
   .brand-mark {
@@ -119,6 +134,8 @@
   .top-bar {
     z-index: 20;
     display: grid;
+    width: min(100%, var(--workspace-max-width));
+    margin: 0 auto;
     grid-template-columns: minmax(260px, 1fr) auto;
     gap: 14px;
     align-items: center;
@@ -127,7 +144,9 @@
   }
 
   .workspace-body {
+    width: min(100%, var(--workspace-max-width));
     min-height: 0;
+    margin: 0 auto;
     overflow: auto;
     padding: 0 clamp(18px, 3vw, 34px) 34px;
     scrollbar-width: none;
@@ -141,7 +160,7 @@
 
   @media (max-width: 960px) {
     .app-shell {
-      grid-template-columns: 74px minmax(0, 1fr);
+      grid-template-columns: var(--sidebar-collapsed-width) minmax(0, 1fr);
     }
 
     .sidebar {

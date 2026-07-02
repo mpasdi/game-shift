@@ -76,13 +76,6 @@
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
   }
 
-  .game-quick-card__favorite {
-    top: 8px;
-    right: 8px;
-    width: 24px;
-    height: 24px;
-  }
-
   .game-quick-card__content {
     display: grid;
     min-width: 0;
