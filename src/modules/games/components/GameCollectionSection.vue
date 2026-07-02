@@ -44,9 +44,9 @@
       <h2 class="section-title">
         <component :is="props.icon" :size="14" />
         <span>{{ props.title }}</span>
+        <span class="section-title__meta">{{ props.meta }}</span>
       </h2>
       <div class="section-actions">
-        <span>{{ props.meta }}</span>
         <div class="segmented" aria-label="视图切换">
           <IconButton
             label="网格视图"
@@ -123,15 +123,16 @@
     color: var(--accent-strong);
   }
 
+  .section-title__meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+  }
+
   .section-actions {
     display: flex;
     gap: 10px;
     align-items: center;
-  }
-
-  .section-actions > span {
-    color: var(--text-muted);
-    font-size: var(--font-size-sm);
   }
 
   .segmented {

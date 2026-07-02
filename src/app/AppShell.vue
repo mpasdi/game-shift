@@ -36,7 +36,9 @@
 
     <section class="workspace">
       <header v-if="showToolbar" class="top-bar">
-        <slot name="toolbar" />
+        <div class="top-bar__inner">
+          <slot name="toolbar" />
+        </div>
       </header>
 
       <div class="workspace-body">
@@ -50,7 +52,8 @@
   .app-shell {
     --sidebar-expanded-width: 210px;
     --sidebar-collapsed-width: 74px;
-    --workspace-max-width: 1360px;
+    --workspace-max-width: 1760px;
+    --workspace-padding-x: clamp(18px, 2.4vw, 42px);
     display: grid;
     grid-template-columns: var(--sidebar-expanded-width) minmax(0, 1fr);
     height: 100vh;
@@ -133,14 +136,16 @@
 
   .top-bar {
     z-index: 20;
+    width: 100%;
+  }
+
+  .top-bar__inner {
     display: grid;
-    width: min(100%, var(--workspace-max-width));
-    margin: 0 auto;
+    width: 100%;
     grid-template-columns: minmax(260px, 1fr) auto;
     gap: 14px;
     align-items: center;
-    padding: 22px clamp(18px, 3vw, 34px) 16px;
-    background: linear-gradient(180deg, rgba(17, 16, 21, 0.66) 0%, rgba(17, 16, 21, 0.42) 64%, transparent 100%);
+    padding: 22px var(--workspace-padding-x) 16px;
   }
 
   .workspace-body {
@@ -148,7 +153,7 @@
     min-height: 0;
     margin: 0 auto;
     overflow: auto;
-    padding: 0 clamp(18px, 3vw, 34px) 34px;
+    padding: 0 var(--workspace-padding-x) 34px;
     scrollbar-width: none;
   }
 
@@ -213,7 +218,7 @@
       min-height: 0;
     }
 
-    .top-bar {
+    .top-bar__inner {
       grid-template-columns: 1fr;
       padding: 16px 14px;
     }

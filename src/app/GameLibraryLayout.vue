@@ -395,7 +395,7 @@
   }
 
   .top-search {
-    width: 400px;
+    width: clamp(320px, 22vw, 420px);
     min-width: 0;
   }
 

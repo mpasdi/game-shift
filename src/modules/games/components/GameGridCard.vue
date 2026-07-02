@@ -47,8 +47,8 @@
 
       <div class="game-grid-card__overlay">
         <div class="game-grid-card__content">
-          <h2>{{ props.game.name }}</h2>
-          <p>{{ metaText }}</p>
+          <h2 :title="props.game.name">{{ props.game.name }}</h2>
+          <p :title="metaText">{{ metaText }}</p>
         </div>
 
         <div class="game-grid-card__actions">

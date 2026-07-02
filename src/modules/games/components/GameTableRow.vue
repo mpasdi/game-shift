@@ -42,11 +42,11 @@
     <GameArtwork :game="props.game" variant="list" />
 
     <div class="game-table-row__name" role="cell">
-      <h2>{{ props.game.name }}</h2>
+      <h2 :title="props.game.name">{{ props.game.name }}</h2>
     </div>
 
-    <div class="game-table-row__stat" role="cell">{{ lastPlayText }}</div>
-    <div class="game-table-row__stat" role="cell">{{ props.game.playCount }}</div>
+    <div class="game-table-row__stat" role="cell" :title="lastPlayText">{{ lastPlayText }}</div>
+    <div class="game-table-row__stat" role="cell" :title="`${props.game.playCount} 次`">{{ props.game.playCount }}</div>
 
     <div class="game-table-row__actions" role="cell">
       <IconButton

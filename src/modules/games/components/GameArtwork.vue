@@ -20,6 +20,10 @@
 <template>
   <div class="game-artwork" :class="`game-artwork--${props.variant}`" aria-hidden="true">
     <img v-if="props.variant !== 'list' && coverSrc" class="game-artwork__cover" :src="coverSrc" alt="" />
+    <template v-else-if="props.variant === 'quick' && iconSrc">
+      <img class="game-artwork__icon-backdrop" :src="iconSrc" alt="" />
+      <img class="game-artwork__logo" :src="iconSrc" alt="" />
+    </template>
     <img v-else-if="iconSrc" class="game-artwork__logo" :src="iconSrc" alt="" />
     <span v-else>{{ initial }}</span>
   </div>
@@ -27,6 +31,7 @@
 
 <style scoped>
   .game-artwork {
+    position: relative;
     display: grid;
     overflow: hidden;
     place-items: center;
@@ -71,9 +76,22 @@
   }
 
   .game-artwork__logo {
+    position: relative;
+    z-index: 1;
     width: 62%;
     height: 62%;
     object-fit: contain;
+  }
+
+  .game-artwork__icon-backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    filter: blur(12px) saturate(1.35);
+    opacity: 0.28;
+    object-fit: cover;
+    transform: scale(1.45);
   }
 
   .game-artwork--grid .game-artwork__logo {
@@ -84,6 +102,10 @@
   .game-artwork--quick .game-artwork__logo {
     width: 48px;
     height: 48px;
+  }
+
+  .game-artwork--quick .game-artwork__cover {
+    object-fit: cover;
   }
 
   .game-artwork--list .game-artwork__logo {

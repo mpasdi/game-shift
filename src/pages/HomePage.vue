@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { computed, onMounted } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import { RouterLink } from 'vue-router'
   import { Search, Star, Library } from '@lucide/vue'
   import { storeToRefs } from 'pinia'
@@ -16,10 +16,42 @@
   const visibleGames = computed(() => gamesStore.filteredGames)
   const favoriteGames = computed(() => games.value.filter((game) => game.favorite))
   const hasSearch = computed(() => searchText.value.trim() !== '')
+  const favoritePreview = ref<HTMLElement | null>(null)
+  const favoritePreviewColumns = ref(4)
+  const favoritePreviewGames = computed(() => favoriteGames.value.slice(0, favoritePreviewColumns.value))
+  let favoritePreviewObserver: ResizeObserver | null = null
 
   onMounted(() => {
     gamesStore.setFilter('all')
+    void nextTick(() => {
+      updateFavoritePreviewColumns()
+      if (!favoritePreview.value) return
+      favoritePreviewObserver = new ResizeObserver(updateFavoritePreviewColumns)
+      favoritePreviewObserver.observe(favoritePreview.value)
+    })
   })
+
+  watch(favoriteGames, () => {
+    void nextTick(updateFavoritePreviewColumns)
+  })
+
+  onBeforeUnmount(() => {
+    favoritePreviewObserver?.disconnect()
+    favoritePreviewObserver = null
+  })
+
+  function getFavoriteColumnCount(width: number) {
+    const minimumCardWidth = 150
+    const gap = 12
+    const columns = Math.floor((width + gap) / (minimumCardWidth + gap))
+    return Math.min(10, Math.max(2, columns))
+  }
+
+  function updateFavoritePreviewColumns() {
+    const width = favoritePreview.value?.clientWidth ?? 0
+    if (!width) return
+    favoritePreviewColumns.value = getFavoriteColumnCount(width)
+  }
 </script>
 
 <template>
@@ -46,25 +78,30 @@
         <h2 class="section-title">
           <Star :size="14" />
           收藏游戏
+          <span class="section-title__meta">{{ favoriteGames.length }} 个收藏</span>
         </h2>
-        <RouterLink class="link-button" :to="{ name: routeNames.favorites }">查看更多</RouterLink>
+        <div class="section-heading__actions">
+          <RouterLink class="link-button" :to="{ name: routeNames.favorites }">查看更多</RouterLink>
+        </div>
       </div>
 
       <div v-if="favoriteGames.length === 0" class="section-empty">
         <Star :size="18" />
         <span>点击游戏卡片上的星标，把常玩的游戏放到这里。</span>
       </div>
-      <GameList
-        v-else
-        class="favorite-strip"
-        :games="favoriteGames"
-        view-mode="grid"
-        action-mode="quick"
-        :show-manage-actions="false"
-        :launching-game-ids="actions.launchingGameIds.value"
-        @launch="actions.launchGame"
-        @toggle-favorite="actions.toggleFavorite"
-      />
+      <div v-else ref="favoritePreview" class="favorite-preview">
+        <GameList
+          class="home-favorite-grid"
+          :style="{ '--favorite-columns': favoritePreviewColumns }"
+          :games="favoritePreviewGames"
+          view-mode="grid"
+          action-mode="quick"
+          :show-manage-actions="false"
+          :launching-game-ids="actions.launchingGameIds.value"
+          @launch="actions.launchGame"
+          @toggle-favorite="actions.toggleFavorite"
+        />
+      </div>
     </section>
 
     <GameCollectionSection
@@ -116,6 +153,18 @@
     color: var(--accent-strong);
   }
 
+  .section-title__meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+  }
+
+  .section-heading__actions {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+  }
+
   .link-button {
     border: 0;
     background: transparent;
@@ -146,6 +195,10 @@
     color: var(--accent-strong);
   }
 
+  .favorite-preview {
+    min-width: 0;
+  }
+
   @keyframes section-in {
     from {
       opacity: 0;
@@ -155,6 +208,13 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  @media (max-width: 720px) {
+    .section-heading__actions {
+      width: 100%;
+      justify-content: space-between;
     }
   }
 </style>

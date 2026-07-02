@@ -34,7 +34,7 @@
     />
 
     <div class="game-quick-card__content">
-      <h2>{{ props.game.name }}</h2>
+      <h2 :title="props.game.name">{{ props.game.name }}</h2>
       <p :title="props.game.exePath">{{ exeFileName }}</p>
     </div>
 

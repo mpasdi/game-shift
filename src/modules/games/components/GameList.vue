@@ -108,18 +108,48 @@
     grid-auto-flow: column;
     grid-template-columns: none;
     gap: 12px;
+    overscroll-behavior-x: contain;
     overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    padding-right: 18px;
+    scroll-padding-inline: 0 18px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .game-area.favorite-strip::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  .game-area.favorite-strip > * {
+    scroll-snap-align: start;
   }
 
   .game-area.favorite-grid {
     grid-template-columns: repeat(auto-fill, 154px);
   }
 
+  .game-area.home-favorite-grid {
+    grid-template-columns: repeat(var(--favorite-columns, 4), minmax(0, 1fr));
+    overflow: hidden;
+  }
+
+  .game-area.home-favorite-grid :deep(.game-quick-card) {
+    min-height: 168px;
+  }
+
+  .game-area.home-favorite-grid :deep(.game-artwork--quick) {
+    height: clamp(82px, 6vw, 104px);
+  }
+
   @media (max-width: 720px) {
     .game-area.grid {
       grid-template-columns: minmax(0, 1fr);
+    }
+
+    .game-area.home-favorite-grid {
+      grid-template-columns: repeat(var(--favorite-columns, 2), minmax(0, 1fr));
     }
   }
 </style>
