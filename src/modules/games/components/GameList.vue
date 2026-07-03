@@ -126,10 +126,6 @@
     scroll-snap-align: start;
   }
 
-  .game-area.favorite-grid {
-    grid-template-columns: repeat(auto-fill, 154px);
-  }
-
   .game-area.home-favorite-grid {
     grid-template-columns: repeat(var(--favorite-columns, 4), minmax(0, 1fr));
     overflow: hidden;

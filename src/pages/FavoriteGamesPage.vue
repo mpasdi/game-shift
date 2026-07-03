@@ -28,7 +28,6 @@
     :action-mode="actions.viewMode.value === 'grid' ? 'quick' : 'full'"
     :show-manage-actions="false"
     :launching-game-ids="actions.launchingGameIds.value"
-    :list-class="{ 'favorite-grid': actions.viewMode.value === 'grid' }"
     empty-title="还没有收藏游戏"
     empty-description="点击游戏卡片上的星标后，收藏内容会展示在这里。"
     @update-view-mode="actions.setViewMode"

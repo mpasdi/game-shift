@@ -14,8 +14,8 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --bg: #111015;
-  --bg-deep: #0b0a0f;
+  --bg: #14111b;
+  --bg-deep: #0f0d14;
   --sidebar: #151219;
   --panel: rgba(31, 28, 37, 0.88);
   --panel-strong: rgba(39, 35, 47, 0.94);

@@ -59,9 +59,9 @@
     height: 100vh;
     overflow: hidden;
     background:
-      linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
-      radial-gradient(circle at 0 0, rgba(124, 92, 255, 0.055), transparent 320px);
+      linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+      radial-gradient(circle at 8% 8%, rgba(124, 92, 255, 0.07), transparent 360px);
     background-size:
       56px 56px,
       56px 56px,
@@ -77,7 +77,7 @@
     flex-direction: column;
     height: 100vh;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
-    background: var(--sidebar);
+    background: transparent;
     padding: 26px 18px 22px;
     transition: padding 220ms ease;
   }

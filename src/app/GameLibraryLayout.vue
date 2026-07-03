@@ -191,14 +191,6 @@
       </nav>
     </template>
 
-    <template #summary>
-      <div class="play-summary">
-        <p>游戏库</p>
-        <strong>{{ games.length }}</strong>
-        <span>本地记录</span>
-      </div>
-    </template>
-
     <template #settings>
       <RouterLink v-slot="{ isActive, href, navigate }" :to="{ name: routeNames.settings }" custom>
         <a class="settings-entry" :class="{ 'settings-entry--active': isActive }" :href="href" @click="navigate">
@@ -352,28 +344,6 @@
     color: var(--text);
   }
 
-  .play-summary {
-    display: grid;
-    gap: 4px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    padding: 14px;
-  }
-
-  .play-summary p,
-  .play-summary span {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: var(--font-size-sm);
-  }
-
-  .play-summary strong {
-    color: var(--text);
-    font-size: 28px;
-    line-height: 1;
-  }
-
   .settings-entry {
     display: inline-flex;
     gap: 10px;
@@ -417,7 +387,6 @@
 
   @media (max-width: 960px) {
     .side-nav__item span,
-    .play-summary,
     .settings-entry span {
       display: none;
     }
