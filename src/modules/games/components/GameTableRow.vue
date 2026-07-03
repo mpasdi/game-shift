@@ -128,7 +128,7 @@
     overflow: hidden;
     color: rgba(245, 242, 255, 0.84);
     font-size: var(--font-size-sm);
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.15;
     text-overflow: ellipsis;
     white-space: nowrap;
