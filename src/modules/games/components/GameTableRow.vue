@@ -153,6 +153,14 @@
     color: var(--accent-strong);
   }
 
+  .game-table-row:hover .game-table-row__actions :deep(.game-table-row__action--primary:not(:disabled)),
+  .game-table-row__actions :deep(.game-table-row__action--primary:hover:not(:disabled)) {
+    border-color: transparent;
+    background: linear-gradient(180deg, #8d73ff, #6d50e8);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(73, 51, 180, 0.28);
+  }
+
   .game-table-row__actions :deep(.game-table-row__action--favorite) {
     border-color: transparent;
     background: transparent;

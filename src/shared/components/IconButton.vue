@@ -80,6 +80,17 @@
     color: var(--accent-strong);
   }
 
+  .icon-button--active:hover:not(:disabled) {
+    border-color: transparent;
+    background: linear-gradient(180deg, #8d73ff, #6d50e8);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(73, 51, 180, 0.28);
+  }
+
+  .icon-button--active:active:not(:disabled) {
+    background: linear-gradient(180deg, #7f64f0, #6245d8);
+  }
+
   .icon-button--active:disabled {
     border-color: var(--accent-border);
     background: var(--accent-soft);

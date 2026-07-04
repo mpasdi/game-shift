@@ -93,6 +93,17 @@
     transition: gap 180ms ease;
   }
 
+  .brand-block span,
+  .settings-entry span {
+    overflow: hidden;
+    max-width: 120px;
+    white-space: nowrap;
+    transition:
+      max-width 180ms ease,
+      opacity 140ms ease,
+      transform 140ms ease;
+  }
+
   .brand-mark {
     display: grid;
     width: 30px;
@@ -195,7 +206,11 @@
 
     .brand-block span,
     .settings-entry span {
-      display: none;
+      position: absolute;
+      max-width: 0;
+      opacity: 0;
+      transform: translateX(-4px);
+      pointer-events: none;
     }
   }
 

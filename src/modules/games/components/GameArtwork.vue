@@ -97,6 +97,7 @@
   .game-artwork--grid .game-artwork__logo {
     width: 60px;
     height: 60px;
+    transform: translateY(-42px);
   }
 
   .game-artwork--quick .game-artwork__logo {

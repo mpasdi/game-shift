@@ -332,7 +332,11 @@
   }
 
   .side-nav__item span {
+    overflow: hidden;
+    max-width: 120px;
+    white-space: nowrap;
     transition:
+      max-width 180ms ease,
       opacity 140ms ease,
       transform 140ms ease;
   }
@@ -355,6 +359,16 @@
     background: transparent;
     color: var(--text-muted);
     padding: 0 10px;
+  }
+
+  .settings-entry span {
+    overflow: hidden;
+    max-width: 120px;
+    white-space: nowrap;
+    transition:
+      max-width 180ms ease,
+      opacity 140ms ease,
+      transform 140ms ease;
   }
 
   .settings-entry:hover,
@@ -388,12 +402,21 @@
   @media (max-width: 960px) {
     .side-nav__item span,
     .settings-entry span {
-      display: none;
+      position: absolute;
+      max-width: 0;
+      opacity: 0;
+      transform: translateX(-4px);
+      pointer-events: none;
     }
 
     .side-nav__item {
       grid-template-columns: 1fr;
       justify-items: center;
+    }
+
+    .side-nav__item svg {
+      grid-column: 1;
+      grid-row: 1;
     }
 
     .side-nav__item {

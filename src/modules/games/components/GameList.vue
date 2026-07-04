@@ -136,7 +136,7 @@
   }
 
   .game-area.home-favorite-grid :deep(.game-artwork--quick) {
-    height: clamp(82px, 6vw, 104px);
+    height: clamp(88px, 5vw, 104px);
   }
 
   @media (max-width: 720px) {

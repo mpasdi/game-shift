@@ -56,7 +56,7 @@
     const minimumCardWidth = 150
     const gap = 12
     const columns = Math.floor((width + gap) / (minimumCardWidth + gap))
-    return Math.min(5, Math.max(2, columns))
+    return Math.min(10, Math.max(2, columns))
   }
 
   function updateFavoriteColumns() {
@@ -105,7 +105,6 @@
         <h2 class="section-title">
           <Clock3 :size="14" />
           最近游玩
-          <span class="section-title__meta">{{ recentGames.length }} 条记录</span>
         </h2>
         <RouterLink class="link-button" :to="{ name: routeNames.recent }">查看更多</RouterLink>
       </div>
@@ -120,8 +119,9 @@
           <span class="home-row__time">{{ formatLastPlayFull(game) }}</span>
           <span class="home-row__meta">{{ game.playCount }}</span>
           <BaseButton
+            class="home-row__launch"
             size="sm"
-            variant="secondary"
+            variant="primary"
             :disabled="actions.launchingGameIds.value.includes(game.id)"
             @click="actions.launchGame(game)"
           >
@@ -137,7 +137,6 @@
         <h2 class="section-title">
           <Star :size="14" />
           收藏游戏
-          <span class="section-title__meta">{{ favoriteGames.length }} 个收藏</span>
         </h2>
         <RouterLink class="link-button" :to="{ name: routeNames.favorites }">查看更多</RouterLink>
       </div>
@@ -165,7 +164,6 @@
         <h2 class="section-title">
           <Library :size="14" />
           游戏库
-          <span class="section-title__meta">{{ games.length }} 个游戏</span>
         </h2>
         <RouterLink class="link-button" :to="{ name: routeNames.games }">查看全部</RouterLink>
       </div>
@@ -232,12 +230,6 @@
     width: 15px;
     height: 15px;
     color: var(--accent-strong);
-  }
-
-  .section-title__meta {
-    color: var(--text-muted);
-    font-size: var(--font-size-sm);
-    font-weight: 600;
   }
 
   .link-button {
@@ -316,6 +308,11 @@
     font-weight: 600;
   }
 
+  .home-row__launch {
+    min-width: 70px;
+    box-shadow: 0 8px 18px rgba(73, 51, 180, 0.28);
+  }
+
   .library-section--recent .home-row,
   .library-section--library .home-row {
     grid-template-columns: 30px minmax(180px, 2fr) minmax(150px, 1fr) minmax(54px, 0.45fr) auto;
@@ -326,6 +323,13 @@
     width: 28px;
     min-width: 28px;
     height: 28px;
+  }
+
+  .library-section--library .home-row:hover :deep(.icon-button--active:not(:disabled)) {
+    border-color: transparent;
+    background: linear-gradient(180deg, #8d73ff, #6d50e8);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(73, 51, 180, 0.28);
   }
 
   .section-empty {

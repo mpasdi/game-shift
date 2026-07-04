@@ -133,7 +133,17 @@
   }
 
   .game-quick-card__actions :deep(.game-quick-card__primary-action:hover) {
-    background: rgba(33, 29, 47, 0.82);
+    border-color: transparent;
+    background: linear-gradient(180deg, #8d73ff, #6d50e8);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(73, 51, 180, 0.28);
+  }
+
+  .game-quick-card:hover .game-quick-card__actions :deep(.game-quick-card__primary-action:not(:disabled)) {
+    border-color: transparent;
+    background: linear-gradient(180deg, #8d73ff, #6d50e8);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(73, 51, 180, 0.28);
   }
 
   @media (max-width: 720px) {
