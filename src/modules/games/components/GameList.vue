@@ -67,7 +67,7 @@
     <GameTable
       v-else
       :games="props.games"
-      :show-manage-actions="props.showManageActions"
+      :action-mode="props.showManageActions ? 'full' : 'quick'"
       :launching-game-ids="props.launchingGameIds"
       @edit="emitEdit"
       @launch="emit('launch', $event)"

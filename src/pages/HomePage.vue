@@ -1,17 +1,14 @@
 <script setup lang="ts">
   import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import { RouterLink } from 'vue-router'
-  import { Clock3, Library, Play, Search, Star } from '@lucide/vue'
+  import { Clock3, Library, Search, Star } from '@lucide/vue'
   import { storeToRefs } from 'pinia'
   import GameCollectionSection from '../modules/games/components/GameCollectionSection.vue'
-  import GameArtwork from '../modules/games/components/GameArtwork.vue'
   import GameList from '../modules/games/components/GameList.vue'
+  import GameTable from '../modules/games/components/GameTable.vue'
   import { useGameLibraryActions } from '../modules/games/composables/useGameLibraryActions'
   import { useGamesStore } from '../modules/games/stores/games'
-  import type { Game } from '../modules/games/types/game'
   import { routeNames } from '../router/routeNames'
-  import BaseButton from '../shared/components/BaseButton.vue'
-  import IconButton from '../shared/components/IconButton.vue'
 
   const gamesStore = useGamesStore()
   const { games, searchText } = storeToRefs(gamesStore)
@@ -64,21 +61,6 @@
     if (!width) return
     favoriteColumns.value = getFavoriteColumnCount(width)
   }
-
-  function getExeFileName(game: Game) {
-    return game.exePath.split(/[\\/]/).pop() ?? game.exePath
-  }
-
-  function formatLastPlayFull(game: Game) {
-    if (!game.lastPlayTime) return '无启动记录'
-    return new Intl.DateTimeFormat('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(game.lastPlayTime))
-  }
 </script>
 
 <template>
@@ -109,27 +91,15 @@
         <RouterLink class="link-button" :to="{ name: routeNames.recent }">查看更多</RouterLink>
       </div>
 
-      <div class="home-list">
-        <article v-for="game in recentPreviewGames" :key="game.id" class="home-row">
-          <GameArtwork :game="game" variant="list" />
-          <div class="home-row__content">
-            <h3>{{ game.name }}</h3>
-            <p>{{ getExeFileName(game) }}</p>
-          </div>
-          <span class="home-row__time">{{ formatLastPlayFull(game) }}</span>
-          <span class="home-row__meta">{{ game.playCount }}</span>
-          <BaseButton
-            class="home-row__launch"
-            size="sm"
-            variant="primary"
-            :disabled="actions.launchingGameIds.value.includes(game.id)"
-            @click="actions.launchGame(game)"
-          >
-            <template #icon><Play :size="14" /></template>
-            启动
-          </BaseButton>
-        </article>
-      </div>
+      <GameTable
+        class="home-list"
+        :games="recentPreviewGames"
+        density="compact"
+        action-mode="launch-only"
+        launch-style="button"
+        :launching-game-ids="actions.launchingGameIds.value"
+        @launch="actions.launchGame"
+      />
     </section>
 
     <section class="library-section library-section--favorites">
@@ -172,25 +142,15 @@
         <Library :size="18" />
         <span>添加或扫描目录后，游戏会显示在这里。</span>
       </div>
-      <div v-else class="home-list">
-        <article v-for="game in libraryPreviewGames" :key="game.id" class="home-row">
-          <GameArtwork :game="game" variant="list" />
-          <div class="home-row__content">
-            <h3>{{ game.name }}</h3>
-            <p>{{ getExeFileName(game) }}</p>
-          </div>
-          <span class="home-row__time">{{ formatLastPlayFull(game) }}</span>
-          <span class="home-row__meta">{{ game.playCount }}</span>
-          <IconButton
-            label="启动游戏"
-            variant="active"
-            :disabled="actions.launchingGameIds.value.includes(game.id)"
-            @click="actions.launchGame(game)"
-          >
-            <Play :size="15" />
-          </IconButton>
-        </article>
-      </div>
+      <GameTable
+        v-else
+        class="home-list"
+        :games="libraryPreviewGames"
+        density="compact"
+        action-mode="launch-only"
+        :launching-game-ids="actions.launchingGameIds.value"
+        @launch="actions.launchGame"
+      />
     </section>
   </div>
 </template>
@@ -250,86 +210,6 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.028);
-  }
-
-  .home-row {
-    display: grid;
-    grid-template-columns: 30px minmax(0, 1fr) auto;
-    gap: 10px;
-    align-items: center;
-    min-height: 50px;
-    padding: 9px 10px;
-  }
-
-  .home-row + .home-row {
-    border-top: 1px solid rgba(255, 255, 255, 0.065);
-  }
-
-  .home-row:hover {
-    background: rgba(255, 255, 255, 0.035);
-  }
-
-  .home-row__content {
-    display: grid;
-    min-width: 0;
-    gap: 3px;
-  }
-
-  .home-row__content h3 {
-    overflow: hidden;
-    margin: 0;
-    color: var(--text);
-    font-size: var(--font-size-sm);
-    line-height: 1.25;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .home-row__content p,
-  .home-row__time,
-  .home-row__meta {
-    overflow: hidden;
-    margin: 0;
-    color: var(--text-muted);
-    font-size: var(--font-size-xs);
-    line-height: 1.25;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .home-row__time {
-    min-width: 150px;
-    font-weight: 600;
-  }
-
-  .home-row__meta {
-    min-width: 54px;
-    color: rgba(246, 243, 248, 0.72);
-    font-weight: 600;
-  }
-
-  .home-row__launch {
-    min-width: 70px;
-    box-shadow: 0 8px 18px rgba(73, 51, 180, 0.28);
-  }
-
-  .library-section--recent .home-row,
-  .library-section--library .home-row {
-    grid-template-columns: 30px minmax(180px, 2fr) minmax(150px, 1fr) minmax(54px, 0.45fr) auto;
-    column-gap: 18px;
-  }
-
-  .home-row :deep(.icon-button) {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-  }
-
-  .library-section--library .home-row:hover :deep(.icon-button--active:not(:disabled)) {
-    border-color: transparent;
-    background: linear-gradient(180deg, #8d73ff, #6d50e8);
-    color: #ffffff;
-    box-shadow: 0 8px 18px rgba(73, 51, 180, 0.28);
   }
 
   .section-empty {
