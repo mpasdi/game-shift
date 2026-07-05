@@ -1,8 +1,7 @@
 <script setup lang="ts">
   import { computed, onMounted, ref } from 'vue'
-  import { AppWindow, Database, FolderOpen, Info, RotateCw, Settings } from '@lucide/vue'
+  import { AppWindow, Database, FolderOpen, Info, Settings } from '@lucide/vue'
   import { getAppInfo, type AppInfo } from '../modules/settings/api'
-  import BaseButton from '../shared/components/BaseButton.vue'
 
   const appInfo = ref<AppInfo | null>(null)
   const isLoading = ref(false)
@@ -65,10 +64,6 @@
         <p class="settings-page__eyebrow">Settings</p>
         <h1>设置</h1>
       </div>
-      <BaseButton variant="secondary" size="sm" :loading="isLoading" @click="loadAppInfo">
-        <template #icon><RotateCw :size="15" /></template>
-        刷新
-      </BaseButton>
     </header>
 
     <p v-if="errorMessage" class="settings-page__error">{{ errorMessage }}</p>

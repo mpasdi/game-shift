@@ -3,7 +3,7 @@
   import { RouterLink, RouterView, useRoute } from 'vue-router'
   import { storeToRefs } from 'pinia'
   import { open as openDialog } from '@tauri-apps/plugin-dialog'
-  import { Clock3, FolderSearch, Home, Library, Plus, RefreshCw, Search, Settings, Sparkles, Star } from '@lucide/vue'
+  import { Clock3, FolderSearch, Home, Library, Plus, Search, Settings, Sparkles, Star } from '@lucide/vue'
   import AppShell from './AppShell.vue'
   import AddGameDialog from '../modules/games/components/AddGameDialog.vue'
   import RemoveGameDialog from '../modules/games/components/RemoveGameDialog.vue'
@@ -15,7 +15,6 @@
   import { routeNames } from '../router/routeNames'
   import BaseButton from '../shared/components/BaseButton.vue'
   import EmptyState from '../shared/components/EmptyState.vue'
-  import IconButton from '../shared/components/IconButton.vue'
   import TextField from '../shared/components/TextField.vue'
 
   interface NavItem {
@@ -216,9 +215,6 @@
           <template #icon><FolderSearch :size="16" /></template>
           扫描目录
         </BaseButton>
-        <IconButton label="刷新游戏库" :variant="isLoading ? 'active' : 'plain'" @click="gamesStore.refreshGames()">
-          <RefreshCw :size="17" />
-        </IconButton>
       </div>
     </template>
 
@@ -379,7 +375,7 @@
   }
 
   .top-search {
-    width: clamp(320px, 22vw, 420px);
+    width: min(100%, 380px);
     min-width: 0;
   }
 
