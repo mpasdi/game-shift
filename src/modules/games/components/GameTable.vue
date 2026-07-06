@@ -235,7 +235,6 @@
     color: var(--accent-strong);
   }
 
-  .game-table :deep(.data-table__row:hover .game-table__action--primary:not(:disabled)),
   .game-table__actions :deep(.game-table__action--primary:hover:not(:disabled)) {
     border-color: transparent;
     background: linear-gradient(180deg, #8d73ff, #6d50e8);

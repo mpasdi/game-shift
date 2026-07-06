@@ -25,6 +25,7 @@ interface GamesState {
   isScanning: boolean
   launchingGameIds: string[]
   errorMessage: string | null
+  libraryErrorMessage: string | null
 }
 
 export const useGamesStore = defineStore('games', {
@@ -36,7 +37,8 @@ export const useGamesStore = defineStore('games', {
     isSaving: false,
     isScanning: false,
     launchingGameIds: [],
-    errorMessage: null
+    errorMessage: null,
+    libraryErrorMessage: null
   }),
   getters: {
     filteredGames(state): Game[] {
@@ -55,18 +57,21 @@ export const useGamesStore = defineStore('games', {
   actions: {
     async loadGames() {
       this.isLoading = true
-      this.errorMessage = null
+      this.libraryErrorMessage = null
 
       try {
         this.games = await listGames()
       } catch (error) {
-        this.errorMessage = error instanceof Error ? error.message : String(error)
+        this.libraryErrorMessage = error instanceof Error ? error.message : String(error)
       } finally {
         this.isLoading = false
       }
     },
     async refreshGames() {
       await this.loadGames()
+    },
+    clearErrorMessage() {
+      this.errorMessage = null
     },
     async createGame(payload: CreateGamePayload) {
       this.isSaving = true

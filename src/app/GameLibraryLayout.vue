@@ -16,6 +16,7 @@
   import BaseButton from '../shared/components/BaseButton.vue'
   import EmptyState from '../shared/components/EmptyState.vue'
   import TextField from '../shared/components/TextField.vue'
+  import { getErrorMessage, useToast } from '../shared/composables/useToast'
 
   interface NavItem {
     name: string
@@ -25,7 +26,8 @@
 
   const route = useRoute()
   const gamesStore = useGamesStore()
-  const { games, searchText, isLoading, launchingGameIds, errorMessage } = storeToRefs(gamesStore)
+  const toast = useToast()
+  const { games, searchText, isLoading, launchingGameIds, libraryErrorMessage } = storeToRefs(gamesStore)
   const viewMode = ref<GameViewMode>('list')
   const isGameDialogOpen = ref(false)
   const editingGame = ref<Game | null>(null)
@@ -51,78 +53,105 @@
   })
 
   function openCreateGameDialog() {
+    gamesStore.clearErrorMessage()
     editingGame.value = null
     isGameDialogOpen.value = true
   }
 
   function openEditGameDialog(game: Game) {
+    gamesStore.clearErrorMessage()
     editingGame.value = game
     isGameDialogOpen.value = true
   }
 
   function closeGameDialog() {
+    gamesStore.clearErrorMessage()
     isGameDialogOpen.value = false
     editingGame.value = null
   }
 
   async function submitGame(payload: CreateGamePayload | UpdateGamePayload) {
-    if (isUpdateGamePayload(payload)) {
-      await gamesStore.updateGame(payload)
-    } else {
-      await gamesStore.createGame(payload)
-    }
-    closeGameDialog()
-  }
+    const isEditing = isUpdateGamePayload(payload)
 
+    try {
+      if (isEditing) {
+        await gamesStore.updateGame(payload)
+        toast.success({ title: '游戏信息已保存' })
+      } else {
+        await gamesStore.createGame(payload)
+        toast.success({ title: '游戏已添加到库中' })
+      }
+      closeGameDialog()
+    } catch {
+      // The dialog keeps the operation error visible next to the form.
+    }
+  }
   function openRemoveGameDialog(game: Game) {
+    gamesStore.clearErrorMessage()
     removingGame.value = game
   }
 
   function closeRemoveGameDialog() {
+    gamesStore.clearErrorMessage()
     removingGame.value = null
   }
 
   async function confirmRemoveGame() {
     if (!removingGame.value) return
 
-    await gamesStore.deleteGame(removingGame.value.id)
-    closeRemoveGameDialog()
-  }
+    const gameName = removingGame.value.name
 
-  async function toggleFavorite(game: Game) {
-    await gamesStore.updateGame({
-      id: game.id,
-      name: game.name,
-      exePath: game.exePath,
-      workDir: game.workDir,
-      args: game.args,
-      favorite: !game.favorite
-    })
-  }
-
-  async function launchGame(game: Game) {
-    await gamesStore.launchGame(game.id)
-  }
-
-  async function scanDirectory() {
-    const selected = await openDialog({
-      multiple: false,
-      directory: true
-    })
-
-    if (typeof selected !== 'string') return
-
-    scanErrorMessage.value = null
-    scanCandidates.value = []
     try {
+      await gamesStore.deleteGame(removingGame.value.id)
+      closeRemoveGameDialog()
+      toast.success({ title: '游戏已从库中移除', description: gameName })
+    } catch {
+      // The confirmation dialog keeps the operation error visible.
+    }
+  }
+  async function toggleFavorite(game: Game) {
+    try {
+      await gamesStore.updateGame({
+        id: game.id,
+        name: game.name,
+        exePath: game.exePath,
+        workDir: game.workDir,
+        args: game.args,
+        favorite: !game.favorite
+      })
+    } catch (error) {
+      toast.error({ title: '更新收藏状态失败', description: getErrorMessage(error) })
+    }
+  }
+  async function launchGame(game: Game) {
+    try {
+      const launchedGame = await gamesStore.launchGame(game.id)
+      if (launchedGame) {
+        toast.success({ title: '游戏已启动', description: game.name })
+      }
+    } catch (error) {
+      toast.error({ title: '启动游戏失败', description: getErrorMessage(error) })
+    }
+  }
+  async function scanDirectory() {
+    try {
+      const selected = await openDialog({
+        multiple: false,
+        directory: true
+      })
+
+      if (typeof selected !== 'string') return
+
+      scanErrorMessage.value = null
+      scanCandidates.value = []
       scanCandidates.value = await gamesStore.scanGames(selected)
       isScanResultsOpen.value = true
+      toast.info({ title: '目录扫描完成', description: `发现 ${scanCandidates.value.length} 个候选程序` })
     } catch (error) {
-      scanErrorMessage.value = error instanceof Error ? error.message : String(error)
+      scanErrorMessage.value = getErrorMessage(error)
       isScanResultsOpen.value = true
     }
   }
-
   function closeScanResultsDialog() {
     if (isImportingScanResults.value) return
     isScanResultsOpen.value = false
@@ -145,13 +174,13 @@
       isScanResultsOpen.value = false
       scanErrorMessage.value = null
       await gamesStore.loadGames()
+      toast.success({ title: '扫描结果已导入', description: `已导入 ${candidates.length} 个游戏` })
     } catch (error) {
-      scanErrorMessage.value = error instanceof Error ? error.message : String(error)
+      scanErrorMessage.value = getErrorMessage(error)
     } finally {
       isImportingScanResults.value = false
     }
   }
-
   function setViewMode(nextViewMode: GameViewMode) {
     viewMode.value = nextViewMode
   }
@@ -230,11 +259,11 @@
       </EmptyState>
 
       <EmptyState
-        v-else-if="errorMessage"
+        v-else-if="libraryErrorMessage"
         label="游戏库加载失败"
         eyebrow="加载失败"
         title="无法读取本地游戏库"
-        :description="errorMessage"
+        :description="libraryErrorMessage"
       >
         <template #icon><Sparkles :size="15" /></template>
         <template #actions>
