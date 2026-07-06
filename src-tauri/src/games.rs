@@ -748,8 +748,7 @@ fn query_games(connection: &Connection) -> Result<Vec<Game>, String> {
                 create_time,
                 update_time
             FROM games
-            ORDER BY favorite DESC,
-                     create_time DESC
+            ORDER BY create_time DESC
             ",
         )
         .map_err(|error| error.to_string())?;

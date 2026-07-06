@@ -15,7 +15,12 @@
   const actions = useGameLibraryActions()
 
   const visibleGames = computed(() => gamesStore.filteredGames)
-  const favoriteGames = computed(() => games.value.filter((game) => game.favorite))
+  const favoriteGames = computed(() =>
+    games.value
+      .filter((game) => game.favorite)
+      .slice()
+      .sort((left, right) => right.createTime - left.createTime)
+  )
   const recentGames = computed(() =>
     games.value
       .filter((game) => game.lastPlayTime)

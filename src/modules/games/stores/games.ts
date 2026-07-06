@@ -9,10 +9,6 @@ function sortGames(left: Game, right: Game, filter: GameFilter) {
     return (right.lastPlayTime ?? 0) - (left.lastPlayTime ?? 0)
   }
 
-  if (Number(right.favorite) !== Number(left.favorite)) {
-    return Number(right.favorite) - Number(left.favorite)
-  }
-
   return right.createTime - left.createTime
 }
 
