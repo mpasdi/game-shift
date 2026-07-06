@@ -38,7 +38,7 @@
 <style scoped>
   .toast-stack {
     position: fixed;
-    z-index: 80;
+    z-index: 140;
     top: 20px;
     left: 50%;
     display: grid;

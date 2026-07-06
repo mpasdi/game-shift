@@ -27,7 +27,7 @@
   const route = useRoute()
   const gamesStore = useGamesStore()
   const toast = useToast()
-  const { games, searchText, isLoading, launchingGameIds, errorMessage } = storeToRefs(gamesStore)
+  const { games, searchText, isLoading, launchingGameIds, libraryErrorMessage } = storeToRefs(gamesStore)
   const viewMode = ref<GameViewMode>('list')
   const isGameDialogOpen = ref(false)
   const editingGame = ref<Game | null>(null)
@@ -53,16 +53,19 @@
   })
 
   function openCreateGameDialog() {
+    gamesStore.clearErrorMessage()
     editingGame.value = null
     isGameDialogOpen.value = true
   }
 
   function openEditGameDialog(game: Game) {
+    gamesStore.clearErrorMessage()
     editingGame.value = game
     isGameDialogOpen.value = true
   }
 
   function closeGameDialog() {
+    gamesStore.clearErrorMessage()
     isGameDialogOpen.value = false
     editingGame.value = null
   }
@@ -79,18 +82,17 @@
         toast.success({ title: '游戏已添加到库中' })
       }
       closeGameDialog()
-    } catch (error) {
-      toast.error({
-        title: isEditing ? '保存游戏失败' : '添加游戏失败',
-        description: getErrorMessage(error)
-      })
+    } catch {
+      // The dialog keeps the operation error visible next to the form.
     }
   }
   function openRemoveGameDialog(game: Game) {
+    gamesStore.clearErrorMessage()
     removingGame.value = game
   }
 
   function closeRemoveGameDialog() {
+    gamesStore.clearErrorMessage()
     removingGame.value = null
   }
 
@@ -103,8 +105,8 @@
       await gamesStore.deleteGame(removingGame.value.id)
       closeRemoveGameDialog()
       toast.success({ title: '游戏已从库中移除', description: gameName })
-    } catch (error) {
-      toast.error({ title: '移除游戏失败', description: getErrorMessage(error) })
+    } catch {
+      // The confirmation dialog keeps the operation error visible.
     }
   }
   async function toggleFavorite(game: Game) {
@@ -148,7 +150,6 @@
     } catch (error) {
       scanErrorMessage.value = getErrorMessage(error)
       isScanResultsOpen.value = true
-      toast.error({ title: '扫描目录失败', description: scanErrorMessage.value })
     }
   }
   function closeScanResultsDialog() {
@@ -176,7 +177,6 @@
       toast.success({ title: '扫描结果已导入', description: `已导入 ${candidates.length} 个游戏` })
     } catch (error) {
       scanErrorMessage.value = getErrorMessage(error)
-      toast.error({ title: '导入扫描结果失败', description: scanErrorMessage.value })
     } finally {
       isImportingScanResults.value = false
     }
@@ -259,11 +259,11 @@
       </EmptyState>
 
       <EmptyState
-        v-else-if="errorMessage"
+        v-else-if="libraryErrorMessage"
         label="游戏库加载失败"
         eyebrow="加载失败"
         title="无法读取本地游戏库"
-        :description="errorMessage"
+        :description="libraryErrorMessage"
       >
         <template #icon><Sparkles :size="15" /></template>
         <template #actions>
