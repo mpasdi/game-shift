@@ -40,7 +40,7 @@
 - [x] 自建 Button 基础组件
 - [x] 自建 IconButton 基础组件
 - [x] 自建 Modal 基础组件
-- [ ] 自建 Toast 基础组件
+- [x] 自建 Toast 基础组件
 - [ ] 自建 ConfirmDialog 基础组件
 - [x] 自建 EmptyState 基础组件
 - [x] 自建 TextField 基础组件
@@ -295,7 +295,7 @@
 
 模块目标：完善使用体验，避免操作失败时无反馈。
 
-- [ ] 创建 toast / message 组件
+- [x] 创建 toast / message 组件
 - [ ] 创建全局错误处理工具
 - [ ] 所有 command 失败时展示错误信息
 - [ ] 扫描过程中展示 loading
@@ -512,7 +512,7 @@
 - [x] Button 基础组件
 - [x] IconButton 基础组件
 - [x] Modal 基础组件
-- [ ] Toast 基础组件
+- [x] Toast 基础组件
 - [x] EmptyState 基础组件
 - [x] TextField 基础组件
 - [ ] Loading 基础组件
@@ -619,3 +619,14 @@
 - [ ] 全部游戏列表支持按标签筛选
 - [ ] 支持标签重命名和删除
 - [ ] 评估批量添加 / 移除标签能力
+
+### 9.7 第七阶段：后台任务通知中心
+
+模块目标：为耗时任务和非即时反馈提供右下角 notification，与顶部即时 message 保持职责分离。
+
+- [ ] 区分即时 message 和后台 notification 的使用边界
+- [ ] 大目录扫描完成后支持右下角通知
+- [ ] 批量导入完成后支持结果摘要通知
+- [ ] 后台任务失败时支持可保留错误通知
+- [ ] 支持通知手动关闭
+- [ ] 评估是否需要通知历史记录
