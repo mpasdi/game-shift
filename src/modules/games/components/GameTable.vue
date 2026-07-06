@@ -41,16 +41,16 @@
   }>()
 
   const actionColumnWidth = computed(() => {
-    if (props.launchStyle === 'button') return '92px'
-    if (props.actionMode === 'full') return '132px'
-    if (props.actionMode === 'quick') return '76px'
-    return '48px'
+    if (props.launchStyle === 'button') return '108px'
+    if (props.actionMode === 'full') return '156px'
+    if (props.actionMode === 'quick') return '96px'
+    return '64px'
   })
 
   const columns = computed<GameTableColumn[]>(() => [
     { key: 'game', label: '游戏', width: 'minmax(220px, 2fr)' },
     { key: 'lastPlay', label: '最近游玩', width: 'minmax(150px, 1fr)' },
-    { key: 'playCount', label: '次数', width: '72px', align: 'center' },
+    { key: 'playCount', label: '次数', width: 'minmax(100px, 1fr)', align: 'center' },
     { key: 'actions', label: '操作', width: actionColumnWidth.value, align: 'right' }
   ])
 
