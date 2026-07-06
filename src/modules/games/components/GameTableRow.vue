@@ -152,8 +152,6 @@
     background: rgba(47, 34, 82, 0.72);
     color: var(--accent-strong);
   }
-
-  .game-table-row:hover .game-table-row__actions :deep(.game-table-row__action--primary:not(:disabled)),
   .game-table-row__actions :deep(.game-table-row__action--primary:hover:not(:disabled)) {
     border-color: transparent;
     background: linear-gradient(180deg, #8d73ff, #6d50e8);
