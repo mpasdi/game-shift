@@ -6,6 +6,8 @@
     label?: string
     type?: 'text' | 'search'
     readonly?: boolean
+    autocomplete?: string
+    name?: string
   }>()
 
   const emit = defineEmits<{
@@ -26,6 +28,8 @@
       :value="props.modelValue"
       :placeholder="props.placeholder"
       :readonly="props.readonly"
+      :autocomplete="props.autocomplete"
+      :name="props.name"
       @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />
   </label>

@@ -40,6 +40,9 @@
   const dialogMode = computed(() => (editingGame.value ? 'edit' : 'create'))
   const shouldShowEmptyLibrary = computed(() => games.value.length === 0 && route.name !== 'settings')
   const shouldShowLibraryToolbar = computed(() => route.name !== routeNames.settings)
+  const shouldShowLibraryActions = computed(() =>
+    [routeNames.home, routeNames.games].includes(route.name as typeof routeNames.home | typeof routeNames.games)
+  )
 
   const navItems: NavItem[] = [
     { name: routeNames.home, label: '首页', icon: Home },
@@ -230,12 +233,19 @@
 
     <template #toolbar>
       <div class="top-search">
-        <TextField id="game-search" v-model="searchText" type="search" placeholder="搜索游戏 / 启动程序 / 路径">
+        <TextField
+          id="game-search"
+          v-model="searchText"
+          type="search"
+          name="game-library-search"
+          autocomplete="off"
+          placeholder="搜索游戏 / 启动程序 / 路径"
+        >
           <template #icon><Search :size="17" /></template>
         </TextField>
       </div>
 
-      <div class="top-actions">
+      <div v-if="shouldShowLibraryActions" class="top-actions">
         <BaseButton variant="primary" @click="openCreateGameDialog">
           <template #icon><Plus :size="16" /></template>
           添加游戏
