@@ -376,11 +376,20 @@
       transform 140ms ease;
   }
 
-  .side-nav__item:hover,
-  .side-nav__item--active {
-    border-color: var(--accent-border);
+  .side-nav__item:hover {
+    border-color: transparent;
     background: var(--accent-soft);
     color: var(--text);
+  }
+
+  .side-nav__item--active {
+    border-color: transparent;
+    background: rgba(124, 92, 255, 0.24);
+    color: #ffffff;
+  }
+
+  .side-nav__item--active svg {
+    color: #c4b5fd;
   }
 
   .settings-entry {
@@ -406,11 +415,20 @@
       transform 140ms ease;
   }
 
-  .settings-entry:hover,
-  .settings-entry--active {
-    border-color: var(--accent-border);
+  .settings-entry:hover {
+    border-color: transparent;
     background: var(--accent-soft);
     color: var(--text);
+  }
+
+  .settings-entry--active {
+    border-color: transparent;
+    background: rgba(124, 92, 255, 0.24);
+    color: #ffffff;
+  }
+
+  .settings-entry--active svg {
+    color: #c4b5fd;
   }
 
   .top-search {

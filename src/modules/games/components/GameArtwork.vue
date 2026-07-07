@@ -35,7 +35,7 @@
     display: grid;
     overflow: hidden;
     place-items: center;
-    border: 1px solid var(--accent-border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     background: linear-gradient(135deg, rgba(124, 92, 255, 0.22), rgba(255, 255, 255, 0.06));
     color: #f5f3ff;
@@ -58,7 +58,7 @@
     width: 100%;
     height: 104px;
     background:
-      linear-gradient(145deg, rgba(124, 92, 255, 0.28), rgba(46, 73, 86, 0.16)),
+      linear-gradient(145deg, rgba(124, 92, 255, 0.2), rgba(46, 73, 86, 0.14)),
       linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
     font-size: 32px;
   }
