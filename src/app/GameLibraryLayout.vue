@@ -28,7 +28,14 @@
   const gamesStore = useGamesStore()
   const toast = useToast()
   const { games, searchText, isLoading, launchingGameIds, libraryErrorMessage } = storeToRefs(gamesStore)
-  const viewMode = ref<GameViewMode>('list')
+  type ViewModeScope = 'home' | 'games' | 'favorites' | 'recent'
+
+  const viewModes = ref<Record<ViewModeScope, GameViewMode>>({
+    home: 'list',
+    games: 'list',
+    favorites: 'grid',
+    recent: 'list'
+  })
   const isGameDialogOpen = ref(false)
   const editingGame = ref<Game | null>(null)
   const removingGame = ref<Game | null>(null)
@@ -43,6 +50,19 @@
   const shouldShowLibraryActions = computed(() =>
     [routeNames.home, routeNames.games].includes(route.name as typeof routeNames.home | typeof routeNames.games)
   )
+  const viewModeScope = computed<ViewModeScope>(() => {
+    switch (route.name) {
+      case routeNames.home:
+        return 'home'
+      case routeNames.favorites:
+        return 'favorites'
+      case routeNames.recent:
+        return 'recent'
+      default:
+        return 'games'
+    }
+  })
+  const viewMode = computed(() => viewModes.value[viewModeScope.value])
 
   const navItems: NavItem[] = [
     { name: routeNames.home, label: '首页', icon: Home },
@@ -185,7 +205,7 @@
     }
   }
   function setViewMode(nextViewMode: GameViewMode) {
-    viewMode.value = nextViewMode
+    viewModes.value[viewModeScope.value] = nextViewMode
   }
 
   function isUpdateGamePayload(payload: CreateGamePayload | UpdateGamePayload): payload is UpdateGamePayload {

@@ -5,7 +5,7 @@ import type { Game } from '../types/game'
 export type GameViewMode = 'grid' | 'list'
 
 export interface GameLibraryActions {
-  viewMode: Ref<GameViewMode>
+  viewMode: Readonly<Ref<GameViewMode>>
   launchingGameIds: Ref<string[]>
   setViewMode: (viewMode: GameViewMode) => void
   openEditGameDialog: (game: Game) => void
