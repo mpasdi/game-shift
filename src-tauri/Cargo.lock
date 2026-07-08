@@ -1124,6 +1124,7 @@ dependencies = [
 name = "game-shift"
 version = "0.1.0"
 dependencies = [
+ "png 0.17.16",
  "rusqlite",
  "serde",
  "serde_json",
@@ -1131,6 +1132,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

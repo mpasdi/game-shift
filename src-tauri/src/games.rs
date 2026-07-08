@@ -74,9 +74,11 @@ fn ensure_game_visual_assets(
 ) -> Result<(), String> {
     let mut changed = false;
 
-    if game.icon.is_none() {
-        game.icon = extract_game_icon(app, &game.exe_path, &game.id)?;
-        changed |= game.icon.is_some();
+    if should_refresh_icon(game.icon.as_deref()) {
+        if let Some(icon) = extract_game_icon(app, &game.exe_path, &game.id)? {
+            game.icon = Some(icon);
+            changed = true;
+        }
     }
 
     if game.cover.is_none() {
@@ -447,6 +449,15 @@ fn find_cover_candidate(folder: &Path) -> Option<PathBuf> {
     None
 }
 
+fn should_refresh_icon(icon: Option<&str>) -> bool {
+    match icon {
+        None => true,
+        Some(path) => Path::new(path)
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("ico")),
+    }
+}
 fn extract_game_icon(
     app: &AppHandle,
     exe_path: &str,
@@ -461,36 +472,183 @@ fn extract_game_icon_for_platform(
     exe_path: &str,
     game_id: &str,
 ) -> Result<Option<String>, String> {
-    let target = game_asset_dir(app, game_id)?.join("icon.ico");
-    let command = format!(
-        "Add-Type -AssemblyName System.Drawing; \
-         $icon=[System.Drawing.Icon]::ExtractAssociatedIcon('{exe_path}'); \
-         if ($null -eq $icon) {{ exit 2 }}; \
-         $stream=[System.IO.File]::Open('{target_path}', [System.IO.FileMode]::Create); \
-         try {{ $icon.Save($stream) }} finally {{ $stream.Dispose(); $icon.Dispose() }}",
-        exe_path = escape_powershell_single_quoted(exe_path),
-        target_path = escape_powershell_single_quoted(&path_to_string(target.clone())?),
-    );
+    let target = game_asset_dir(app, game_id)?.join("icon.png");
+    let Some(icon) = extract_best_icon_handle(Path::new(exe_path)) else {
+        return Ok(None);
+    };
 
-    let status = Command::new("powershell")
-        .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            &command,
-        ])
-        .status()
-        .map_err(|error| error.to_string())?;
+    let render_result = render_icon_to_png(icon, &target, 256);
+    unsafe {
+        windows_sys::Win32::UI::WindowsAndMessaging::DestroyIcon(icon);
+    }
 
-    if status.success() && target.is_file() {
+    if render_result.is_ok() && target.is_file() {
         path_to_string(target).map(Some)
     } else {
         Ok(None)
     }
 }
 
+#[cfg(target_os = "windows")]
+fn extract_best_icon_handle(
+    path: &Path,
+) -> Option<windows_sys::Win32::UI::WindowsAndMessaging::HICON> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::UI::WindowsAndMessaging::PrivateExtractIconsW;
+
+    const ICON_SIZES: &[i32] = &[256, 128, 64, 48, 32];
+
+    let wide_path: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    for size in ICON_SIZES {
+        let mut icon = std::ptr::null_mut();
+        let mut icon_id = 0;
+        let count = unsafe {
+            PrivateExtractIconsW(
+                wide_path.as_ptr(),
+                0,
+                *size,
+                *size,
+                &mut icon,
+                &mut icon_id,
+                1,
+                0,
+            )
+        };
+
+        if count > 0 && !icon.is_null() {
+            return Some(icon);
+        }
+    }
+
+    None
+}
+
+#[cfg(target_os = "windows")]
+fn render_icon_to_png(
+    icon: windows_sys::Win32::UI::WindowsAndMessaging::HICON,
+    target: &Path,
+    size: i32,
+) -> Result<(), String> {
+    use std::ffi::c_void;
+    use windows_sys::Win32::Graphics::Gdi::{
+        CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, SelectObject, BITMAPINFO,
+        BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
+    };
+    use windows_sys::Win32::UI::WindowsAndMessaging::{DrawIconEx, DI_NORMAL};
+
+    let hdc = unsafe { CreateCompatibleDC(std::ptr::null_mut()) };
+    if hdc.is_null() {
+        return Err("无法创建图标渲染上下文".to_string());
+    }
+
+    let mut bits: *mut c_void = std::ptr::null_mut();
+    let bitmap_info = BITMAPINFO {
+        bmiHeader: BITMAPINFOHEADER {
+            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: size,
+            biHeight: -size,
+            biPlanes: 1,
+            biBitCount: 32,
+            biCompression: BI_RGB,
+            biSizeImage: 0,
+            biXPelsPerMeter: 0,
+            biYPelsPerMeter: 0,
+            biClrUsed: 0,
+            biClrImportant: 0,
+        },
+        bmiColors: [Default::default(); 1],
+    };
+
+    let bitmap = unsafe {
+        CreateDIBSection(
+            hdc,
+            &bitmap_info,
+            DIB_RGB_COLORS,
+            &mut bits,
+            std::ptr::null_mut(),
+            0,
+        )
+    };
+    if bitmap.is_null() || bits.is_null() {
+        unsafe {
+            DeleteDC(hdc);
+        }
+        return Err("无法创建图标位图".to_string());
+    }
+
+    let previous = unsafe { SelectObject(hdc, bitmap) };
+    let byte_len = (size * size * 4) as usize;
+    unsafe {
+        std::ptr::write_bytes(bits, 0, byte_len);
+    }
+
+    let drawn = unsafe {
+        DrawIconEx(
+            hdc,
+            0,
+            0,
+            icon,
+            size,
+            size,
+            0,
+            std::ptr::null_mut(),
+            DI_NORMAL,
+        )
+    };
+    if drawn == 0 {
+        unsafe {
+            SelectObject(hdc, previous);
+            DeleteObject(bitmap);
+            DeleteDC(hdc);
+        }
+        return Err("无法渲染图标".to_string());
+    }
+
+    let bgra = unsafe { std::slice::from_raw_parts(bits as *const u8, byte_len) };
+    let rgba = bgra_to_rgba_with_alpha_fallback(bgra);
+
+    unsafe {
+        SelectObject(hdc, previous);
+        DeleteObject(bitmap);
+        DeleteDC(hdc);
+    }
+
+    write_png(target, size as u32, size as u32, &rgba)
+}
+
+#[cfg(target_os = "windows")]
+fn bgra_to_rgba_with_alpha_fallback(bgra: &[u8]) -> Vec<u8> {
+    let has_visible_alpha = bgra.chunks_exact(4).any(|pixel| pixel[3] != 0);
+    let has_color = bgra
+        .chunks_exact(4)
+        .any(|pixel| pixel[0] != 0 || pixel[1] != 0 || pixel[2] != 0);
+
+    let mut rgba = Vec::with_capacity(bgra.len());
+    for pixel in bgra.chunks_exact(4) {
+        let alpha = if has_visible_alpha || !has_color {
+            pixel[3]
+        } else if pixel[0] != 0 || pixel[1] != 0 || pixel[2] != 0 {
+            255
+        } else {
+            0
+        };
+        rgba.extend_from_slice(&[pixel[2], pixel[1], pixel[0], alpha]);
+    }
+
+    rgba
+}
+#[cfg(target_os = "windows")]
+fn write_png(target: &Path, width: u32, height: u32, rgba: &[u8]) -> Result<(), String> {
+    let file = fs::File::create(target).map_err(|error| error.to_string())?;
+    let writer = std::io::BufWriter::new(file);
+    let mut encoder = png::Encoder::new(writer, width, height);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut png_writer = encoder.write_header().map_err(|error| error.to_string())?;
+    png_writer
+        .write_image_data(rgba)
+        .map_err(|error| error.to_string())
+}
 #[cfg(not(target_os = "windows"))]
 fn extract_game_icon_for_platform(
     _app: &AppHandle,
@@ -498,10 +656,6 @@ fn extract_game_icon_for_platform(
     _game_id: &str,
 ) -> Result<Option<String>, String> {
     Ok(None)
-}
-
-fn escape_powershell_single_quoted(value: &str) -> String {
-    value.replace('\'', "''")
 }
 
 fn normalize_existing_exe_path(path: &str) -> Result<PathBuf, String> {
