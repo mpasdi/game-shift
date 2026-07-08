@@ -259,7 +259,7 @@
           type="search"
           name="game-library-search"
           autocomplete="off"
-          placeholder="搜索游戏 / 启动程序 / 路径"
+          placeholder="搜索游戏 / 启动程序"
         >
           <template #icon><Search :size="17" /></template>
         </TextField>
