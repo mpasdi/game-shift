@@ -173,7 +173,7 @@
 
   .game-table__game {
     display: grid;
-    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-columns: 36px minmax(0, 1fr);
     gap: 10px;
     align-items: center;
     min-width: 0;

@@ -64,9 +64,9 @@
   }
 
   .game-artwork--list {
-    width: 30px;
-    height: 30px;
-    font-size: 13px;
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
   }
 
   .game-artwork__cover {
@@ -110,7 +110,7 @@
   }
 
   .game-artwork--list .game-artwork__logo {
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
   }
 </style>
