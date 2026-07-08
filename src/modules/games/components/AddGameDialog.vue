@@ -164,47 +164,51 @@
 <template>
   <BaseModal :open="props.open" :title="modalTitle" size="lg" @close="emit('close')">
     <div class="game-dialog">
-      <aside class="cover-preview" aria-label="游戏封面预览">
-        <div class="cover-preview__art" aria-hidden="true">
-          <img v-if="previewCoverSrc" class="cover-preview__image" :src="previewCoverSrc" alt="" />
-          <img v-else-if="previewIconSrc" class="cover-preview__icon" :src="previewIconSrc" alt="" />
-          <span v-else>{{ previewInitial }}</span>
-          <span class="cover-preview__hint">{{ previewHint }}</span>
-        </div>
-      </aside>
-
       <form class="game-form" @submit.prevent="submitForm">
-        <TextField id="game-name" v-model="form.name" label="游戏名称" placeholder="例如：Elden Ring" />
+        <div class="game-form__hero">
+          <aside class="cover-preview" aria-label="游戏封面预览">
+            <div class="cover-preview__art" aria-hidden="true">
+              <img v-if="previewCoverSrc" class="cover-preview__image" :src="previewCoverSrc" alt="" />
+              <img v-else-if="previewIconSrc" class="cover-preview__icon" :src="previewIconSrc" alt="" />
+              <span v-else>{{ previewInitial }}</span>
+              <span class="cover-preview__hint">{{ previewHint }}</span>
+            </div>
+          </aside>
 
-        <div class="path-field">
-          <TextField
-            id="game-exe"
-            v-model="form.exePath"
-            label="可执行文件"
-            placeholder="选择游戏 .exe 文件"
-            readonly
-          />
-          <BaseButton variant="secondary" type="button" @click="chooseExePath">
-            <template #icon><FileSearch :size="17" /></template>
-            选择
-          </BaseButton>
+          <div class="game-form__hero-fields">
+            <div class="form-field">
+              <label class="form-field__label" for="game-name">游戏名称</label>
+              <TextField id="game-name" v-model="form.name" placeholder="例如：Elden Ring" />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label" for="game-exe">可执行文件</label>
+              <div class="path-field">
+                <TextField id="game-exe" v-model="form.exePath" placeholder="选择游戏 .exe 文件" readonly />
+                <BaseButton variant="secondary" type="button" @click="chooseExePath">
+                  <template #icon><FileSearch :size="17" /></template>
+                  选择
+                </BaseButton>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label" for="game-work-dir">工作目录</label>
+              <div class="path-field">
+                <TextField id="game-work-dir" v-model="form.workDir" placeholder="默认使用 .exe 所在目录" readonly />
+                <BaseButton variant="secondary" type="button" @click="chooseWorkDir">
+                  <template #icon><FolderOpen :size="17" /></template>
+                  选择
+                </BaseButton>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="path-field">
-          <TextField
-            id="game-work-dir"
-            v-model="form.workDir"
-            label="工作目录"
-            placeholder="默认使用 .exe 所在目录"
-            readonly
-          />
-          <BaseButton variant="secondary" type="button" @click="chooseWorkDir">
-            <template #icon><FolderOpen :size="17" /></template>
-            选择
-          </BaseButton>
+        <div class="form-field form-field--full">
+          <label class="form-field__label" for="game-args">启动参数</label>
+          <TextField id="game-args" v-model="form.args" placeholder="可选，例如 -windowed" />
         </div>
-
-        <TextField id="game-args" v-model="form.args" label="启动参数" placeholder="可选，例如 -windowed" />
 
         <p v-if="displayedError" class="form-error">{{ displayedError }}</p>
       </form>
@@ -223,10 +227,21 @@
   }
 
   .game-dialog {
+    min-width: 0;
+  }
+
+  .game-form__hero {
     display: grid;
-    grid-template-columns: 156px minmax(0, 1fr);
-    gap: 22px;
-    align-items: start;
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .game-form__hero-fields {
+    display: grid;
+    align-content: center;
+    gap: 14px;
+    min-width: 0;
   }
 
   .cover-preview {
@@ -237,7 +252,8 @@
     display: grid;
     position: relative;
     overflow: hidden;
-    height: 180px;
+    width: 132px;
+    height: 100%;
     place-items: center;
     border: 1px solid var(--accent-border);
     border-radius: 8px;
@@ -256,8 +272,8 @@
   }
 
   .cover-preview__icon {
-    width: 58%;
-    height: 58%;
+    width: 64%;
+    height: 64%;
     object-fit: contain;
   }
 
@@ -280,6 +296,23 @@
     backdrop-filter: blur(8px);
   }
 
+  .form-field {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .form-field--full :deep(.text-field) {
+    width: 100%;
+  }
+
+  .form-field__label {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
   .path-field {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -294,16 +327,14 @@
   }
 
   @media (max-width: 720px) {
-    .game-dialog {
-      grid-template-columns: 1fr;
-    }
-
-    .cover-preview {
+    .game-form__hero {
       grid-template-columns: 112px minmax(0, 1fr);
-      align-items: end;
+      gap: 14px;
+      align-items: stretch;
     }
 
     .cover-preview__art {
+      width: 112px;
       height: 150px;
     }
 

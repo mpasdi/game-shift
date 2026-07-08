@@ -97,7 +97,12 @@
     outline: 0;
     background: transparent;
     color: inherit;
-    padding: 0 0 0 10px;
+    padding: 0;
+  }
+
+  .text-field__icon + .text-field__input,
+  .text-field__label + .text-field__input {
+    padding-left: 10px;
   }
 
   .text-field__input::placeholder {
