@@ -132,7 +132,11 @@
         </IconButton>
         <IconButton
           v-if="props.actionMode === 'full' || props.actionMode === 'quick'"
-          class="game-table__action game-table__action--favorite"
+          :class="[
+            'game-table__action',
+            'game-table__action--favorite',
+            { 'game-table__action--favorite-active': (row as Game).favorite }
+          ]"
           :label="(row as Game).favorite ? '取消收藏' : '收藏游戏'"
           variant="plain"
           @click="emit('toggleFavorite', row as Game)"
@@ -253,6 +257,15 @@
   }
 
   .game-table__actions :deep(.game-table__action--favorite svg) {
+    color: rgba(226, 221, 232, 0.86);
+  }
+
+  .game-table__actions :deep(.game-table__action--favorite:hover svg) {
+    color: #ffffff;
+  }
+
+  .game-table__actions :deep(.game-table__action--favorite-active svg),
+  .game-table__actions :deep(.game-table__action--favorite-active:hover svg) {
     color: var(--accent-strong);
   }
 </style>
