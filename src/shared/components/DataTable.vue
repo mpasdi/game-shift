@@ -17,6 +17,7 @@
       ariaLabel?: string
     }>(),
     {
+      rowKey: undefined,
       density: 'regular',
       ariaLabel: '数据表格'
     }
