@@ -2,7 +2,7 @@
 
 Game Shift 是一个本地游戏启动器，目标是统一管理 Windows 本地游戏的启动入口，减少用户手动进入目录查找 `.exe` 的成本。
 
-当前项目处于 MVP 初始化阶段，已经完成桌面应用工程骨架、基础 UI、代码规范和提交规范集成。
+当前项目处于 MVP 收尾阶段，已经完成本地游戏库主流程、SQLite 本地存储、目录扫描、候选导入、手动添加、编辑、移除、收藏、最近游玩和一键启动能力。第一阶段剩余重点是 Tauri 打包验证和 MVP 手动验收。
 
 ## 技术栈
 
@@ -12,7 +12,7 @@ Game Shift 是一个本地游戏启动器，目标是统一管理 Windows 本地
 - Vite
 - Pinia
 - Rust
-- SQLite（待接入）
+- SQLite
 
 ## 环境要求
 
@@ -118,15 +118,19 @@ commit-msg -> commitlint
 已完成：
 
 - Tauri + Vue + TypeScript 项目初始化
-- Game Shift 主界面空状态
-- Pinia 基础 store
+- SQLite 本地数据库和 `games` 表
+- 游戏列表、搜索、收藏、最近游玩
+- 目录扫描和候选游戏导入
+- 手动添加、编辑和移除游戏
+- 游戏启动、启动次数和最近游玩时间记录
+- 自动提取游戏图标和自动发现本地封面
+- 设置页基础应用信息
 - ESLint / Prettier / EditorConfig
 - Husky / lint-staged / commitlint / czg
-- 基础构建检查脚本
+- 前端和 Rust 基础检查脚本
 
 下一步计划：
 
-- SQLite 初始化
-- `games` 表创建
-- Rust 游戏列表查询 command
-- 前端主界面接入真实本地数据
+- Tauri 打包验证
+- MVP 手动验收记录
+- 运行中状态和游玩时长统计
