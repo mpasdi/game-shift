@@ -63,8 +63,19 @@
   }
 
   .text-field--readonly {
-    border-color: var(--border);
-    background: rgba(255, 255, 255, 0.035);
+    border-color: rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.026);
+    color: var(--text-muted);
+  }
+
+  .text-field--readonly:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.026);
+  }
+
+  .text-field--readonly:focus-within {
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: none;
   }
 
   .text-field--readonly .text-field__label {
@@ -129,7 +140,11 @@
   }
 
   .text-field__input:read-only {
-    color: rgba(245, 242, 255, 0.82);
-    cursor: text;
+    color: rgba(226, 221, 232, 0.68);
+    cursor: default;
+  }
+
+  .text-field__input:read-only::placeholder {
+    color: rgba(172, 164, 184, 0.58);
   }
 </style>

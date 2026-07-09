@@ -61,7 +61,6 @@
   <section class="settings-page">
     <header class="settings-page__header">
       <div>
-        <p class="settings-page__eyebrow">Settings</p>
         <h1>设置</h1>
       </div>
     </header>
@@ -84,42 +83,24 @@
           <div v-if="!appInfo && isLoading" class="info-placeholder">正在读取应用信息...</div>
         </div>
       </article>
-
-      <article class="settings-panel">
-        <div class="settings-panel__heading">
-          <Database :size="16" />
-          <h2>数据说明</h2>
-        </div>
-        <div class="note-list">
-          <p>游戏库数据保存在本机 SQLite 数据库中。</p>
-          <p>封面和图标由系统自动识别，手动替换会放到后续版本。</p>
-          <p>扫描目录、排除规则和导入导出会作为设置模块的下一步补充。</p>
-        </div>
-      </article>
     </div>
   </section>
 </template>
 
 <style scoped>
   .settings-page {
+    --settings-content-width: 720px;
     width: min(100%, 1120px);
     margin: 0 auto;
-    padding: 10px 0 40px;
+    padding: 22px 0 40px;
   }
 
   .settings-page__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 18px;
-  }
-
-  .settings-page__eyebrow {
-    margin: 0 0 4px;
-    color: var(--accent-strong);
-    font-size: var(--font-size-xs);
-    font-weight: 700;
-    text-transform: uppercase;
+    width: min(100%, var(--settings-content-width));
+    margin: 0 auto 18px;
   }
 
   .settings-page h1 {
@@ -129,7 +110,8 @@
   }
 
   .settings-page__error {
-    margin: 0 0 14px;
+    width: min(100%, var(--settings-content-width));
+    margin: 0 auto 14px;
     border: 1px solid rgba(248, 113, 113, 0.25);
     border-radius: 8px;
     background: var(--danger-soft);
@@ -140,8 +122,8 @@
 
   .settings-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 16px;
+    width: min(100%, var(--settings-content-width));
+    margin: 0 auto;
   }
 
   .settings-panel {
@@ -226,24 +208,7 @@
     font-size: var(--font-size-sm);
   }
 
-  .note-list {
-    display: grid;
-    gap: 10px;
-    padding: 16px;
-  }
-
-  .note-list p {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: var(--font-size-sm);
-    line-height: 1.65;
-  }
-
   @media (max-width: 860px) {
-    .settings-grid {
-      grid-template-columns: 1fr;
-    }
-
     .settings-page__header {
       align-items: flex-start;
       gap: 12px;

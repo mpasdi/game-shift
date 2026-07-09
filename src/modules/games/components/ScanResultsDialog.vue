@@ -146,10 +146,6 @@
     width: fit-content;
     gap: 6px;
     align-items: center;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.026);
-    padding: 5px;
   }
 
   .scan-summary-item {
