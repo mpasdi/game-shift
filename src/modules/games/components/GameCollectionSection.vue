@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import type { Component } from 'vue'
-  import { Grid2X2, LayoutList, Search } from '@lucide/vue'
+  import { Grid2X2, LayoutList } from '@lucide/vue'
   import EmptyState from '../../../shared/components/EmptyState.vue'
   import IconButton from '../../../shared/components/IconButton.vue'
   import GameList from './GameList.vue'
@@ -68,12 +68,13 @@
 
     <EmptyState
       v-if="props.games.length === 0"
-      label="没有匹配的游戏"
-      eyebrow="无结果"
+      variant="plain"
+      :label="props.emptyTitle"
+      :eyebrow="props.title"
       :title="props.emptyTitle"
       :description="props.emptyDescription"
     >
-      <template #icon><Search :size="15" /></template>
+      <template #icon><component :is="props.icon" :size="15" /></template>
     </EmptyState>
 
     <GameList

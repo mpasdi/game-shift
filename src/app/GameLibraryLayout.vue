@@ -6,6 +6,7 @@
   import { Clock3, FolderSearch, Home, Library, Plus, Search, Settings, Sparkles, Star } from '@lucide/vue'
   import AppShell from './AppShell.vue'
   import AddGameDialog from '../modules/games/components/AddGameDialog.vue'
+  import EmptyLibraryState from '../modules/games/components/EmptyLibraryState.vue'
   import RemoveGameDialog from '../modules/games/components/RemoveGameDialog.vue'
   import ScanResultsDialog from '../modules/games/components/ScanResultsDialog.vue'
   import { gameLibraryActionsKey } from '../modules/games/composables/useGameLibraryActions'
@@ -43,9 +44,8 @@
   const scanCandidates = ref<ScanCandidate[]>([])
   const scanErrorMessage = ref<string | null>(null)
   const isImportingScanResults = ref(false)
-
   const dialogMode = computed(() => (editingGame.value ? 'edit' : 'create'))
-  const shouldShowEmptyLibrary = computed(() => games.value.length === 0 && route.name !== 'settings')
+  const shouldShowEmptyLibrary = computed(() => games.value.length === 0 && route.name === routeNames.home)
   const shouldShowLibraryToolbar = computed(() => route.name !== routeNames.settings)
   const shouldShowLibraryActions = computed(() =>
     [routeNames.home, routeNames.games].includes(route.name as typeof routeNames.home | typeof routeNames.games)
@@ -277,7 +277,7 @@
       </div>
     </template>
 
-    <section class="library-shell" aria-label="游戏库">
+    <section class="library-shell" :class="{ 'library-shell--empty': shouldShowEmptyLibrary }" aria-label="游戏库">
       <EmptyState
         v-if="isLoading"
         label="正在加载游戏库"
@@ -301,25 +301,12 @@
         </template>
       </EmptyState>
 
-      <EmptyState
+      <EmptyLibraryState
         v-else-if="shouldShowEmptyLibrary"
-        label="空游戏库"
-        eyebrow="尚未导入游戏"
-        title="从第一个启动程序开始"
-        description="选择本地 .exe 后，Game Shift 会保存到本地数据库。也可以直接扫描目录，批量导入可启动的 .exe。"
-      >
-        <template #icon><Sparkles :size="15" /></template>
-        <template #actions>
-          <BaseButton variant="primary" @click="openCreateGameDialog">
-            <template #icon><Plus :size="17" /></template>
-            手动添加
-          </BaseButton>
-          <BaseButton variant="secondary" :loading="gamesStore.isScanning" @click="scanDirectory">
-            <template #icon><FolderSearch :size="17" /></template>
-            扫描目录
-          </BaseButton>
-        </template>
-      </EmptyState>
+        :scanning="gamesStore.isScanning"
+        @add="openCreateGameDialog"
+        @scan="scanDirectory"
+      />
 
       <RouterView v-else />
     </section>
@@ -470,6 +457,10 @@
     display: grid;
     width: 100%;
     gap: 24px;
+  }
+
+  .library-shell--empty {
+    min-height: 100%;
   }
 
   @media (max-width: 960px) {

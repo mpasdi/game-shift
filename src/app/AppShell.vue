@@ -161,6 +161,7 @@
 
   .workspace-body {
     width: min(100%, var(--workspace-max-width));
+    height: 100%;
     min-height: 0;
     margin: 0 auto;
     overflow: auto;

@@ -26,8 +26,10 @@
     :games="visibleGames"
     :view-mode="actions.viewMode.value"
     :launching-game-ids="actions.launchingGameIds.value"
-    empty-title="没有找到匹配的游戏"
-    empty-description="可以调整搜索关键词，或手动添加新的启动程序。"
+    :empty-title="hasSearch ? '没有找到匹配的游戏' : '还没有添加任何游戏'"
+    :empty-description="
+      hasSearch ? '可以调整搜索关键词，或添加新的启动程序。' : '使用右上角的添加或扫描功能开始建立游戏库。'
+    "
     @update-view-mode="actions.setViewMode"
     @edit="actions.openEditGameDialog"
     @launch="actions.launchGame"
