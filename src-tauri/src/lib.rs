@@ -6,7 +6,7 @@ mod games;
 struct AppInfo {
     name: &'static str,
     version: &'static str,
-    identifier: &'static str,
+    identifier: String,
     data_dir: String,
     database_path: String,
 }
@@ -23,7 +23,7 @@ fn app_info(app: tauri::AppHandle) -> Result<AppInfo, String> {
     Ok(AppInfo {
         name: "Game Shift",
         version: env!("CARGO_PKG_VERSION"),
-        identifier: "com.gameshift.app",
+        identifier: app.config().identifier.clone(),
         data_dir,
         database_path: database_path.to_string_lossy().to_string(),
     })
