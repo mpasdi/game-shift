@@ -87,7 +87,7 @@
   />
 
   <div v-else ref="pageContent" class="home-page">
-    <section v-if="recentPreviewGames.length > 0" class="library-section library-section--recent">
+    <section class="library-section library-section--recent">
       <div class="section-heading">
         <h2 class="section-title">
           <Clock3 :size="14" />
@@ -96,7 +96,12 @@
         <RouterLink class="link-button" :to="{ name: routeNames.recent }">查看更多</RouterLink>
       </div>
 
+      <div v-if="recentPreviewGames.length === 0" class="section-empty">
+        <Clock3 :size="18" />
+        <span>启动游戏后，最近游玩记录会显示在这里。</span>
+      </div>
       <GameTable
+        v-else
         class="home-list"
         :games="recentPreviewGames"
         density="compact"
