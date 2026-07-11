@@ -10,6 +10,7 @@ export interface Game {
   args?: string | null
   workDir?: string | null
   favorite: boolean
+  favoriteTime?: number | null
   playCount: number
   lastPlayTime?: number | null
   createTime: number

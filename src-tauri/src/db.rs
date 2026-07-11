@@ -39,6 +39,7 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 args TEXT,
                 work_dir TEXT,
                 favorite INTEGER NOT NULL DEFAULT 0,
+                favorite_time INTEGER,
                 play_count INTEGER NOT NULL DEFAULT 0,
                 last_play_time INTEGER,
                 create_time INTEGER NOT NULL,
@@ -58,7 +59,20 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
         )
         .map_err(|error| error.to_string())?;
 
-    ensure_column(connection, "games", "cover", "TEXT")
+    ensure_column(connection, "games", "cover", "TEXT")?;
+    ensure_column(connection, "games", "favorite_time", "INTEGER")?;
+
+    connection
+        .execute_batch(
+            "
+            UPDATE games
+            SET favorite_time = update_time
+            WHERE favorite = 1 AND favorite_time IS NULL;
+
+            CREATE INDEX IF NOT EXISTS idx_games_favorite_time ON games(favorite_time);
+            ",
+        )
+        .map_err(|error| error.to_string())
 }
 
 fn ensure_column(

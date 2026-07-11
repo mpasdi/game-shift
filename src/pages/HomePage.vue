@@ -19,7 +19,7 @@
     games.value
       .filter((game) => game.favorite)
       .slice()
-      .sort((left, right) => right.createTime - left.createTime)
+      .sort((left, right) => (right.favoriteTime ?? right.updateTime) - (left.favoriteTime ?? left.updateTime))
   )
   const recentGames = computed(() =>
     games.value

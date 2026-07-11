@@ -21,6 +21,7 @@ pub struct Game {
     args: Option<String>,
     work_dir: Option<String>,
     favorite: bool,
+    favorite_time: Option<i64>,
     play_count: i64,
     last_play_time: Option<i64>,
     create_time: i64,
@@ -158,11 +159,12 @@ pub fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, 
                 args,
                 work_dir,
                 favorite,
+                favorite_time,
                 play_count,
                 last_play_time,
                 create_time,
                 update_time
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, 0, NULL, ?9, ?10)
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, NULL, 0, NULL, ?9, ?10)
             ",
             params![
                 id,
@@ -203,6 +205,11 @@ pub fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, 
     }
 
     let now = current_timestamp_millis()?;
+    let favorite_time = match (existing_game.favorite, payload.favorite) {
+        (false, true) => Some(now),
+        (true, true) => existing_game.favorite_time,
+        _ => None,
+    };
     let icon = if existing_game.exe_path != input.exe_path || existing_game.icon.is_none() {
         extract_game_icon(app, &input.exe_path, &id)?.or(existing_game.icon)
     } else {
@@ -226,8 +233,9 @@ pub fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, 
                 args = ?6,
                 work_dir = ?7,
                 favorite = ?8,
-                update_time = ?9
-            WHERE id = ?10
+                favorite_time = ?9,
+                update_time = ?10
+            WHERE id = ?11
             ",
             params![
                 input.name,
@@ -238,6 +246,7 @@ pub fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, 
                 input.args,
                 input.work_dir,
                 i64::from(payload.favorite),
+                favorite_time,
                 now,
                 id
             ],
@@ -869,6 +878,7 @@ fn get_game_by_id(connection: &Connection, id: &str) -> Result<Option<Game>, Str
                 args,
                 work_dir,
                 favorite,
+                favorite_time,
                 play_count,
                 last_play_time,
                 create_time,
@@ -897,6 +907,7 @@ fn query_games(connection: &Connection) -> Result<Vec<Game>, String> {
                 args,
                 work_dir,
                 favorite,
+                favorite_time,
                 play_count,
                 last_play_time,
                 create_time,
@@ -928,10 +939,11 @@ fn map_game_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Game> {
             .get::<_, Option<String>>(7)?
             .map(strip_windows_extended_path_prefix),
         favorite: row.get::<_, i64>(8)? != 0,
-        play_count: row.get(9)?,
-        last_play_time: row.get(10)?,
-        create_time: row.get(11)?,
-        update_time: row.get(12)?,
+        favorite_time: row.get(9)?,
+        play_count: row.get(10)?,
+        last_play_time: row.get(11)?,
+        create_time: row.get(12)?,
+        update_time: row.get(13)?,
     })
 }
 
