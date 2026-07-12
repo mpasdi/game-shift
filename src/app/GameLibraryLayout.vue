@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { computed, onMounted, provide, ref } from 'vue'
+  import { computed, onMounted, provide, ref, watch } from 'vue'
   import { RouterLink, RouterView, useRoute } from 'vue-router'
   import { storeToRefs } from 'pinia'
   import { open as openDialog } from '@tauri-apps/plugin-dialog'
@@ -50,6 +50,18 @@
   const shouldShowLibraryActions = computed(() =>
     [routeNames.home, routeNames.games].includes(route.name as typeof routeNames.home | typeof routeNames.games)
   )
+  const searchPlaceholder = computed(() => {
+    switch (route.name) {
+      case routeNames.favorites:
+        return '搜索收藏游戏'
+      case routeNames.recent:
+        return '搜索最近游玩'
+      case routeNames.games:
+        return '搜索全部游戏'
+      default:
+        return '搜索全部游戏 / 启动程序'
+    }
+  })
   const viewModeScope = computed<ViewModeScope>(() => {
     switch (route.name) {
       case routeNames.home:
@@ -74,6 +86,13 @@
   onMounted(() => {
     void gamesStore.loadGames()
   })
+
+  watch(
+    () => route.name,
+    (nextRouteName, previousRouteName) => {
+      if (nextRouteName !== previousRouteName) searchText.value = ''
+    }
+  )
 
   function openCreateGameDialog() {
     gamesStore.clearErrorMessage()
@@ -259,7 +278,7 @@
           type="search"
           name="game-library-search"
           autocomplete="off"
-          placeholder="搜索游戏 / 启动程序"
+          :placeholder="searchPlaceholder"
         >
           <template #icon><Search :size="17" /></template>
         </TextField>

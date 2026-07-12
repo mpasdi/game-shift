@@ -215,6 +215,7 @@
     </div>
 
     <template #footer>
+      <BaseButton variant="secondary" type="button" :disabled="saving" @click="emit('close')">取消</BaseButton>
       <BaseButton variant="primary" type="button" :loading="saving" @click="submitForm">{{ submitText }}</BaseButton>
     </template>
   </BaseModal>
