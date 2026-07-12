@@ -1,8 +1,95 @@
-# Game Shift
+<p align="center">
+  <img src="./assets/app-logo.png" width="128" alt="Game Shift Logo" />
+</p>
 
-Game Shift 是一个本地游戏启动器，目标是统一管理 Windows 本地游戏的启动入口，减少用户手动进入目录查找 `.exe` 的成本。
+<h1 align="center">Game Shift</h1>
 
-当前项目处于 MVP 收尾阶段，已经完成本地游戏库主流程、SQLite 本地存储、目录扫描、候选导入、手动添加、编辑、移除、收藏、最近游玩和一键启动能力。第一阶段剩余重点是 Tauri 打包验证和 MVP 手动验收。
+<p align="center">简洁、轻量的 Windows 本地游戏库与启动器。</p>
+
+Game Shift 用于集中管理 Windows 电脑上的本地游戏启动程序。你可以手动添加单个 `.exe`，也可以扫描游戏目录批量导入，并在统一界面中完成搜索、收藏、启动和最近游玩管理。
+
+> 当前版本：`v0.1.0 Beta`
+
+## 主要功能
+
+- 手动选择 `.exe` 添加本地游戏
+- 扫描文件夹并批量导入候选程序
+- 自动提取游戏图标和发现本地封面
+- 列表与网格两种游戏库视图
+- 按名称或启动程序文件名搜索
+- 收藏游戏，并按最近收藏时间排序
+- 记录最近游玩时间和启动次数
+- 支持工作目录与自定义启动参数
+- 编辑或移除游戏记录
+- 使用 SQLite 在本地保存游戏库
+
+## 系统要求
+
+- Windows 10 / 11
+- x64 处理器与操作系统
+- Microsoft Edge WebView2 Runtime
+
+大多数 Windows 10 / 11 设备已经安装 WebView2。如果系统缺少运行时，安装程序会按 Tauri 默认策略尝试安装。
+
+## 下载与安装
+
+前往 [GitHub Releases](https://github.com/mpasdi/game-shift/releases) 下载最新版本：
+
+```text
+Game Shift_<版本号>_x64-setup.exe
+```
+
+运行安装程序并按照提示完成安装。请只从本项目官方 GitHub Releases 下载，不要运行来源不明的二次打包文件。
+
+### Windows SmartScreen 提示
+
+Game Shift 是免费开源软件，当前 Beta 安装包暂未购买商业 Windows 代码签名证书。从浏览器下载后，Windows SmartScreen 可能显示“未知发布者”或“Windows 已保护你的电脑”。
+
+安装前请确认：
+
+1. 文件来自本项目官方 GitHub Releases。
+2. 文件名和版本号与 Release 页面一致。
+3. 本地计算出的 SHA-256 与 Release 提供的 `.sha256` 文件一致。
+
+PowerShell 校验命令：
+
+```powershell
+Get-FileHash -LiteralPath '.\Game Shift_0.1.0_x64-setup.exe' -Algorithm SHA256
+```
+
+如果无法确认文件来源或校验值不一致，请不要继续安装。
+
+## 基本使用
+
+### 添加单个游戏
+
+1. 点击右上角“添加游戏”。
+2. 选择游戏的 `.exe` 启动程序。
+3. 确认游戏名称和工作目录。
+4. 根据需要填写启动参数并保存。
+
+### 批量扫描目录
+
+1. 点击右上角“扫描目录”。
+2. 选择游戏所在的文件夹。
+3. 在扫描结果中勾选需要导入的候选程序。
+4. 确认导入。
+
+### 数据与本地文件
+
+- 游戏库数据保存在本地 SQLite 数据库中，不会上传到服务器。
+- 设置页面会显示当前应用数据目录和数据库文件位置。
+- 从 Game Shift 中“移除游戏”只删除游戏库记录，不会删除磁盘中的游戏文件。
+- 卸载或手动清理应用数据前，如需保留游戏库，请先备份设置页面显示的数据库文件。
+
+## 当前限制
+
+- 当前仅提供 Windows x64 安装包。
+- 安装包暂未进行商业 Windows 代码签名。
+- 暂不跟踪游戏进程运行状态。
+- 暂不统计单次或累计游玩时长。
+- 暂不提供自动更新，请从 GitHub Releases 获取新版本。
+- 分类与标签功能尚未开放。
 
 ## 技术栈
 
@@ -14,9 +101,9 @@ Game Shift 是一个本地游戏启动器，目标是统一管理 Windows 本地
 - Rust
 - SQLite
 
-## 环境要求
+## 本地开发
 
-开发 Windows 桌面端需要：
+### 环境要求
 
 - Node.js
 - pnpm
@@ -24,7 +111,7 @@ Game Shift 是一个本地游戏启动器，目标是统一管理 Windows 本地
 - Microsoft C++ Build Tools
 - WebView2 Runtime
 
-常用检查命令：
+检查本地环境：
 
 ```powershell
 node -v
@@ -34,19 +121,13 @@ rustup show
 where.exe cargo
 ```
 
-如果 PowerShell 或 IDE 终端找不到 `cargo`，确认用户 PATH 中包含：
-
-```text
-C:\Users\Administrator\.cargo\bin
-```
-
-## 安装依赖
+### 安装依赖
 
 ```powershell
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
-## 本地开发
+### 启动开发环境
 
 只启动前端 Vite 服务：
 
@@ -60,38 +141,38 @@ pnpm dev
 pnpm tauri dev
 ```
 
-## 构建
+### 代码检查
 
-前端构建：
-
-```powershell
-pnpm build
-```
-
-Tauri 打包：
+执行前端与 Rust 全量检查：
 
 ```powershell
-pnpm tauri build
+pnpm verify
 ```
 
-## 代码检查
+单独执行：
 
 ```powershell
 pnpm type-check
 pnpm lint
 pnpm format:check
-pnpm check
+pnpm check:rust
 ```
 
-自动格式化：
+### 构建 Windows 安装包
 
 ```powershell
-pnpm format
+pnpm tauri build --bundles nsis
+```
+
+构建产物位于：
+
+```text
+src-tauri/target/release/bundle/nsis/
 ```
 
 ## 提交规范
 
-项目使用 Husky、lint-staged、commitlint 和 czg。
+项目使用 Husky、lint-staged、commitlint 和 czg 维护提交规范。
 
 推荐使用交互式提交：
 
@@ -99,38 +180,29 @@ pnpm format
 pnpm commit
 ```
 
-提交前会自动执行暂存文件检查：
+提交前会执行暂存文件检查：
 
 ```text
 pre-commit -> pnpm lint-staged
 commit-msg -> commitlint
 ```
 
-当前提交类型由 `cz.config.js` 和 `commitlint.config.js` 维护。
-
 ## 项目文档
 
-- 需求文档：`docs/requirements.md`
-- 开发清单：`workLine.md`
+- [需求文档](./docs/requirements.md)
+- [UI 设计说明](./docs/ui-design.md)
+- [开发清单与 Windows 发布 SOP](./workLine.md)
 
-## 当前状态
+## 反馈问题
 
-已完成：
+如果遇到问题，请前往 [GitHub Issues](https://github.com/mpasdi/game-shift/issues) 提交，并尽量提供：
 
-- Tauri + Vue + TypeScript 项目初始化
-- SQLite 本地数据库和 `games` 表
-- 游戏列表、搜索、收藏、最近游玩
-- 目录扫描和候选游戏导入
-- 手动添加、编辑和移除游戏
-- 游戏启动、启动次数和最近游玩时间记录
-- 自动提取游戏图标和自动发现本地封面
-- 设置页基础应用信息
-- ESLint / Prettier / EditorConfig
-- Husky / lint-staged / commitlint / czg
-- 前端和 Rust 基础检查脚本
+- Game Shift 版本号
+- Windows 版本与系统架构
+- 问题复现步骤
+- 错误提示或截图
+- 涉及路径时说明路径是否包含中文或空格；请隐藏个人隐私信息
 
-下一步计划：
+## License
 
-- Tauri 打包验证
-- MVP 手动验收记录
-- 运行中状态和游玩时长统计
+[MIT License](./LICENSE)
