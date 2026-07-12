@@ -322,34 +322,52 @@ fn parse_launch_args(args: &str) -> Result<Vec<String>, String> {
     let mut parsed = Vec::new();
     let mut current = String::new();
     let mut in_quotes = false;
-    let mut escaping = false;
+    let mut argument_started = false;
+    let mut characters = args.chars().peekable();
 
-    for character in args.chars() {
-        if escaping {
-            current.push(character);
-            escaping = false;
-            continue;
-        }
-
+    while let Some(character) = characters.next() {
         match character {
-            '\\' if in_quotes => escaping = true,
-            '"' => in_quotes = !in_quotes,
+            '"' => {
+                in_quotes = !in_quotes;
+                argument_started = true;
+            }
+            '\\' => {
+                let mut backslash_count = 1;
+                while characters.peek() == Some(&'\\') {
+                    characters.next();
+                    backslash_count += 1;
+                }
+
+                if characters.peek() == Some(&'"') {
+                    current.extend(std::iter::repeat_n('\\', backslash_count / 2));
+                    characters.next();
+                    if backslash_count % 2 == 0 {
+                        in_quotes = !in_quotes;
+                    } else {
+                        current.push('"');
+                    }
+                } else {
+                    current.extend(std::iter::repeat_n('\\', backslash_count));
+                }
+                argument_started = true;
+            }
             value if value.is_whitespace() && !in_quotes => {
-                if !current.is_empty() {
+                if argument_started {
                     parsed.push(std::mem::take(&mut current));
+                    argument_started = false;
                 }
             }
-            value => current.push(value),
+            value => {
+                current.push(value);
+                argument_started = true;
+            }
         }
     }
 
-    if escaping {
-        current.push('\\');
-    }
     if in_quotes {
         return Err("启动参数中的引号未闭合".to_string());
     }
-    if !current.is_empty() {
+    if argument_started {
         parsed.push(current);
     }
 
@@ -1001,4 +1019,49 @@ pub async fn scan_games_command(
     tauri::async_runtime::spawn_blocking(move || scan_games(&app, &directory))
         .await
         .map_err(|error| error.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_launch_args;
+
+    #[test]
+    fn parses_quoted_windows_path_without_removing_backslashes() {
+        let parsed =
+            parse_launch_args(r#""C:\Users\lsm\AppData\Local\Temp\game shift.txt""#).unwrap();
+
+        assert_eq!(
+            parsed,
+            vec![r"C:\Users\lsm\AppData\Local\Temp\game shift.txt"]
+        );
+    }
+
+    #[test]
+    fn parses_command_with_quoted_argument() {
+        let parsed =
+            parse_launch_args(r#"/c "echo Game Shift args OK> %TEMP%\game-shift-args-test.txt""#)
+                .unwrap();
+
+        assert_eq!(
+            parsed,
+            vec![
+                "/c",
+                r"echo Game Shift args OK> %TEMP%\game-shift-args-test.txt"
+            ]
+        );
+    }
+
+    #[test]
+    fn preserves_escaped_quotes_and_empty_arguments() {
+        let parsed = parse_launch_args(r#"--message "say \"hello\"" --label """#).unwrap();
+
+        assert_eq!(parsed, vec!["--message", "say \"hello\"", "--label", ""]);
+    }
+
+    #[test]
+    fn rejects_unclosed_quotes() {
+        let error = parse_launch_args(r#""C:\Games\example.exe"#).unwrap_err();
+
+        assert_eq!(error, "启动参数中的引号未闭合");
+    }
 }
