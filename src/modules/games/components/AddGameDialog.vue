@@ -2,7 +2,7 @@
   import { computed, reactive, ref, watch } from 'vue'
   import { convertFileSrc } from '@tauri-apps/api/core'
   import { open as openDialog } from '@tauri-apps/plugin-dialog'
-  import { FileSearch, FolderOpen } from '@lucide/vue'
+  import { FileSearch, FolderOpen, ImagePlus } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
   import BaseModal from '../../../shared/components/BaseModal.vue'
   import TextField from '../../../shared/components/TextField.vue'
@@ -32,7 +32,8 @@
     name: '',
     exePath: '',
     workDir: '',
-    args: ''
+    args: '',
+    coverPath: ''
   })
   const localError = ref<string | null>(null)
 
@@ -41,9 +42,14 @@
   const submitText = computed(() => (isEditing.value ? '保存修改' : '保存'))
   const displayedError = computed(() => localError.value || props.errorMessage || null)
   const previewInitial = computed(() => form.name.trim().slice(0, 1).toUpperCase() || 'G')
-  const previewCoverSrc = computed(() => toLocalAssetSrc(props.game?.cover))
+  const previewCoverSrc = computed(() => toLocalAssetSrc(form.coverPath || props.game?.cover))
   const previewIconSrc = computed(() => toLocalAssetSrc(props.game?.icon))
-  const previewHint = computed(() => (isEditing.value ? '自动识别封面' : '保存后自动识别'))
+  const selectedCoverName = computed(() => getFileName(form.coverPath))
+  const previewHint = computed(() => {
+    if (selectedCoverName.value) return `${selectedCoverName.value} · 保存后显示`
+    if (previewCoverSrc.value) return '当前封面'
+    return isEditing.value ? '尚未设置封面' : '保存后自动识别'
+  })
 
   watch(
     () => [props.open, props.game, props.mode] as const,
@@ -89,6 +95,19 @@
     form.workDir = selected
   }
 
+  async function chooseCoverPath() {
+    const selected = await openDialog({
+      multiple: false,
+      directory: false,
+      filters: [{ name: '游戏封面', extensions: ['png', 'jpg', 'jpeg', 'webp'] }]
+    })
+
+    if (typeof selected !== 'string') return
+
+    form.coverPath = selected
+    localError.value = null
+  }
+
   function toLocalAssetSrc(path?: string | null) {
     return path ? convertFileSrc(path) : null
   }
@@ -101,7 +120,8 @@
       name: form.name.trim(),
       exePath: form.exePath.trim(),
       workDir: form.workDir.trim() || null,
-      args: form.args.trim() || null
+      args: form.args.trim() || null,
+      coverPath: form.coverPath.trim() || null
     }
 
     if (isEditing.value) {
@@ -125,6 +145,7 @@
     form.exePath = game.exePath
     form.workDir = game.workDir ?? game.folderPath
     form.args = game.args ?? ''
+    form.coverPath = ''
     localError.value = null
   }
 
@@ -133,6 +154,7 @@
     form.exePath = ''
     form.workDir = ''
     form.args = ''
+    form.coverPath = ''
     localError.value = null
   }
 
@@ -168,11 +190,21 @@
         <div class="game-form__hero">
           <aside class="cover-preview" aria-label="游戏封面预览">
             <div class="cover-preview__art" aria-hidden="true">
-              <img v-if="previewCoverSrc" class="cover-preview__image" :src="previewCoverSrc" alt="" />
+              <img
+                v-if="previewCoverSrc"
+                :key="previewCoverSrc"
+                class="cover-preview__image"
+                :src="previewCoverSrc"
+                alt=""
+              />
               <img v-else-if="previewIconSrc" class="cover-preview__icon" :src="previewIconSrc" alt="" />
               <span v-else>{{ previewInitial }}</span>
               <span class="cover-preview__hint">{{ previewHint }}</span>
             </div>
+            <BaseButton variant="secondary" size="sm" type="button" :disabled="saving" @click="chooseCoverPath">
+              <template #icon><ImagePlus :size="16" /></template>
+              {{ props.game?.cover || form.coverPath ? '更换封面' : '选择封面' }}
+            </BaseButton>
           </aside>
 
           <div class="game-form__hero-fields">
@@ -247,6 +279,8 @@
 
   .cover-preview {
     display: grid;
+    align-content: start;
+    gap: 8px;
   }
 
   .cover-preview__art {
@@ -254,7 +288,7 @@
     position: relative;
     overflow: hidden;
     width: 132px;
-    height: 100%;
+    aspect-ratio: 2 / 3;
     place-items: center;
     border: 1px solid var(--accent-border);
     border-radius: 8px;
@@ -336,7 +370,6 @@
 
     .cover-preview__art {
       width: 112px;
-      height: 150px;
     }
 
     .path-field {

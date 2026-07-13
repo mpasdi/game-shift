@@ -9,6 +9,8 @@ use tauri::{AppHandle, Manager};
 
 use crate::db;
 
+const MAX_COVER_FILE_SIZE_BYTES: u64 = 20 * 1024 * 1024;
+
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Game {
@@ -35,6 +37,7 @@ pub struct CreateGamePayload {
     exe_path: String,
     work_dir: Option<String>,
     args: Option<String>,
+    cover_path: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -45,6 +48,7 @@ pub struct UpdateGamePayload {
     exe_path: String,
     work_dir: Option<String>,
     args: Option<String>,
+    cover_path: Option<String>,
     favorite: bool,
 }
 
@@ -144,7 +148,10 @@ pub fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, 
     let now = current_timestamp_millis()?;
     let id = format!("game-{}", now);
     let icon = extract_game_icon(app, &input.exe_path, &id)?;
-    let cover = detect_and_cache_cover(app, &input.folder_path, &id)?;
+    let cover = match normalize_optional_path(payload.cover_path) {
+        Some(path) => Some(cache_manual_cover(app, &path, &id)?),
+        None => detect_and_cache_cover(app, &input.folder_path, &id)?,
+    };
 
     connection
         .execute(
@@ -181,6 +188,8 @@ pub fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, 
         )
         .map_err(|error| error.to_string())?;
 
+    cleanup_stale_cover_files(app, &id, cover.as_deref());
+
     get_game_by_id(&connection, &id)?.ok_or_else(|| "游戏创建后无法读取".to_string())
 }
 
@@ -215,10 +224,12 @@ pub fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, 
     } else {
         existing_game.icon
     };
-    let cover = if existing_game.folder_path != input.folder_path || existing_game.cover.is_none() {
-        detect_and_cache_cover(app, &input.folder_path, &id)?.or(existing_game.cover)
-    } else {
-        existing_game.cover
+    let cover = match normalize_optional_path(payload.cover_path) {
+        Some(path) => Some(cache_manual_cover(app, &path, &id)?),
+        None if existing_game.folder_path != input.folder_path || existing_game.cover.is_none() => {
+            detect_and_cache_cover(app, &input.folder_path, &id)?.or(existing_game.cover)
+        }
+        None => existing_game.cover,
     };
 
     connection
@@ -252,6 +263,8 @@ pub fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, 
             ],
         )
         .map_err(|error| error.to_string())?;
+
+    cleanup_stale_cover_files(app, &id, cover.as_deref());
 
     get_game_by_id(&connection, &id)?.ok_or_else(|| "游戏更新后无法读取".to_string())
 }
@@ -417,6 +430,63 @@ fn game_asset_dir(app: &AppHandle, game_id: &str) -> Result<PathBuf, String> {
         .join(game_id);
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
     Ok(directory)
+}
+
+fn cache_manual_cover(app: &AppHandle, source_path: &str, game_id: &str) -> Result<String, String> {
+    let source = PathBuf::from(source_path.trim());
+    if !source.is_file() {
+        return Err("选择的封面文件不存在".to_string());
+    }
+
+    let extension = source
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(str::to_ascii_lowercase)
+        .filter(|value| matches!(value.as_str(), "png" | "jpg" | "jpeg" | "webp"))
+        .ok_or_else(|| "封面仅支持 PNG、JPG、JPEG 或 WebP 格式".to_string())?;
+    let metadata = source.metadata().map_err(|error| error.to_string())?;
+    if metadata.len() > MAX_COVER_FILE_SIZE_BYTES {
+        return Err("封面文件不能超过 20 MB".to_string());
+    }
+
+    let timestamp = current_timestamp_millis()?;
+    let target =
+        game_asset_dir(app, game_id)?.join(format!("cover-manual-{timestamp}.{extension}"));
+    fs::copy(&source, &target).map_err(|error| format!("缓存游戏封面失败：{error}"))?;
+
+    path_to_string(target)
+}
+
+fn cleanup_stale_cover_files(app: &AppHandle, game_id: &str, current_cover: Option<&str>) {
+    let Ok(directory) = game_asset_dir(app, game_id) else {
+        return;
+    };
+    let current_cover = current_cover.map(PathBuf::from);
+    let Ok(entries) = fs::read_dir(&directory) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let is_cover = path
+            .file_stem()
+            .and_then(|value| value.to_str())
+            .is_some_and(|value| value == "cover" || value.starts_with("cover-manual-"));
+        if is_cover
+            && current_cover
+                .as_ref()
+                .is_none_or(|current| current != &path)
+        {
+            let _ = fs::remove_file(path);
+        }
+    }
+}
+
+fn normalize_optional_path(path: Option<String>) -> Option<String> {
+    path.and_then(|value| {
+        let value = value.trim().to_string();
+        (!value.is_empty()).then_some(value)
+    })
 }
 
 fn detect_and_cache_cover(

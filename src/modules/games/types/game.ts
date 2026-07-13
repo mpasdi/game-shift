@@ -22,6 +22,7 @@ export interface CreateGamePayload {
   exePath: string
   workDir?: string | null
   args?: string | null
+  coverPath?: string | null
 }
 
 export interface UpdateGamePayload extends CreateGamePayload {
