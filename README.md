@@ -36,7 +36,7 @@ Game Shift 用于集中管理 Windows 电脑上的本地游戏启动程序。你
 前往 [GitHub Releases](https://github.com/mpasdi/game-shift/releases) 下载最新版本：
 
 ```text
-Game Shift_<版本号>_x64-setup.exe
+Game Shift_0.1.0_x64-setup.exe
 ```
 
 运行安装程序并按照提示完成安装。请只从本项目官方 GitHub Releases 下载，不要运行来源不明的二次打包文件。
