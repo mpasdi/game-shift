@@ -885,6 +885,14 @@ Status: NotSigned
 在仓库根目录执行：
 
 ```powershell
+pnpm release:checksum
+```
+
+该命令会根据 `package.json` 中的版本号自动查找 NSIS 安装包、生成同名 `.sha256` 文件并核验结果。
+
+也可以手动执行：
+
+```powershell
 $installer = Resolve-Path '.\src-tauri\target\release\bundle\nsis\Game Shift_0.1.0_x64-setup.exe'
 $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
 $checksumFile = "$installer.sha256"
