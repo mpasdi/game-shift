@@ -561,9 +561,10 @@
 - [x] 创建并推送 `v0.1.0` Tag
 - [x] 构建 Windows x64 NSIS 安装包
 - [x] 发布 GitHub Release `Game Shift v0.1.0`
-- [ ] 从 GitHub Release 重新下载安装包并核对 SHA-256
-- [ ] 在干净的 Windows 10/11 x64 环境完成安装、启动和卸载验证
-- [ ] 收集并记录 `v0.1.0` 已知问题
+- [x] 从 GitHub Release 重新下载安装包
+- [ ] 核对 GitHub Release 安装包的 SHA-256
+- [x] 完成 GitHub Release 安装包的安装、启动和基础功能验证
+- [x] 收集并记录 `v0.1.0` 已知问题（暂未发现阻塞性问题）
 - [ ] 开始实现游戏进程跟踪与运行中状态
 
 ## 9. 发布阶段建议
