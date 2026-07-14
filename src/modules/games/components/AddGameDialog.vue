@@ -1,11 +1,11 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
-  import { convertFileSrc } from '@tauri-apps/api/core'
   import { open as openDialog } from '@tauri-apps/plugin-dialog'
   import { FileSearch, FolderOpen, ImagePlus } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
   import BaseModal from '../../../shared/components/BaseModal.vue'
   import TextField from '../../../shared/components/TextField.vue'
+  import GameArtwork from './GameArtwork.vue'
   import type { CreateGamePayload, Game, UpdateGamePayload } from '../types/game'
 
   const props = withDefaults(
@@ -41,10 +41,12 @@
   const modalTitle = computed(() => (isEditing.value ? '编辑游戏' : '手动添加游戏'))
   const submitText = computed(() => (isEditing.value ? '保存修改' : '保存'))
   const displayedError = computed(() => localError.value || props.errorMessage || null)
-  const previewInitial = computed(() => form.name.trim().slice(0, 1).toUpperCase() || 'G')
-  const previewCoverSrc = computed(() => toLocalAssetSrc(form.coverPath || props.game?.cover))
-  const previewIconSrc = computed(() => toLocalAssetSrc(props.game?.icon))
-  const coverActionText = computed(() => (previewCoverSrc.value ? '更换封面' : '选择封面'))
+  const previewGame = computed(() => ({
+    name: form.name || props.game?.name || '',
+    cover: form.coverPath || props.game?.cover || null,
+    icon: props.game?.icon || null
+  }))
+  const coverActionText = computed(() => (previewGame.value.cover ? '更换封面' : '选择封面'))
 
   watch(
     () => [props.open, props.game, props.mode] as const,
@@ -101,10 +103,6 @@
 
     form.coverPath = selected
     localError.value = null
-  }
-
-  function toLocalAssetSrc(path?: string | null) {
-    return path ? convertFileSrc(path) : null
   }
 
   function submitForm() {
@@ -186,21 +184,13 @@
           <aside class="cover-preview" aria-label="游戏封面预览">
             <button
               class="cover-preview__art"
-              :class="{ 'cover-preview__art--empty': !previewCoverSrc && !previewIconSrc }"
+              :class="{ 'cover-preview__art--empty': !previewGame.cover && !previewGame.icon }"
               type="button"
               :aria-label="coverActionText"
               :disabled="saving"
               @click="chooseCoverPath"
             >
-              <img
-                v-if="previewCoverSrc"
-                :key="previewCoverSrc"
-                class="cover-preview__image"
-                :src="previewCoverSrc"
-                alt=""
-              />
-              <img v-else-if="previewIconSrc" class="cover-preview__icon" :src="previewIconSrc" alt="" />
-              <span v-else>{{ previewInitial }}</span>
+              <GameArtwork :game="previewGame" variant="preview" />
               <span class="cover-preview__overlay" aria-hidden="true">
                 <span class="cover-preview__action">
                   <ImagePlus :size="17" />
@@ -294,14 +284,9 @@
     border: 1px solid var(--accent-border);
     border-radius: 8px;
     padding: 0;
-    background:
-      radial-gradient(circle at 50% 20%, rgba(157, 140, 255, 0.26), transparent 42%),
-      linear-gradient(145deg, rgba(124, 92, 255, 0.32), rgba(255, 255, 255, 0.055));
-    color: var(--text);
+    background: var(--surface);
     cursor: pointer;
-    font-size: 42px;
     font-family: inherit;
-    font-weight: 800;
   }
 
   .cover-preview__art:focus-visible {
@@ -314,23 +299,11 @@
     opacity: 0.72;
   }
 
-  .cover-preview__image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 180ms ease;
-  }
-
-  .cover-preview__icon {
-    width: 64%;
-    height: 64%;
-    object-fit: contain;
-  }
-
   .cover-preview__overlay {
     position: absolute;
     inset: 0;
     display: grid;
+    z-index: 2;
     place-items: center;
     background: rgba(10, 8, 15, 0.58);
     opacity: 0;
@@ -357,7 +330,7 @@
     opacity: 1;
   }
 
-  .cover-preview__art:hover:not(:disabled) .cover-preview__image {
+  .cover-preview__art:hover:not(:disabled) :deep(.game-artwork__cover) {
     transform: scale(1.025);
   }
 
