@@ -24,8 +24,14 @@
         <Trash2 :size="30" />
       </div>
       <div class="confirm-dialog__content">
-        <p class="confirm-dialog__title">确定要移除这个游戏吗？</p>
-        <p v-if="props.game" class="confirm-dialog__name">{{ props.game.name }}</p>
+        <!-- prettier-ignore -->
+        <p v-if="props.game" class="confirm-dialog__title">确定移除<span class="confirm-dialog__game-name">「{{ props.game.name }}」</span>吗？</p>
+        <p v-else class="confirm-dialog__title">确定要移除这个游戏吗？</p>
+        <template v-if="props.game">
+          <div class="confirm-dialog__target">
+            <span class="confirm-dialog__path" :title="props.game.exePath">{{ props.game.exePath }}</span>
+          </div>
+        </template>
         <p class="confirm-dialog__description">只会移除 Game Shift 中的记录，不会删除本地磁盘上的游戏文件。</p>
         <p v-if="props.errorMessage" class="form-error">{{ props.errorMessage }}</p>
       </div>
@@ -68,11 +74,21 @@
     font-weight: 700;
   }
 
-  .confirm-dialog__name {
-    margin: 10px 0 0;
+  .confirm-dialog__game-name {
     color: var(--danger);
-    font-size: 18px;
-    font-weight: 700;
+  }
+
+  .confirm-dialog__target {
+    display: grid;
+    max-width: 340px;
+    margin: 7px auto 0;
+  }
+
+  .confirm-dialog__path {
+    overflow-wrap: anywhere;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    line-height: 1.35;
   }
 
   .confirm-dialog__description {
