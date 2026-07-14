@@ -1,15 +1,24 @@
 use std::collections::HashSet;
-use std::fs;
+use std::fs::{self, File};
+use std::io::{BufWriter, Cursor};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use image::codecs::jpeg::JpegEncoder;
+use image::codecs::webp::WebPEncoder;
+use image::imageops::FilterType;
+use image::{ColorType, DynamicImage, ImageDecoder, ImageEncoder, ImageFormat, ImageReader};
 use rusqlite::{params, Connection, OptionalExtension};
 use tauri::{AppHandle, Manager};
 
 use crate::db;
 
-const MAX_COVER_FILE_SIZE_BYTES: u64 = 20 * 1024 * 1024;
+const MAX_COVER_FILE_SIZE_BYTES: u64 = 10 * 1024 * 1024;
+const MAX_COVER_DIMENSION: u32 = 8192;
+const MAX_COVER_PIXELS: u64 = 40_000_000;
+const MAX_CACHED_COVER_DIMENSION: u32 = 2400;
+const COVER_JPEG_QUALITY: u8 = 88;
 
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -438,21 +447,122 @@ fn cache_manual_cover(app: &AppHandle, source_path: &str, game_id: &str) -> Resu
         return Err("选择的封面文件不存在".to_string());
     }
 
-    let extension = source
-        .extension()
-        .and_then(|value| value.to_str())
-        .map(str::to_ascii_lowercase)
-        .filter(|value| matches!(value.as_str(), "png" | "jpg" | "jpeg" | "webp"))
-        .ok_or_else(|| "封面仅支持 PNG、JPG、JPEG 或 WebP 格式".to_string())?;
-    let metadata = source.metadata().map_err(|error| error.to_string())?;
+    let timestamp = current_timestamp_millis()?;
+    cache_cover_image(app, &source, game_id, &format!("cover-manual-{timestamp}"))
+}
+
+fn cache_cover_image(
+    app: &AppHandle,
+    source: &Path,
+    game_id: &str,
+    target_stem: &str,
+) -> Result<String, String> {
+    let metadata = source
+        .metadata()
+        .map_err(|error| format!("读取封面文件失败：{error}"))?;
     if metadata.len() > MAX_COVER_FILE_SIZE_BYTES {
-        return Err("封面文件不能超过 20 MB".to_string());
+        return Err("封面文件不能超过 10 MB".to_string());
     }
 
-    let timestamp = current_timestamp_millis()?;
-    let target =
-        game_asset_dir(app, game_id)?.join(format!("cover-manual-{timestamp}.{extension}"));
-    fs::copy(&source, &target).map_err(|error| format!("缓存游戏封面失败：{error}"))?;
+    let bytes = fs::read(source).map_err(|error| format!("读取封面文件失败：{error}"))?;
+    let image = decode_cover_image(bytes)?;
+
+    encode_cached_cover(app, game_id, target_stem, image)
+}
+
+fn decode_cover_image(bytes: Vec<u8>) -> Result<DynamicImage, String> {
+    let reader = ImageReader::new(Cursor::new(bytes.as_slice()))
+        .with_guessed_format()
+        .map_err(|error| format!("识别封面格式失败：{error}"))?;
+    let format = reader
+        .format()
+        .filter(|format| {
+            matches!(
+                format,
+                ImageFormat::Png | ImageFormat::Jpeg | ImageFormat::WebP
+            )
+        })
+        .ok_or_else(|| "封面仅支持 PNG、JPEG 或 WebP 格式".to_string())?;
+    let (width, height) = reader
+        .into_dimensions()
+        .map_err(|error| format!("读取封面尺寸失败：{error}"))?;
+    validate_cover_dimensions(width, height)?;
+
+    let mut decoder = ImageReader::with_format(Cursor::new(bytes), format)
+        .into_decoder()
+        .map_err(|error| format!("创建封面解码器失败：{error}"))?;
+    let orientation = decoder
+        .orientation()
+        .map_err(|error| format!("读取封面方向失败：{error}"))?;
+    let mut image = DynamicImage::from_decoder(decoder)
+        .map_err(|error| format!("解码封面图片失败：{error}"))?;
+    image.apply_orientation(orientation);
+
+    if image.width() > MAX_CACHED_COVER_DIMENSION || image.height() > MAX_CACHED_COVER_DIMENSION {
+        Ok(image.resize(
+            MAX_CACHED_COVER_DIMENSION,
+            MAX_CACHED_COVER_DIMENSION,
+            FilterType::Lanczos3,
+        ))
+    } else {
+        Ok(image)
+    }
+}
+
+fn validate_cover_dimensions(width: u32, height: u32) -> Result<(), String> {
+    if width == 0 || height == 0 {
+        return Err("封面图片尺寸无效".to_string());
+    }
+    if width > MAX_COVER_DIMENSION || height > MAX_COVER_DIMENSION {
+        return Err(format!("封面图片宽高不能超过 {MAX_COVER_DIMENSION} 像素"));
+    }
+    if u64::from(width) * u64::from(height) > MAX_COVER_PIXELS {
+        return Err("封面图片总像素不能超过 4000 万".to_string());
+    }
+
+    Ok(())
+}
+
+fn encode_cached_cover(
+    app: &AppHandle,
+    game_id: &str,
+    target_stem: &str,
+    image: DynamicImage,
+) -> Result<String, String> {
+    let has_alpha = image.color().has_alpha();
+    let extension = if has_alpha { "webp" } else { "jpg" };
+    let target = game_asset_dir(app, game_id)?.join(format!("{target_stem}.{extension}"));
+    let temporary = target.with_extension(format!("{extension}.tmp"));
+    let width = image.width();
+    let height = image.height();
+
+    let encode_result = (|| -> Result<(), String> {
+        let file =
+            File::create(&temporary).map_err(|error| format!("创建封面缓存文件失败：{error}"))?;
+        let writer = BufWriter::new(file);
+
+        if has_alpha {
+            let rgba = image.to_rgba8();
+            WebPEncoder::new_lossless(writer)
+                .write_image(rgba.as_raw(), width, height, ColorType::Rgba8.into())
+                .map_err(|error| format!("编码 WebP 封面失败：{error}"))
+        } else {
+            let rgb = image.to_rgb8();
+            JpegEncoder::new_with_quality(writer, COVER_JPEG_QUALITY)
+                .write_image(rgb.as_raw(), width, height, ColorType::Rgb8.into())
+                .map_err(|error| format!("编码 JPEG 封面失败：{error}"))
+        }
+    })();
+
+    if let Err(error) = encode_result {
+        let _ = fs::remove_file(&temporary);
+        return Err(error);
+    }
+
+    fs::rename(&temporary, &target).map_err(|error| {
+        let _ = fs::remove_file(&temporary);
+        format!("保存封面缓存失败：{error}")
+    })?;
 
     path_to_string(target)
 }
@@ -471,7 +581,11 @@ fn cleanup_stale_cover_files(app: &AppHandle, game_id: &str, current_cover: Opti
         let is_cover = path
             .file_stem()
             .and_then(|value| value.to_str())
-            .is_some_and(|value| value == "cover" || value.starts_with("cover-manual-"));
+            .is_some_and(|value| {
+                value == "cover"
+                    || value.starts_with("cover-auto-")
+                    || value.starts_with("cover-manual-")
+            });
         if is_cover
             && current_cover
                 .as_ref()
@@ -499,15 +613,13 @@ fn detect_and_cache_cover(
         return Ok(None);
     };
 
-    let extension = source
-        .extension()
-        .and_then(|value| value.to_str())
-        .unwrap_or("png")
-        .to_ascii_lowercase();
-    let target = game_asset_dir(app, game_id)?.join(format!("cover.{extension}"));
-    fs::copy(&source, &target).map_err(|error| error.to_string())?;
-
-    path_to_string(target).map(Some)
+    let Ok(timestamp) = current_timestamp_millis() else {
+        return Ok(None);
+    };
+    match cache_cover_image(app, &source, game_id, &format!("cover-auto-{timestamp}")) {
+        Ok(path) => Ok(Some(path)),
+        Err(_) => Ok(None),
+    }
 }
 
 fn find_cover_candidate(folder: &Path) -> Option<PathBuf> {
@@ -1093,7 +1205,10 @@ pub async fn scan_games_command(
 
 #[cfg(test)]
 mod tests {
-    use super::parse_launch_args;
+    use std::io::Cursor;
+
+    use super::{decode_cover_image, parse_launch_args, validate_cover_dimensions};
+    use image::{DynamicImage, ImageFormat};
 
     #[test]
     fn parses_quoted_windows_path_without_removing_backslashes() {
@@ -1133,5 +1248,51 @@ mod tests {
         let error = parse_launch_args(r#""C:\Games\example.exe"#).unwrap_err();
 
         assert_eq!(error, "启动参数中的引号未闭合");
+    }
+
+    #[test]
+    fn decodes_and_resizes_valid_cover_image() {
+        let source = DynamicImage::new_rgb8(3000, 1000);
+        let mut encoded = Cursor::new(Vec::new());
+        source.write_to(&mut encoded, ImageFormat::Png).unwrap();
+
+        let decoded = decode_cover_image(encoded.into_inner()).unwrap();
+
+        assert_eq!(decoded.width(), 2400);
+        assert_eq!(decoded.height(), 800);
+    }
+
+    #[test]
+    fn applies_exif_orientation_before_resizing() {
+        let source = DynamicImage::new_rgb8(2, 1);
+        let mut encoded = Cursor::new(Vec::new());
+        source.write_to(&mut encoded, ImageFormat::Jpeg).unwrap();
+        let mut jpeg = encoded.into_inner();
+
+        let exif_orientation_rotate_90 = [
+            0xff, 0xe1, 0x00, 0x22, b'E', b'x', b'i', b'f', 0x00, 0x00, b'I', b'I', 0x2a, 0x00,
+            0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x12, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00,
+            0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ];
+        jpeg.splice(2..2, exif_orientation_rotate_90);
+
+        let decoded = decode_cover_image(jpeg).unwrap();
+
+        assert_eq!(decoded.width(), 1);
+        assert_eq!(decoded.height(), 2);
+    }
+
+    #[test]
+    fn rejects_file_content_that_is_not_an_image() {
+        let error = decode_cover_image(b"not an image".to_vec()).unwrap_err();
+
+        assert_eq!(error, "封面仅支持 PNG、JPEG 或 WebP 格式");
+    }
+
+    #[test]
+    fn rejects_cover_dimensions_over_limits() {
+        assert!(validate_cover_dimensions(8192, 1).is_ok());
+        assert!(validate_cover_dimensions(8193, 1).is_err());
+        assert!(validate_cover_dimensions(8000, 6000).is_err());
     }
 }
