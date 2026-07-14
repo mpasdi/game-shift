@@ -44,12 +44,7 @@
   const previewInitial = computed(() => form.name.trim().slice(0, 1).toUpperCase() || 'G')
   const previewCoverSrc = computed(() => toLocalAssetSrc(form.coverPath || props.game?.cover))
   const previewIconSrc = computed(() => toLocalAssetSrc(props.game?.icon))
-  const selectedCoverName = computed(() => getFileName(form.coverPath))
-  const previewHint = computed(() => {
-    if (selectedCoverName.value) return `${selectedCoverName.value} · 保存后显示`
-    if (previewCoverSrc.value) return '当前封面'
-    return isEditing.value ? '尚未设置封面' : '保存后自动识别'
-  })
+  const coverActionText = computed(() => (previewCoverSrc.value ? '更换封面' : '选择封面'))
 
   watch(
     () => [props.open, props.game, props.mode] as const,
@@ -189,7 +184,14 @@
       <form class="game-form" @submit.prevent="submitForm">
         <div class="game-form__hero">
           <aside class="cover-preview" aria-label="游戏封面预览">
-            <div class="cover-preview__art" aria-hidden="true">
+            <button
+              class="cover-preview__art"
+              :class="{ 'cover-preview__art--empty': !previewCoverSrc && !previewIconSrc }"
+              type="button"
+              :aria-label="coverActionText"
+              :disabled="saving"
+              @click="chooseCoverPath"
+            >
               <img
                 v-if="previewCoverSrc"
                 :key="previewCoverSrc"
@@ -199,12 +201,13 @@
               />
               <img v-else-if="previewIconSrc" class="cover-preview__icon" :src="previewIconSrc" alt="" />
               <span v-else>{{ previewInitial }}</span>
-              <span class="cover-preview__hint">{{ previewHint }}</span>
-            </div>
-            <BaseButton variant="secondary" size="sm" type="button" :disabled="saving" @click="chooseCoverPath">
-              <template #icon><ImagePlus :size="16" /></template>
-              {{ props.game?.cover || form.coverPath ? '更换封面' : '选择封面' }}
-            </BaseButton>
+              <span class="cover-preview__overlay" aria-hidden="true">
+                <span class="cover-preview__action">
+                  <ImagePlus :size="17" />
+                  {{ coverActionText }}
+                </span>
+              </span>
+            </button>
           </aside>
 
           <div class="game-form__hero-fields">
@@ -278,9 +281,7 @@
   }
 
   .cover-preview {
-    display: grid;
-    align-content: start;
-    gap: 8px;
+    display: block;
   }
 
   .cover-preview__art {
@@ -292,18 +293,32 @@
     place-items: center;
     border: 1px solid var(--accent-border);
     border-radius: 8px;
+    padding: 0;
     background:
       radial-gradient(circle at 50% 20%, rgba(157, 140, 255, 0.26), transparent 42%),
       linear-gradient(145deg, rgba(124, 92, 255, 0.32), rgba(255, 255, 255, 0.055));
     color: var(--text);
+    cursor: pointer;
     font-size: 42px;
+    font-family: inherit;
     font-weight: 800;
+  }
+
+  .cover-preview__art:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .cover-preview__art:disabled {
+    cursor: not-allowed;
+    opacity: 0.72;
   }
 
   .cover-preview__image {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 180ms ease;
   }
 
   .cover-preview__icon {
@@ -312,23 +327,38 @@
     object-fit: contain;
   }
 
-  .cover-preview__hint {
+  .cover-preview__overlay {
     position: absolute;
-    right: 8px;
-    bottom: 8px;
-    left: 8px;
-    overflow: hidden;
-    border-radius: 5px;
-    background: rgba(12, 10, 18, 0.34);
-    color: var(--text-subtle);
-    padding: 3px 6px;
-    font-size: var(--font-size-xs);
-    font-weight: 500;
-    line-height: 1.2;
-    text-align: center;
-    text-overflow: ellipsis;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(10, 8, 15, 0.58);
+    opacity: 0;
+    transition: opacity 180ms ease;
+  }
+
+  .cover-preview__action {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    color: #fff;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    line-height: 1;
     white-space: nowrap;
-    backdrop-filter: blur(8px);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.72);
+  }
+
+  .cover-preview__art:hover:not(:disabled) .cover-preview__overlay,
+  .cover-preview__art:focus-visible .cover-preview__overlay,
+  .cover-preview__art--empty .cover-preview__overlay {
+    opacity: 1;
+  }
+
+  .cover-preview__art:hover:not(:disabled) .cover-preview__image {
+    transform: scale(1.025);
   }
 
   .form-field {
