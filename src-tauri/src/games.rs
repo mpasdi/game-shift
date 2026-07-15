@@ -321,7 +321,7 @@ pub fn launch_game(app: &AppHandle, id: &str) -> Result<Game, String> {
 
     command
         .spawn()
-        .map_err(|error| format!("启动游戏失败：{error}"))?;
+        .map_err(|error| format_launch_error(&error))?;
 
     let now = current_timestamp_millis()?;
     connection
@@ -340,6 +340,14 @@ pub fn launch_game(app: &AppHandle, id: &str) -> Result<Game, String> {
     get_game_by_id(&connection, id)?.ok_or_else(|| "游戏启动后无法读取".to_string())
 }
 
+fn format_launch_error(error: &std::io::Error) -> String {
+    match error.raw_os_error() {
+        Some(193 | 216) => "该文件无法作为 Windows 程序运行，请重新选择".to_string(),
+        Some(5) => "没有权限启动这个文件，请检查文件权限后重试".to_string(),
+        Some(740) => "这个程序需要管理员权限，请尝试以管理员身份运行 Game Shift".to_string(),
+        _ => "Windows 无法启动这个文件，请检查文件是否有效或仍可访问".to_string(),
+    }
+}
 fn parse_launch_args(args: &str) -> Result<Vec<String>, String> {
     let mut parsed = Vec::new();
     let mut current = String::new();
@@ -1207,9 +1215,19 @@ pub async fn scan_games_command(
 mod tests {
     use std::io::Cursor;
 
-    use super::{decode_cover_image, parse_launch_args, validate_cover_dimensions};
+    use super::{
+        decode_cover_image, format_launch_error, parse_launch_args, validate_cover_dimensions,
+    };
     use image::{DynamicImage, ImageFormat};
 
+    #[test]
+    fn launch_error_hides_windows_placeholders() {
+        let error = std::io::Error::from_raw_os_error(216);
+        let message = format_launch_error(&error);
+
+        assert_eq!(message, "该文件无法作为 Windows 程序运行，请重新选择");
+        assert!(!message.contains("%1"));
+    }
     #[test]
     fn parses_quoted_windows_path_without_removing_backslashes() {
         let parsed =

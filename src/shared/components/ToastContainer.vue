@@ -29,7 +29,7 @@
         role="status"
       >
         <component :is="iconByType[item.type]" class="toast-message__icon" :size="17" aria-hidden="true" />
-        <span class="toast-message__text">{{ getMessage(item) }}</span>
+        <span class="toast-message__text" :title="getMessage(item)">{{ getMessage(item) }}</span>
       </article>
     </TransitionGroup>
   </Teleport>
