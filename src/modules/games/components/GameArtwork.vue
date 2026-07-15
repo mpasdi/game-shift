@@ -80,7 +80,7 @@
 
   .game-artwork--quick {
     width: 100%;
-    height: 104px;
+    height: 100%;
     background: linear-gradient(145deg, hsl(var(--artwork-hue) 42% 22%), rgba(24, 22, 30, 0.96));
     font-size: 32px;
   }

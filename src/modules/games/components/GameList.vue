@@ -11,11 +11,13 @@
       actionMode?: 'full' | 'quick'
       showManageActions?: boolean
       launchingGameIds?: string[]
+      showLastPlayTime?: boolean
     }>(),
     {
       actionMode: 'full',
       showManageActions: true,
-      launchingGameIds: () => []
+      launchingGameIds: () => [],
+      showLastPlayTime: false
     }
   )
 
@@ -59,6 +61,7 @@
         :key="game.id"
         :game="game"
         :is-launching="props.launchingGameIds.includes(game.id)"
+        :show-last-play-time="props.showLastPlayTime"
         @launch="emit('launch', $event)"
         @toggle-favorite="emit('toggleFavorite', $event)"
       />
@@ -84,7 +87,7 @@
   }
 
   .game-area.grid {
-    grid-template-columns: repeat(auto-fill, 168px);
+    grid-template-columns: repeat(auto-fill, 128px);
   }
 
   .game-area.grid.game-area--actions-full {
@@ -104,7 +107,7 @@
 
   .game-area.favorite-strip {
     display: grid;
-    grid-auto-columns: 154px;
+    grid-auto-columns: 128px;
     grid-auto-flow: column;
     grid-template-columns: none;
     gap: 12px;
@@ -127,7 +130,7 @@
   }
 
   .game-area.home-favorite-grid {
-    grid-template-columns: repeat(var(--favorite-columns, 4), minmax(0, 1fr));
+    grid-template-columns: repeat(var(--favorite-columns, 4), minmax(120px, 1fr));
     overflow: hidden;
   }
 
@@ -136,7 +139,7 @@
   }
 
   .game-area.home-favorite-grid :deep(.game-artwork--quick) {
-    height: clamp(88px, 5vw, 104px);
+    height: 100%;
   }
 
   @media (max-width: 720px) {
@@ -144,8 +147,12 @@
       grid-template-columns: minmax(0, 1fr);
     }
 
+    .game-area.grid.game-area--actions-quick {
+      grid-template-columns: repeat(auto-fill, 128px);
+    }
+
     .game-area.home-favorite-grid {
-      grid-template-columns: repeat(var(--favorite-columns, 2), minmax(0, 1fr));
+      grid-template-columns: repeat(var(--favorite-columns, 2), minmax(120px, 1fr));
     }
   }
 </style>

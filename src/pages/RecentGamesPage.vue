@@ -28,6 +28,7 @@
     :action-mode="actions.viewMode.value === 'grid' ? 'quick' : 'full'"
     :launching-game-ids="actions.launchingGameIds.value"
     :show-manage-actions="false"
+    show-last-play-time
     empty-title="还没有最近游玩记录"
     empty-description="启动游戏后，这里会按最近游玩时间展示。"
     @update-view-mode="actions.setViewMode"

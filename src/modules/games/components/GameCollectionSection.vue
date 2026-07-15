@@ -17,6 +17,7 @@
       actionMode?: 'full' | 'quick'
       showManageActions?: boolean
       launchingGameIds?: string[]
+      showLastPlayTime?: boolean
       emptyTitle: string
       emptyDescription: string
       listClass?: string | Record<string, boolean>
@@ -25,6 +26,7 @@
       actionMode: 'full',
       showManageActions: true,
       launchingGameIds: () => [],
+      showLastPlayTime: false,
       listClass: ''
     }
   )
@@ -85,6 +87,7 @@
       :action-mode="props.actionMode"
       :show-manage-actions="props.showManageActions"
       :launching-game-ids="props.launchingGameIds"
+      :show-last-play-time="props.showLastPlayTime"
       @edit="emit('edit', $event)"
       @launch="emit('launch', $event)"
       @toggle-favorite="emit('toggleFavorite', $event)"

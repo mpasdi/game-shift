@@ -5,6 +5,7 @@
   import DataTable from '../../../shared/components/DataTable.vue'
   import IconButton from '../../../shared/components/IconButton.vue'
   import type { Game } from '../types/game'
+  import { formatLastPlayTime } from '../utils/formatLastPlayTime'
   import GameArtwork from './GameArtwork.vue'
 
   type GameTableDensity = 'compact' | 'regular'
@@ -58,17 +59,6 @@
     return game.exePath.split(/[\\/]/).pop() ?? game.exePath
   }
 
-  function formatLastPlayFull(game: Game) {
-    if (!game.lastPlayTime) return '无启动记录'
-    return new Intl.DateTimeFormat('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(game.lastPlayTime))
-  }
-
   function isLaunching(game: Game) {
     return props.launchingGameIds.includes(game.id)
   }
@@ -98,8 +88,8 @@
     </template>
 
     <template #cell-lastPlay="{ row }">
-      <span class="game-table__stat" :title="formatLastPlayFull(row as Game)">
-        {{ formatLastPlayFull(row as Game) }}
+      <span class="game-table__stat" :title="formatLastPlayTime((row as Game).lastPlayTime)">
+        {{ formatLastPlayTime((row as Game).lastPlayTime) }}
       </span>
     </template>
 

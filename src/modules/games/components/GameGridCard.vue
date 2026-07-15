@@ -3,6 +3,7 @@
   import { Pencil, Play, Trash2 } from '@lucide/vue'
   import IconButton from '../../../shared/components/IconButton.vue'
   import type { Game } from '../types/game'
+  import { formatLastPlayTime } from '../utils/formatLastPlayTime'
   import GameArtwork from './GameArtwork.vue'
   import GameFavoriteToggle from './GameFavoriteToggle.vue'
 
@@ -25,16 +26,7 @@
     remove: [game: Game]
   }>()
 
-  const lastPlayText = computed(() => {
-    if (!props.game.lastPlayTime) return '无启动记录'
-    return new Intl.DateTimeFormat('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(props.game.lastPlayTime))
-  })
+  const lastPlayText = computed(() => formatLastPlayTime(props.game.lastPlayTime))
 
   const metaText = computed(() => `${lastPlayText.value} · ${props.game.playCount} 次`)
 </script>

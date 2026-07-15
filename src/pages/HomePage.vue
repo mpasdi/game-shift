@@ -55,10 +55,10 @@
   })
 
   function getFavoriteColumnCount(width: number) {
-    const minimumCardWidth = 150
+    const minimumCardWidth = 120
     const gap = 12
     const columns = Math.floor((width + gap) / (minimumCardWidth + gap))
-    return Math.min(10, Math.max(2, columns))
+    return Math.min(12, Math.max(2, columns))
   }
 
   function updateFavoriteColumns() {
