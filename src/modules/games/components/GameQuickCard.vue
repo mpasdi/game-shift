@@ -85,6 +85,10 @@
     box-shadow: 0 16px 38px rgba(0, 0, 0, 0.24);
   }
 
+  .game-quick-card:hover :deep(.game-artwork__cover) {
+    transform: scale(1.025);
+  }
+
   .game-quick-card :deep(.game-artwork--quick) {
     position: absolute;
     inset: 0;
@@ -168,5 +172,15 @@
     background: linear-gradient(180deg, #8d73ff, #6d50e8);
     color: #ffffff;
     box-shadow: 0 8px 18px rgba(73, 51, 180, 0.28);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .game-quick-card :deep(.game-artwork__cover) {
+      transition: none;
+    }
+
+    .game-quick-card:hover :deep(.game-artwork__cover) {
+      transform: none;
+    }
   }
 </style>

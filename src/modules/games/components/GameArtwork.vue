@@ -199,7 +199,7 @@
     height: 58px;
     border-radius: 15px;
     font-size: 27px;
-    transform: none;
+    transform: translateY(-12px);
   }
 
   .game-artwork--quick .game-artwork__logo-frame .game-artwork__logo {
