@@ -370,6 +370,7 @@
 - [x] 修正 czg 配置加载文件为 `cz.config.js`
 - [x] 配置 `commit` 交互式提交脚本
 - [x] 接入提交信息规范
+- [x] 将 Rust 游戏后端按领域内职责拆分为 commands、models、repository、scanner、launcher 和 assets 模块
 
 ### 3.18 阶段十八：UI 体验重构
 

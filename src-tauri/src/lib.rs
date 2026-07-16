@@ -39,13 +39,13 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             app_info,
-            games::list_games_command,
-            games::get_game_command,
-            games::create_game_command,
-            games::update_game_command,
-            games::delete_game_command,
-            games::launch_game_command,
-            games::scan_games_command
+            games::commands::list_games_command,
+            games::commands::get_game_command,
+            games::commands::create_game_command,
+            games::commands::update_game_command,
+            games::commands::delete_game_command,
+            games::commands::launch_game_command,
+            games::commands::scan_games_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running Game Shift");
