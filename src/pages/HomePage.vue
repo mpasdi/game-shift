@@ -32,7 +32,7 @@
   const favoriteColumns = ref(4)
   const recentPreviewGames = computed(() => recentGames.value.slice(0, 5))
   const favoritePreviewGames = computed(() => favoriteGames.value.slice(0, favoriteColumns.value))
-  const libraryPreviewGames = computed(() => visibleGames.value.slice(0, 5))
+  const libraryPreviewGames = computed(() => visibleGames.value.slice(0, 10))
   let pageContentObserver: ResizeObserver | null = null
 
   onMounted(() => {
