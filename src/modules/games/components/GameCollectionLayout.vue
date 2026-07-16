@@ -1,54 +1,31 @@
 <script setup lang="ts">
   import type { Component } from 'vue'
   import { Grid2X2, LayoutList } from '@lucide/vue'
-  import EmptyState from '../../../shared/components/EmptyState.vue'
   import IconButton from '../../../shared/components/IconButton.vue'
-  import GameList from './GameList.vue'
-  import type { Game } from '../types/game'
   import type { GameViewMode } from '../composables/useGameLibraryActions'
 
-  const props = withDefaults(
-    defineProps<{
-      title: string
-      icon: Component
-      meta: string
-      games: Game[]
-      viewMode: GameViewMode
-      actionMode?: 'full' | 'quick'
-      showManageActions?: boolean
-      launchingGameIds?: string[]
-      showLastPlayTime?: boolean
-      emptyTitle: string
-      emptyDescription: string
-      listClass?: string | Record<string, boolean>
-    }>(),
-    {
-      actionMode: 'full',
-      showManageActions: true,
-      launchingGameIds: () => [],
-      showLastPlayTime: false,
-      listClass: ''
-    }
-  )
+  const props = defineProps<{
+    title: string
+    icon: Component
+    meta: string
+    viewMode: GameViewMode
+  }>()
 
   const emit = defineEmits<{
     updateViewMode: [viewMode: GameViewMode]
-    edit: [game: Game]
-    launch: [game: Game]
-    toggleFavorite: [game: Game]
-    remove: [game: Game]
   }>()
 </script>
 
 <template>
-  <section class="library-section">
-    <div class="section-heading">
-      <h2 class="section-title">
+  <section class="game-collection-layout">
+    <div class="game-collection-layout__heading">
+      <h2 class="game-collection-layout__title">
         <component :is="props.icon" :size="14" />
         <span>{{ props.title }}</span>
-        <span class="section-title__meta">{{ props.meta }}</span>
+        <span class="game-collection-layout__meta">{{ props.meta }}</span>
       </h2>
-      <div class="section-actions">
+
+      <div class="game-collection-layout__actions">
         <div class="segmented" aria-label="视图切换">
           <IconButton
             label="网格视图"
@@ -68,49 +45,25 @@
       </div>
     </div>
 
-    <EmptyState
-      v-if="props.games.length === 0"
-      variant="plain"
-      :label="props.emptyTitle"
-      :eyebrow="props.title"
-      :title="props.emptyTitle"
-      :description="props.emptyDescription"
-    >
-      <template #icon><component :is="props.icon" :size="15" /></template>
-    </EmptyState>
-
-    <GameList
-      v-else
-      :class="props.listClass"
-      :games="props.games"
-      :view-mode="props.viewMode"
-      :action-mode="props.actionMode"
-      :show-manage-actions="props.showManageActions"
-      :launching-game-ids="props.launchingGameIds"
-      :show-last-play-time="props.showLastPlayTime"
-      @edit="emit('edit', $event)"
-      @launch="emit('launch', $event)"
-      @toggle-favorite="emit('toggleFavorite', $event)"
-      @remove="emit('remove', $event)"
-    />
+    <slot />
   </section>
 </template>
 
 <style scoped>
-  .library-section {
+  .game-collection-layout {
     display: grid;
     gap: 14px;
     animation: section-in 180ms ease-out both;
   }
 
-  .section-heading {
+  .game-collection-layout__heading {
     display: flex;
     gap: 14px;
     align-items: center;
     justify-content: space-between;
   }
 
-  .section-title {
+  .game-collection-layout__title {
     display: inline-flex;
     gap: 7px;
     align-items: center;
@@ -121,19 +74,19 @@
     line-height: 1.2;
   }
 
-  .section-title svg {
+  .game-collection-layout__title svg {
     width: 15px;
     height: 15px;
     color: var(--accent-strong);
   }
 
-  .section-title__meta {
+  .game-collection-layout__meta {
     color: var(--text-muted);
     font-size: var(--font-size-sm);
     font-weight: 600;
   }
 
-  .section-actions {
+  .game-collection-layout__actions {
     display: flex;
     gap: 10px;
     align-items: center;
@@ -158,12 +111,12 @@
   }
 
   @media (max-width: 720px) {
-    .section-heading {
+    .game-collection-layout__heading {
       align-items: stretch;
       flex-direction: column;
     }
 
-    .section-actions {
+    .game-collection-layout__actions {
       width: 100%;
     }
   }

@@ -159,6 +159,10 @@
 <style scoped>
   .game-table {
     min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.035);
   }
 
   .game-table__game {

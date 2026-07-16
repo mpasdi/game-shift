@@ -3,8 +3,11 @@
   import { RouterLink } from 'vue-router'
   import { Clock3, Library, Search, Star } from '@lucide/vue'
   import { storeToRefs } from 'pinia'
-  import GameCollectionSection from '../modules/games/components/GameCollectionSection.vue'
-  import GameList from '../modules/games/components/GameList.vue'
+  import EmptyState from '../shared/components/EmptyState.vue'
+  import GameCardGrid from '../modules/games/components/GameCardGrid.vue'
+  import GameCollectionLayout from '../modules/games/components/GameCollectionLayout.vue'
+  import GameGridCard from '../modules/games/components/GameGridCard.vue'
+  import GameQuickCard from '../modules/games/components/GameQuickCard.vue'
   import GameTable from '../modules/games/components/GameTable.vue'
   import { useGameLibraryActions } from '../modules/games/composables/useGameLibraryActions'
   import { useGamesStore } from '../modules/games/stores/games'
@@ -69,22 +72,48 @@
 </script>
 
 <template>
-  <GameCollectionSection
+  <GameCollectionLayout
     v-if="hasSearch"
     title="搜索结果"
     :icon="Search"
     :meta="`${visibleGames.length} 个匹配`"
-    :games="visibleGames"
     :view-mode="actions.viewMode.value"
-    :launching-game-ids="actions.launchingGameIds.value"
-    empty-title="没有找到匹配的游戏"
-    empty-description="可以调整搜索关键词，或手动添加新的启动程序。"
     @update-view-mode="actions.setViewMode"
-    @edit="actions.openEditGameDialog"
-    @launch="actions.launchGame"
-    @toggle-favorite="actions.toggleFavorite"
-    @remove="actions.openRemoveGameDialog"
-  />
+  >
+    <EmptyState
+      v-if="visibleGames.length === 0"
+      variant="plain"
+      label="没有找到匹配的游戏"
+      eyebrow="搜索结果"
+      title="没有找到匹配的游戏"
+      description="可以调整搜索关键词，或手动添加新的启动程序。"
+    >
+      <template #icon><Search :size="15" /></template>
+    </EmptyState>
+
+    <GameCardGrid v-else-if="actions.viewMode.value === 'grid'" variant="full">
+      <GameGridCard
+        v-for="game in visibleGames"
+        :key="game.id"
+        :game="game"
+        :is-launching="actions.launchingGameIds.value.includes(game.id)"
+        @edit="actions.openEditGameDialog"
+        @launch="actions.launchGame"
+        @toggle-favorite="actions.toggleFavorite"
+        @remove="actions.openRemoveGameDialog"
+      />
+    </GameCardGrid>
+
+    <GameTable
+      v-else
+      :games="visibleGames"
+      :launching-game-ids="actions.launchingGameIds.value"
+      @edit="actions.openEditGameDialog"
+      @launch="actions.launchGame"
+      @toggle-favorite="actions.toggleFavorite"
+      @remove="actions.openRemoveGameDialog"
+    />
+  </GameCollectionLayout>
 
   <div v-else ref="pageContent" class="home-page">
     <section class="library-section library-section--recent">
@@ -125,18 +154,21 @@
         <Star :size="18" />
         <span>点击游戏卡片上的星标，把常玩的游戏放到这里。</span>
       </div>
-      <GameList
+      <GameCardGrid
         v-else
         class="home-favorite-grid"
         :style="{ '--favorite-columns': favoriteColumns }"
-        :games="favoritePreviewGames"
-        view-mode="grid"
-        action-mode="quick"
-        :show-manage-actions="false"
-        :launching-game-ids="actions.launchingGameIds.value"
-        @launch="actions.launchGame"
-        @toggle-favorite="actions.toggleFavorite"
-      />
+        variant="quick"
+      >
+        <GameQuickCard
+          v-for="game in favoritePreviewGames"
+          :key="game.id"
+          :game="game"
+          :is-launching="actions.launchingGameIds.value.includes(game.id)"
+          @launch="actions.launchGame"
+          @toggle-favorite="actions.toggleFavorite"
+        />
+      </GameCardGrid>
     </section>
 
     <section class="library-section library-section--library">
@@ -215,6 +247,18 @@
     color: var(--accent-strong);
   }
 
+  .home-favorite-grid {
+    --game-grid-columns: repeat(var(--favorite-columns, 4), minmax(120px, 1fr));
+    overflow: hidden;
+  }
+
+  .home-favorite-grid :deep(.game-quick-card) {
+    min-height: 168px;
+  }
+
+  .home-favorite-grid :deep(.game-artwork--quick) {
+    height: 100%;
+  }
   .home-list {
     overflow: hidden;
     border: 0;
@@ -252,6 +296,10 @@
   }
 
   @media (max-width: 720px) {
+    .home-favorite-grid {
+      --game-grid-columns: repeat(var(--favorite-columns, 2), minmax(120px, 1fr));
+    }
+
     .section-heading {
       align-items: flex-start;
       flex-direction: column;
