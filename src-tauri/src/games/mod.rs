@@ -1,5 +1,7 @@
 mod assets;
 pub(crate) mod commands;
+#[allow(dead_code)]
+pub(crate) mod covers;
 mod launcher;
 mod models;
 mod repository;

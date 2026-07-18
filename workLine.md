@@ -632,10 +632,10 @@
 
 #### 9.2.2 联网封面模块边界
 
-- [ ] 定义可替换的 `CoverProvider` 接口，隔离第三方 API 数据结构
+- [x] 定义可替换的 `CoverProvider` 接口，隔离第三方 API 数据结构
 - [ ] 以 SteamGridDB 作为首个联网封面数据源
-- [ ] 定义游戏匹配结果、封面候选和 `CoverSelection` 类型
-- [ ] 使用 `unchanged`、`local`、`remote` 和 `remove` 明确区分封面变更意图
+- [x] 定义游戏匹配结果、封面候选和 `CoverSelection` 类型
+- [x] 使用 `unchanged`、`local`、`remote` 和 `remove` 明确区分封面变更意图
 - [ ] 新增联网搜索模块，负责按名称搜索游戏和按游戏查询封面候选
 - [ ] 对前端提供统一的 `search_cover_candidates` command，返回最佳匹配、其他游戏结果和封面候选
 - [ ] 新增联网下载模块，负责 HTTPS、可信域名、超时、重定向和响应体大小限制
@@ -648,7 +648,7 @@
 #### 9.2.3 联网封面实施顺序
 
 1. [x] 明确首版业务场景、非目标和失败回退行为
-2. [ ] 定义 provider 接口、领域模型和封面选择数据结构
+2. [x] 定义 provider 接口、领域模型和封面选择数据结构
 3. [ ] 接入 API Key 的本地配置、读取和校验
 4. [ ] 实现 SteamGridDB 游戏搜索、最佳匹配和封面候选统一查询 command
 5. [ ] 实现在线封面搜索与候选选择弹窗
