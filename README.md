@@ -191,7 +191,9 @@ commit-msg -> commitlint
 
 - [需求文档](./docs/requirements.md)
 - [UI 设计说明](./docs/ui-design.md)
-- [开发清单与 Windows 发布 SOP](./workLine.md)
+- [开发模块与实现清单](./workLine.md)
+- [Windows 发布 SOP](./docs/windows-release-sop.md)
+- [v0.1.0 发布记录](./docs/releases/v0.1.0.md)
 
 ## 反馈问题
 

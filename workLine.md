@@ -5,8 +5,10 @@
 本文档用于跟踪 Game Shift 的开发拆分和完成状态。
 
 - 需求来源：`docs/requirements.md`
-- 当前阶段：MVP `v0.1.0` 已发布，进入发布后验证与后续迭代阶段
+- 当前阶段：MVP `v0.1.0` 已发布，正在开发 `v0.2.0` 游戏封面管理
 - 技术路线：Tauri v2 + Vue 3 + TypeScript + Vite + Pinia + Rust + SQLite
+- 本文档中的复选框只表示实现或验收是否完成；产品流程和已确认业务规则统一记录在需求文档中
+- 历史版本交付内容记录在 `docs/releases/`，通用发布流程记录在 `docs/windows-release-sop.md`
 
 ## 2. 当前完成状态
 
@@ -568,35 +570,27 @@
 
 ## 8. 当前下一步
 
-`v0.1.0` 已完成合并、打包、发布和基础验证。接下来进入游戏封面管理能力开发，目标版本为 `v0.2.0`：
+`v0.1.0` 已发布，当前优先完成 `v0.2.0` 的可选联网封面纵向流程：
 
-- [x] 将 `dev` 合并到 `master`
-- [x] 创建并推送 `v0.1.0` Tag
-- [x] 构建 Windows x64 NSIS 安装包
-- [x] 发布 GitHub Release `Game Shift v0.1.0`
-- [x] 从 GitHub Release 重新下载安装包
-- [ ] 核对 GitHub Release 安装包的 SHA-256
-- [x] 完成 GitHub Release 安装包的安装、启动和基础功能验证
-- [x] 收集并记录 `v0.1.0` 已知问题（暂未发现阻塞性问题）
-- [x] 支持用户手动选择和更换游戏封面
-- [ ] 支持联网搜索、预览并下载游戏封面
-- [x] 完善封面缓存、格式和文件大小校验
-- [x] 优化无封面时的卡片视觉效果
+1. [ ] 在设置模块实现默认关闭的联网封面开关和配置状态
+2. [ ] 接入用户自备 SteamGridDB API Key 的本地保存、连接测试和删除能力
+3. [ ] 实现 SteamGridDB 游戏搜索和封面候选查询
+4. [ ] 实现在线封面搜索、匹配纠错和候选选择界面
+5. [ ] 实现网络封面安全下载并接入现有本地缓存链路
+6. [ ] 将待选网络封面接入新增和编辑游戏的保存流程
+7. [ ] 补齐异常处理、测试和手动验收
+8. [ ] 联网封面主流程完成后，再补充拖拽和剪贴板粘贴等本地选择方式
 
-## 9. 发布阶段建议
+## 9. 版本阶段与后续模块
 
-### 9.1 第一阶段：MVP / 首个开源可用版
+### 9.1 v0.1.0：MVP / 首个开源可用版
 
-模块目标：优先保证本地游戏库主流程可用，不被非核心管理能力阻塞。
+状态：已发布。
 
-- [x] 完成设置页基础信息
-- [x] 完成 Tauri 打包和 MVP 验收
-- [x] 验证扫描 / 导入 / 手动添加 / 编辑 / 移除 / 启动主流程
-- [x] 首版暂不开放分类入口
-- [x] 将发布提交合并到 `master`
-- [x] 发布 `v0.1.0` Tag 和 GitHub Release
+- 本版本完成的模块和实现状态保留在本文档第 2 至第 7 节。
+- 面向用户的交付内容、系统要求和已知限制见 `docs/releases/v0.1.0.md`。
 
-### 9.2 第二阶段：游戏封面管理
+### 9.2 v0.2.0：游戏封面管理
 
 模块目标：优先完善本地封面的选择方式和操作体验，并提供默认关闭、由用户主动配置的可选联网封面能力；联网封面不得成为游戏库管理和启动流程的前置依赖。完成后发布 `v0.2.0`。
 
@@ -618,38 +612,9 @@
 - [ ] 将选中的联网封面下载到本地缓存
 - [ ] 联网失败时提供明确错误提示并保留手动选择能力
 
-#### 9.2.1 联网封面首版业务规则
+联网封面的用户流程、启用条件、配置状态、失败回退和首版非目标见 `docs/requirements.md` 的“7.8 游戏封面管理”。
 
-- [x] 新增和编辑游戏共用同一套封面选择流程
-- [x] 联网封面是高级可选能力，不是 Game Shift 的默认依赖
-- [x] 联网封面默认关闭，未启用时封面选择流程不展示任何联网入口
-- [x] 只有用户在设置中主动启用联网封面并配置自己的 API Key 后，封面选择流程才展示“联网搜索”入口
-- [x] 启用联网封面后也不在弹窗打开或游戏名称变化时自动请求，只响应用户主动执行的搜索
-- [x] 用户只需输入搜索词并执行一次搜索，不强制先选择游戏再查询封面
-- [x] 后端内部完成“模糊搜索游戏 → 选择最佳匹配 → 查询该游戏封面”的两步请求
-- [x] 候选区展示当前匹配的游戏名称，并提供“匹配不正确”入口切换到其他游戏结果
-- [x] 自动匹配只负责缩短搜索流程，不自动选中或保存第一张封面
-- [x] 用户选择的网络封面先作为待保存预览，不立即覆盖现有封面
-- [x] 点击保存后再由 Rust 后端下载、校验、转码并写入本地缓存
-- [x] 取消新增或编辑时放弃待选网络封面，已有封面保持不变
-- [x] 下载失败时保持编辑弹窗和用户输入，允许重试、改用本地封面或放弃待选网络封面
-- [x] 无匹配结果时允许修改搜索词，并始终保留本地选择能力
-- [x] 首版不做自动采用第一张封面、扫描时批量匹配、后台静默替换和多数据源并行搜索
-
-#### 9.2.2 联网封面启用与配置规则
-
-- [x] 设置模块提供“联网封面”总开关，默认关闭
-- [x] 打开开关后展开数据源说明和 API Key 配置，不要求用户注册或登录 Game Shift 账号
-- [x] 首版区分“未启用”“已启用但未配置”“已启用且可用”“已启用但配置异常”四种状态
-- [x] 只有开关已启用且 API Key 已保存时，封面选择流程才展示联网入口
-- [x] “测试连接”与开关状态分离，临时断网或请求超时不得自动关闭联网封面
-- [x] 第三方明确返回未授权时标记配置异常，并引导用户重新填写或验证 API Key
-- [x] 关闭开关后立即隐藏联网入口并停止发起封面请求，但保留已经下载到本地的封面
-- [x] 关闭开关默认保留已保存的 API Key，并单独提供删除 API Key 的操作
-- [x] API Key 仅保存在用户本机，不写入源码、安装包或 Game Shift 官方服务
-- [x] 不建设 Game Shift 官方封面 API 网关，应用不依赖项目维护者持续运营的在线服务
-
-#### 9.2.3 联网封面模块边界
+#### 9.2.1 联网封面模块边界
 
 - [x] 定义可替换的 `CoverProvider` 接口，隔离第三方 API 数据结构
 - [ ] 以 SteamGridDB 作为首个联网封面数据源
@@ -664,21 +629,21 @@
 - [ ] 新增 `OnlineCoverDialog`，负责一次搜索、当前匹配提示、匹配纠错、候选预览、加载状态和错误反馈
 - [ ] 由统一封面选择入口协调本地文件选择、拖拽、剪贴板粘贴和按配置显隐的在线搜索
 
-#### 9.2.4 联网封面实施顺序
+#### 9.2.2 联网封面实施顺序
 
-1. [x] 明确首版业务场景、非目标和失败回退行为
-2. [x] 定义 provider 接口、领域模型和封面选择数据结构
-3. [ ] 完善本地图片选择、拖拽、剪贴板粘贴、替换和移除流程
-4. [ ] 在设置模块实现默认关闭的联网封面开关及四种配置状态
-5. [ ] 接入用户自备 API Key 的本地保存、读取、连接测试、异常提示和删除能力
-6. [ ] 根据联网封面开关和 Key 配置状态控制封面选择入口显隐
-7. [ ] 实现 SteamGridDB 游戏搜索、最佳匹配和封面候选统一查询 command
-8. [ ] 实现在线封面搜索与候选选择弹窗
-9. [ ] 实现网络图片安全下载，并接入现有封面缓存链路
-10. [ ] 将待选网络封面接入新增和编辑游戏的保存事务
-11. [ ] 补齐无结果、断网、超时、限流、无效密钥和损坏图片提示
-12. [ ] 补充 provider 解析、下载限制、开关与配置状态、封面选择状态和保存流程测试
-13. [ ] 完成手动验收并更新 README、版本说明和 `v0.2.0` 发布记录
+1. [x] 定义 provider 接口、领域模型和封面选择数据结构
+2. [ ] 在设置模块实现默认关闭的联网封面开关及四种配置状态
+3. [ ] 接入用户自备 API Key 的本地保存、读取、连接测试、异常提示和删除能力
+4. [ ] 根据联网封面开关和 Key 配置状态控制封面选择入口显隐
+5. [ ] 实现 SteamGridDB 游戏搜索、最佳匹配和封面候选统一查询 command
+6. [ ] 实现在线封面搜索与候选选择弹窗
+7. [ ] 实现网络图片安全下载，并接入现有封面缓存链路
+8. [ ] 将待选网络封面接入新增和编辑游戏的保存事务
+9. [ ] 补齐无结果、断网、超时、限流、无效密钥和损坏图片提示
+10. [ ] 补充 provider 解析、下载限制、开关与配置状态、封面选择状态和保存流程测试
+11. [ ] 完成联网封面手动验收
+12. [ ] 完善本地图片拖拽、剪贴板粘贴、替换和移除流程
+13. [ ] 更新 README、版本说明和 `v0.2.0` 发布记录
 
 ### 9.3 第三阶段：运行中状态
 
@@ -756,382 +721,8 @@
 - [ ] 初始化失败时展示可恢复的错误页面或错误提示，避免隐藏窗口后无反馈
 - [ ] 评估是否需要独立 splash / loading 页面承载启动过程
 
-## 10. Windows 版本发布 SOP
-
-本章节用于指导 Game Shift 从 `dev` 合并到 `master`、创建版本 Tag、构建 Windows NSIS 安装包、生成 SHA-256 校验值并发布到 GitHub Releases。
-
-### 10.1 发布原则
-
-- 日常开发、发布文档和版本号修改都先在 `dev` 完成。
-- `master` 只保留已经通过检查、可以打包发布的代码。
-- 每个公开版本对应一个固定 Tag，例如 `v0.1.0`。
-- Tag 一旦推送到远端，不要移动、覆盖或复用；修复问题应发布新版本，例如 `v0.1.1`。
-- 安装包必须从 `master` 的目标发布提交构建，不能从存在未提交修改的工作区构建。
-- GitHub Release 只上传由项目维护者从目标 Tag 对应提交生成的文件。
-- 首版未购买 Windows 代码签名证书时，可以发布未签名安装包，但必须提供 SHA-256 并明确 SmartScreen 提示。
-- `identifier` 已固定为 `com.gameshift.desktop`，首次公开发布后不要随意修改。
-
-### 10.2 首次发布前只需准备一次
-
-- [ ] 确认 GitHub 仓库是唯一官方发布地址。
-- [ ] 确认本机使用 Windows、Rust stable MSVC、Node.js、pnpm 和 WebView2。
-- [ ] 确认 `pnpm verify` 可以完整通过。
-- [ ] 确认 `pnpm tauri build --bundles nsis` 可以生成安装包。
-- [ ] 确认应用图标、产品名称和应用标识正确。
-- [ ] 确认 LICENSE 中的版权信息正确。
-- [ ] 确认是否暂时采用未签名发布；当前 `v0.1.0` 可按未签名 Beta 发布。
-- [ ] 确认 GitHub Release 页面会同时提供安装包和 SHA-256 文件。
-
-### 10.3 确定版本号
-
-Game Shift 使用语义化版本号：
-
-```text
-主版本.次版本.修订号
-MAJOR.MINOR.PATCH
-```
-
-- 不兼容的大改动：增加 `MAJOR`。
-- 向后兼容的新功能：增加 `MINOR`。
-- 向后兼容的问题修复：增加 `PATCH`。
-- 首个公开测试版本：`0.1.0`，对应 Tag `v0.1.0`。
-
-每次发布前检查以下三个文件的版本号完全一致：
-
-- `package.json > version`
-- `src-tauri/tauri.conf.json > version`
-- `src-tauri/Cargo.toml > package.version`
-
-可以使用以下命令快速检查：
-
-```powershell
-Select-String -Path package.json,src-tauri\tauri.conf.json,src-tauri\Cargo.toml -Pattern 'version'
-```
-
-### 10.4 在 `dev` 完成发布准备
-
-#### 10.4.1 更新本地分支
-
-```powershell
-git checkout dev
-git fetch origin
-git pull --ff-only origin dev
-git status --short
-```
-
-要求：
-
-- 当前分支必须是 `dev`。
-- 开始修改前工作区应干净。
-- 如果存在未提交修改，先确认并提交，不要直接切换或覆盖。
-
-#### 10.4.2 更新发布相关内容
-
-- [x] 确认三个位置的版本号均为 `0.1.0`。
-- [x] 更新 README 的当前状态、安装方式和版本信息。
-- [x] README 增加 Windows 系统要求与 GitHub Releases 下载说明。
-- [x] README 说明本地数据存储和卸载行为。
-- [x] README 记录当前已知限制。
-- [x] 整理本版本新增功能、修复内容和已知问题，供 GitHub Release 使用。
-- [x] 确认文档不再包含已经完成的“待打包”“待发布”等过时描述。
-
-建议提交：
-
-```powershell
-git add README.md workLine.md package.json src-tauri\tauri.conf.json src-tauri\Cargo.toml
-git commit -m "docs(release): prepare v0.1.0 release"
-```
-
-如果实际只有部分文件发生变化，只暂存真实改动的文件。
-
-### 10.5 在 `dev` 执行发布前检查
-
-#### 10.5.1 安装锁定版本依赖
-
-```powershell
-pnpm install --frozen-lockfile
-```
-
-- [x] `pnpm install --frozen-lockfile` 执行通过。
-
-#### 10.5.2 执行全量静态检查
-
-```powershell
-pnpm verify
-```
-
-- [x] `pnpm verify` 在 `dev` 执行通过。
-
-该命令应完成：
-
-- TypeScript 类型检查
-- ESLint
-- Prettier 格式检查
-- Vite 生产构建
-- Rust `cargo check`
-
-检查失败时不要继续合并或打 Tag，应回到 `dev` 修复并重新执行。
-
-#### 10.5.3 MVP 手动验收清单
-
-- [x] 首次启动可以正常创建数据库并进入首页。
-- [x] 空游戏库状态显示正常。
-- [x] 手动选择 `.exe` 可以添加游戏。
-- [x] 扫描目录可以展示候选程序并导入。
-- [x] 取消文件选择和取消扫描不会报错。
-- [x] 重复 `.exe` 路径无法重复导入。
-- [x] 中文、空格和较长路径可以正常处理。
-- [x] 编辑游戏名称、路径、工作目录和启动参数正常。
-- [x] 带双引号、反斜杠和完整 Windows 路径的启动参数正常传递。
-- [x] 移除游戏只删除数据库记录，不删除本地文件。
-- [x] 收藏、取消收藏、重新收藏及收藏时间排序正常。
-- [x] 搜索在首页、全部游戏、收藏和最近游玩页面范围正确。
-- [x] 点击启动可以运行游戏。
-- [x] 启动后最近游玩时间和启动次数正确更新。
-- [x] 关闭并重新打开 Game Shift 后数据仍然存在。
-- [x] 设置页显示的版本号、标识和数据目录正确。
-- [x] 大屏、小屏和最小窗口尺寸下主要页面无明显错位或滚动异常。
-
-### 10.6 合并 `dev` 到 `master`
-
-当前项目优先使用 fast-forward，避免不必要的合并提交。
-
-```powershell
-git status --short
-git checkout master
-git fetch origin
-git pull --ff-only origin master
-git merge --ff-only dev
-```
-
-如果 `git merge --ff-only dev` 失败：
-
-1. 不要使用 `--force`。
-2. 检查 `master` 是否存在 `dev` 没有的提交。
-3. 回到 `dev` 合并或变基需要保留的 `master` 改动。
-4. 重新执行检查后再尝试 fast-forward。
-
-合并后确认：
-
-```powershell
-git branch --show-current
-git status --short
-git log -5 --oneline
-pnpm verify
-```
-
-要求：
-
-- 当前分支为 `master`。
-- 工作区干净。
-- 最新提交是准备发布的提交。
-- `pnpm verify` 在 `master` 再次通过。
-
-### 10.7 从 `master` 构建 Windows EXE 安装包
-
-Game Shift 首版只发布 Windows x64 NSIS 安装包：
-
-```powershell
-pnpm tauri build --bundles nsis
-```
-
-默认输出目录：
-
-```text
-src-tauri/target/release/bundle/nsis/
-```
-
-`v0.1.0` 预期文件名：
-
-```text
-Game Shift_0.1.0_x64-setup.exe
-```
-
-注意：
-
-- 不要直接发布 `src-tauri/target/release/game-shift.exe`，优先发布 NSIS `*-setup.exe`。
-- 构建过程中如果失败，不要创建或推送 Tag；回到 `dev` 修复。
-- 每次代码或版本号变化后都必须重新构建，不能复用旧安装包。
-
-### 10.8 验证安装包
-
-#### 10.8.1 检查文件信息
-
-```powershell
-$installer = Resolve-Path '.\src-tauri\target\release\bundle\nsis\Game Shift_0.1.0_x64-setup.exe'
-Get-Item $installer | Select-Object Name, Length, LastWriteTime
-```
-
-#### 10.8.2 检查数字签名状态
-
-```powershell
-Get-AuthenticodeSignature -LiteralPath $installer
-```
-
-首版未签名时预期：
-
-```text
-Status: NotSigned
-```
-
-这是已知发布策略，不代表构建失败。Release 说明必须明确安装包当前未签名。
-
-#### 10.8.3 安装包手动验收
-
-- [ ] 双击安装包可以完成安装。
-- [ ] 安装过程展示正确的 Game Shift 名称和图标。
-- [ ] 安装后可以从开始菜单启动。
-- [ ] 安装后的版本功能与开发环境一致。
-- [ ] 安装版本可以正常读写应用数据目录。
-- [ ] 卸载程序可以正常运行。
-- [ ] 卸载不会误删用户本地游戏文件。
-- [ ] 如果保留数据库，重新安装后数据行为符合预期。
-- [ ] 最好在另一台 Windows 10/11 x64 电脑或 Windows Sandbox 中测试一次。
-
-### 10.9 生成 SHA-256 校验文件
-
-在仓库根目录执行：
-
-```powershell
-pnpm release:checksum
-```
-
-该命令会根据 `package.json` 中的版本号自动查找 NSIS 安装包、生成同名 `.sha256` 文件并核验结果。
-
-也可以手动执行：
-
-```powershell
-$installer = Resolve-Path '.\src-tauri\target\release\bundle\nsis\Game Shift_0.1.0_x64-setup.exe'
-$hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
-$checksumFile = "$installer.sha256"
-"$hash  $([System.IO.Path]::GetFileName($installer))" | Set-Content -LiteralPath $checksumFile -Encoding ascii
-Get-Content -LiteralPath $checksumFile
-```
-
-预期同时得到：
-
-```text
-Game Shift_0.1.0_x64-setup.exe
-Game Shift_0.1.0_x64-setup.exe.sha256
-```
-
-校验方法：
-
-```powershell
-Get-FileHash -LiteralPath '.\Game Shift_0.1.0_x64-setup.exe' -Algorithm SHA256
-Get-Content -LiteralPath '.\Game Shift_0.1.0_x64-setup.exe.sha256'
-```
-
-两个哈希值必须完全一致。
-
-### 10.10 创建并推送 Tag
-
-仅在代码检查、构建、安装和主流程验收全部通过后执行：
-
-```powershell
-git status --short
-git tag -a v0.1.0 -m "Game Shift v0.1.0"
-git show v0.1.0 --no-patch
-```
-
-确认 Tag 指向当前 `master` 发布提交后推送：
-
-```powershell
-git push origin master
-git push origin v0.1.0
-```
-
-如果 Tag 尚未推送且发现问题，可以删除本地 Tag：
-
-```powershell
-git tag -d v0.1.0
-```
-
-如果 Tag 已经公开推送，不要覆盖它；修复后发布 `v0.1.1`。
-
-### 10.11 创建 GitHub Release
-
-在 GitHub 仓库页面执行：
-
-1. 打开 `Releases`。
-2. 点击 `Draft a new release`。
-3. 选择 Tag：`v0.1.0`。
-4. Release title 填写：`Game Shift v0.1.0`。
-5. 上传以下两个文件：
-   - `Game Shift_0.1.0_x64-setup.exe`
-   - `Game Shift_0.1.0_x64-setup.exe.sha256`
-6. 填写版本说明并保存为草稿。
-7. 最后复核文件、版本号和说明，确认无误后点击发布。
-
-建议 Release 内容结构：
-
-```markdown
-## Game Shift v0.1.0
-
-Game Shift 是一个用于管理和启动 Windows 本地游戏的桌面应用。
-
-### 主要功能
-
-- 手动添加本地游戏
-- 扫描目录并批量导入
-- 游戏列表与网格视图
-- 收藏和最近游玩
-- 一键启动游戏
-- 本地 SQLite 数据存储
-
-### 系统要求
-
-- Windows 10/11 x64
-- WebView2 Runtime
-
-### 下载
-
-请下载 `Game Shift_0.1.0_x64-setup.exe`。
-
-### 安全说明
-
-当前版本未购买商业 Windows 代码签名证书，安装时可能出现 SmartScreen 提示。
-请只从本项目官方 GitHub Releases 下载，并使用随附的 SHA-256 文件校验完整性。
-
-### 已知限制
-
-- 暂不统计游戏运行状态和游玩时长
-- 暂不提供自动更新
-- 当前仅提供 Windows x64 安装包
-```
-
-### 10.12 发布后验证
-
-- [ ] 从 GitHub Release 页面重新下载安装包，不使用本地原文件。
-- [ ] 对下载文件重新计算 SHA-256，并与 Release 中的文件比较。
-- [ ] 在至少一台 Windows 10/11 x64 环境安装并启动。
-- [ ] 确认 Release 页面只包含正确版本文件。
-- [ ] 确认 Tag 指向 `master` 的目标发布提交。
-- [ ] 确认 README 中的下载链接或说明有效。
-- [ ] 在 Issues 或 Release 说明中记录首版已知问题。
-
-发布完成后切回开发分支：
-
-```powershell
-git checkout dev
-git status --short
-```
-
-如果发布后直接在 `master` 修复了文档或紧急问题，必须将对应提交同步回 `dev`，避免分支长期分叉。
-
-### 10.13 后续版本快速清单
-
-每次发布都按以下顺序执行：
-
-1. [ ] 在 `dev` 完成功能、版本号、README 和 Release Notes。
-2. [ ] 在 `dev` 执行 `pnpm verify` 和手动验收。
-3. [ ] fast-forward 合并 `dev` 到 `master`。
-4. [ ] 在 `master` 再次执行 `pnpm verify`。
-5. [ ] 在 `master` 构建 NSIS 安装包。
-6. [ ] 安装并手动测试构建产物。
-7. [ ] 生成并核对 SHA-256 文件。
-8. [ ] 创建并检查 annotated Tag。
-9. [ ] 推送 `master` 和 Tag。
-10. [ ] 创建 GitHub Release 并上传 EXE 与 SHA-256。
-11. [ ] 从 GitHub 重新下载并完成发布后验证。
-12. [ ] 切回 `dev` 继续开发。
+## 10. 发布与版本文档
+
+- 通用 Windows 打包与 GitHub Release 流程：`docs/windows-release-sop.md`
+- 已发布版本的用户可见功能、系统要求和已知限制：`docs/releases/`
+- 每次发布时新增或更新对应版本文档，并保持内容与 GitHub Release 文案一致
