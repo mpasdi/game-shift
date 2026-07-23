@@ -3,7 +3,7 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use super::models::{CoverCandidate, GameMatch};
+use super::models::{CoverCandidate, GameMatch, ResolvedCoverAsset};
 
 /// Provider 异步操作的统一返回类型。
 ///
@@ -28,12 +28,19 @@ pub(crate) trait CoverProvider: Send + Sync {
         &'a self,
         provider_game_id: &'a str,
     ) -> ProviderFuture<'a, Vec<CoverCandidate>>;
+
+    /// 保存时重新查询所属游戏，并按资源 ID 定位可信下载地址。
+    fn resolve_cover<'a>(
+        &'a self,
+        provider_game_id: &'a str,
+        asset_id: &'a str,
+    ) -> ProviderFuture<'a, Option<ResolvedCoverAsset>>;
 }
 
 #[cfg(test)]
 mod tests {
     use super::{CoverProvider, ProviderFuture};
-    use crate::games::covers::models::{CoverCandidate, GameMatch};
+    use crate::games::covers::models::{CoverCandidate, GameMatch, ResolvedCoverAsset};
 
     struct FakeProvider;
 
@@ -63,9 +70,24 @@ mod tests {
                     asset_id: "cover-1".to_string(),
                     provider_game_id: provider_game_id.to_string(),
                     preview_url: "https://example.invalid/cover-1.jpg".to_string(),
-                    width: 600,
-                    height: 900,
+                    width: Some(600),
+                    height: Some(900),
                 }])
+            })
+        }
+
+        fn resolve_cover<'a>(
+            &'a self,
+            provider_game_id: &'a str,
+            asset_id: &'a str,
+        ) -> ProviderFuture<'a, Option<ResolvedCoverAsset>> {
+            Box::pin(async move {
+                Ok(Some(ResolvedCoverAsset {
+                    provider: "fake".to_string(),
+                    asset_id: asset_id.to_string(),
+                    provider_game_id: provider_game_id.to_string(),
+                    download_url: "https://example.invalid/cover-1.jpg".to_string(),
+                }))
             })
         }
     }
@@ -79,5 +101,6 @@ mod tests {
         // 本测试只验证接口可以调用；真正执行异步请求会在 Provider 实现测试中覆盖。
         drop(provider.search_games("Example Game"));
         drop(provider.search_covers("game-1"));
+        drop(provider.resolve_cover("game-1", "cover-1"));
     }
 }

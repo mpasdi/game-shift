@@ -20,8 +20,8 @@ export interface CoverCandidate {
   providerGameId: string
   /** 只用于候选预览，不作为保存时的下载地址。 */
   previewUrl: string
-  width: number
-  height: number
+  width?: number | null
+  height?: number | null
 }
 
 /** 一次搜索包含的最佳匹配、纠错选项和封面候选。 */
@@ -38,6 +38,11 @@ export type CoverSelection =
   // 使用本机选择的图片。
   | { type: 'local'; path: string }
   // 使用网络候选；不允许前端提供任意下载 URL。
-  | { type: 'remote'; provider: string; assetId: string }
+  | {
+      type: 'remote'
+      provider: string
+      providerGameId: string
+      assetId: string
+    }
   // 主动移除当前封面。
   | { type: 'remove' }

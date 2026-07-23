@@ -29,10 +29,21 @@ pub(crate) struct CoverCandidate {
     pub(crate) provider_game_id: String,
     /// 仅用于候选界面预览；保存请求不会把这个 URL 当作下载依据。
     pub(crate) preview_url: String,
-    /// 原始候选图片宽度，用于展示尺寸和筛选比例。
-    pub(crate) width: u32,
-    /// 原始候选图片高度，用于展示尺寸和筛选比例。
-    pub(crate) height: u32,
+    /// 原始候选图片宽度；数据源未返回时为空。
+    pub(crate) width: Option<u32>,
+    /// 原始候选图片高度；数据源未返回时为空。
+    pub(crate) height: Option<u32>,
+}
+
+/// 后端在保存联网封面时重新定位出的可信资源。
+///
+/// 此类型不会序列化给前端，下载地址只在 Rust 内部流转。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ResolvedCoverAsset {
+    pub(crate) provider: String,
+    pub(crate) asset_id: String,
+    pub(crate) provider_game_id: String,
+    pub(crate) download_url: String,
 }
 
 /// 一次封面搜索返回给前端的完整结果。
@@ -58,9 +69,13 @@ pub(crate) enum CoverSelection {
     Unchanged,
     /// 使用用户从本机选择的图片。
     Local { path: String },
-    /// 使用联网候选。只传数据源和资源 ID，不接受任意下载 URL。
+    /// 使用联网候选。只传数据源中的游戏和资源标识，不接受任意下载 URL。
     Remote {
         provider: String,
+        /// SteamGridDB 没有公开按资源 ID 查询单张封面的接口，
+        /// 保存时需要先重新查询该游戏，再按资源 ID 定位用户选中的封面。
+        #[serde(rename = "providerGameId")]
+        provider_game_id: String,
         #[serde(rename = "assetId")]
         asset_id: String,
     },
@@ -78,6 +93,7 @@ mod tests {
     fn serializes_remote_cover_selection_without_a_download_url() {
         let selection = CoverSelection::Remote {
             provider: "steamgriddb".to_string(),
+            provider_game_id: "game-7".to_string(),
             asset_id: "grid-42".to_string(),
         };
 
@@ -86,6 +102,7 @@ mod tests {
             json!({
                 "type": "remote",
                 "provider": "steamgriddb",
+                "providerGameId": "game-7",
                 "assetId": "grid-42"
             })
         );
@@ -122,8 +139,8 @@ mod tests {
                 asset_id: "grid-42".to_string(),
                 provider_game_id: "game-7".to_string(),
                 preview_url: "https://example.invalid/grid-42.jpg".to_string(),
-                width: 600,
-                height: 900,
+                width: Some(600),
+                height: Some(900),
             }],
         };
 
