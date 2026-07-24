@@ -1,5 +1,6 @@
 mod db;
 mod games;
+mod settings;
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,7 +46,12 @@ pub fn run() {
             games::commands::update_game_command,
             games::commands::delete_game_command,
             games::commands::launch_game_command,
-            games::commands::scan_games_command
+            games::commands::scan_games_command,
+            settings::commands::get_online_cover_settings_command,
+            settings::commands::set_online_covers_enabled_command,
+            settings::commands::save_steamgriddb_api_key_command,
+            settings::commands::delete_steamgriddb_api_key_command,
+            settings::commands::test_steamgriddb_connection_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running Game Shift");

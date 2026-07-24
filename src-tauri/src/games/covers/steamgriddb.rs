@@ -2,6 +2,7 @@
 //!
 //! API Key 只用于 Rust 发出的鉴权请求，不进入 URL，也不会返回给前端。
 
+use std::fmt;
 use std::time::Duration;
 
 use reqwest::{StatusCode, Url};
@@ -14,6 +15,22 @@ const PROVIDER_ID: &str = "steamgriddb";
 const API_BASE_URL: &str = "https://www.steamgriddb.com/api/v2/";
 const REQUEST_TIMEOUT_SECONDS: u64 = 15;
 const VERTICAL_GRID_DIMENSIONS: &str = "600x900,342x482,660x930";
+const AUTH_TEST_GAME_ID: &str = "1";
+
+#[derive(Debug)]
+pub(crate) enum SteamGridDbError {
+    Unauthorized,
+    Message(String),
+}
+
+impl fmt::Display for SteamGridDbError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unauthorized => formatter.write_str("无效 SteamGridDB Key"),
+            Self::Message(message) => formatter.write_str(message),
+        }
+    }
+}
 
 pub(crate) struct SteamGridDbProvider {
     api_key: String,
@@ -54,27 +71,33 @@ impl SteamGridDbProvider {
             .map_err(|_| "无法构造 SteamGridDB 请求地址".to_string())?;
         url.path_segments_mut()
             .map_err(|_| "无法构造 SteamGridDB 请求地址".to_string())?
+            .pop_if_empty()
             .push(final_segment);
         Ok(url)
     }
 
-    async fn get_data<T: DeserializeOwned>(&self, url: Url) -> Result<Option<T>, String> {
+    async fn get_data<T: DeserializeOwned>(&self, url: Url) -> Result<Option<T>, SteamGridDbError> {
         let response = self
             .client
             .get(url)
             .bearer_auth(&self.api_key)
             .send()
             .await
-            .map_err(map_request_error)?;
+            .map_err(|error| SteamGridDbError::Message(map_request_error(error)))?;
 
         match response.status() {
-            StatusCode::UNAUTHORIZED => return Err("SteamGridDB API Key 无效或已失效".to_string()),
+            StatusCode::UNAUTHORIZED => return Err(SteamGridDbError::Unauthorized),
             StatusCode::TOO_MANY_REQUESTS => {
-                return Err("SteamGridDB 请求过于频繁，请稍后再试".to_string())
+                return Err(SteamGridDbError::Message(
+                    "SteamGridDB 请求过于频繁，请稍后再试".to_string(),
+                ))
             }
             StatusCode::NOT_FOUND => return Ok(None),
             status if !status.is_success() => {
-                return Err(format!("SteamGridDB 请求失败（HTTP {}）", status.as_u16()))
+                return Err(SteamGridDbError::Message(format!(
+                    "SteamGridDB 请求失败（HTTP {}）",
+                    status.as_u16()
+                )))
             }
             _ => {}
         }
@@ -82,8 +105,10 @@ impl SteamGridDbProvider {
         let body = response
             .bytes()
             .await
-            .map_err(|_| "读取 SteamGridDB 响应失败".to_string())?;
-        decode_body(&body).map(Some)
+            .map_err(|_| SteamGridDbError::Message("读取 SteamGridDB 响应失败".to_string()))?;
+        decode_body(&body)
+            .map(Some)
+            .map_err(SteamGridDbError::Message)
     }
 
     async fn fetch_grids(&self, provider_game_id: &str) -> Result<Vec<SteamGridDbGrid>, String> {
@@ -97,7 +122,21 @@ impl SteamGridDbProvider {
             .append_pair("epilepsy", "false")
             .append_pair("limit", "50");
 
-        Ok(self.get_data(url).await?.unwrap_or_default())
+        Ok(self
+            .get_data(url)
+            .await
+            .map_err(|error| error.to_string())?
+            .unwrap_or_default())
+    }
+
+    /// 使用严格鉴权的封面端点验证 API Key，不接触本地游戏数据。
+    /// 资源不存在时会在鉴权通过后返回 404；无效或缺失的 Key 返回 401。
+    pub(crate) async fn test_connection(&self) -> Result<(), SteamGridDbError> {
+        let url = self
+            .endpoint("grids/game/", AUTH_TEST_GAME_ID)
+            .map_err(SteamGridDbError::Message)?;
+        let _: Option<Vec<SteamGridDbGrid>> = self.get_data(url).await?;
+        Ok(())
     }
 }
 
@@ -114,7 +153,11 @@ impl CoverProvider for SteamGridDbProvider {
             }
 
             let url = self.endpoint("search/autocomplete/", query)?;
-            let games: Vec<SteamGridDbGame> = self.get_data(url).await?.unwrap_or_default();
+            let games: Vec<SteamGridDbGame> = self
+                .get_data(url)
+                .await
+                .map_err(|error| error.to_string())?
+                .unwrap_or_default();
             Ok(games.into_iter().map(GameMatch::from).collect())
         })
     }
@@ -314,6 +357,17 @@ mod tests {
             url.path_segments().unwrap().next_back(),
             Some("NieR:%20Automata%20%2F%20GOTY%3F")
         );
+        assert!(!url.as_str().contains("secret-test-key"));
+    }
+
+    #[test]
+    fn connection_test_uses_an_authenticated_cover_endpoint() {
+        let provider = SteamGridDbProvider::new("secret-test-key").unwrap();
+        let url = provider
+            .endpoint("grids/game/", super::AUTH_TEST_GAME_ID)
+            .unwrap();
+
+        assert_eq!(url.path(), "/api/v2/grids/game/1");
         assert!(!url.as_str().contains("secret-test-key"));
     }
 }

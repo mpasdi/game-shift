@@ -4,7 +4,7 @@
     modelValue: string
     placeholder?: string
     label?: string
-    type?: 'text' | 'search'
+    type?: 'text' | 'search' | 'password'
     readonly?: boolean
     autocomplete?: string
     name?: string

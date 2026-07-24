@@ -2,6 +2,7 @@
   import { computed, onMounted, ref } from 'vue'
   import { AppWindow, Database, FolderOpen, Info, Settings } from '@lucide/vue'
   import { getAppInfo, type AppInfo } from '../modules/settings/api'
+  import OnlineCoverSettingsPanel from '../modules/settings/components/OnlineCoverSettingsPanel.vue'
 
   const appInfo = ref<AppInfo | null>(null)
   const isLoading = ref(false)
@@ -68,6 +69,8 @@
     <p v-if="errorMessage" class="settings-page__error">{{ errorMessage }}</p>
 
     <div class="settings-grid">
+      <OnlineCoverSettingsPanel />
+
       <article class="settings-panel">
         <div class="settings-panel__heading">
           <Settings :size="16" />
@@ -122,6 +125,7 @@
 
   .settings-grid {
     display: grid;
+    gap: 14px;
     width: min(100%, var(--settings-content-width));
     margin: 0 auto;
   }
