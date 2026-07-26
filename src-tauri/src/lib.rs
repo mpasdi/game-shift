@@ -47,6 +47,8 @@ pub fn run() {
             games::commands::delete_game_command,
             games::commands::launch_game_command,
             games::commands::scan_games_command,
+            games::covers::commands::search_cover_candidates_command,
+            games::covers::commands::list_cover_candidates_command,
             settings::commands::get_online_cover_settings_command,
             settings::commands::set_online_covers_enabled_command,
             settings::commands::save_steamgriddb_api_key_command,

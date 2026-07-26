@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import type { CoverCandidate, CoverSearchResult } from './types/cover'
 import type { CreateGamePayload, Game, ScanCandidate, UpdateGamePayload } from './types/game'
 
 function isTauriRuntime() {
@@ -55,4 +56,20 @@ export async function scanGames(directory: string) {
   }
 
   return invoke<ScanCandidate[]>('scan_games_command', { directory })
+}
+
+export async function searchCoverCandidates(query: string) {
+  assertTauriRuntime('联网封面搜索')
+  return invoke<CoverSearchResult>('search_cover_candidates_command', { query })
+}
+
+export async function listCoverCandidates(provider: string, providerGameId: string) {
+  assertTauriRuntime('联网封面搜索')
+  return invoke<CoverCandidate[]>('list_cover_candidates_command', { provider, providerGameId })
+}
+
+function assertTauriRuntime(feature: string) {
+  if (!isTauriRuntime()) {
+    throw new Error(`${feature}只能在 Tauri 桌面应用中使用`)
+  }
 }

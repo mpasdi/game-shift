@@ -23,7 +23,8 @@
   })
 
   function toLocalAssetSrc(path?: string | null) {
-    return path ? convertFileSrc(path) : null
+    if (!path) return null
+    return /^https:\/\//i.test(path) ? path : convertFileSrc(path)
   }
 </script>
 

@@ -19,7 +19,7 @@ serde_json = "1"
 rusqlite = { version = "0.37", features = ["bundled"] }
 tauri-plugin-dialog = "2"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
-reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls-no-provider"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls-no-provider", "stream"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 
 [target.'cfg(windows)'.dependencies]

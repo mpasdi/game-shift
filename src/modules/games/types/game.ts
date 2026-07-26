@@ -1,3 +1,5 @@
+import type { CoverSelection } from './cover'
+
 export type GameFilter = 'all' | 'favorite' | 'recent'
 
 export interface Game {
@@ -23,6 +25,7 @@ export interface CreateGamePayload {
   workDir?: string | null
   args?: string | null
   coverPath?: string | null
+  coverSelection?: CoverSelection | null
 }
 
 export interface UpdateGamePayload extends CreateGamePayload {

@@ -1,11 +1,14 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
   import { open as openDialog } from '@tauri-apps/plugin-dialog'
-  import { FileSearch, FolderOpen, ImagePlus } from '@lucide/vue'
+  import { FileSearch, FolderOpen, Globe2, ImagePlus } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
   import BaseModal from '../../../shared/components/BaseModal.vue'
   import TextField from '../../../shared/components/TextField.vue'
+  import { getOnlineCoverSettings } from '../../settings/api'
   import GameArtwork from './GameArtwork.vue'
+  import OnlineCoverDialog from './OnlineCoverDialog.vue'
+  import type { CoverCandidate, CoverSelection } from '../types/cover'
   import type { CreateGamePayload, Game, UpdateGamePayload } from '../types/game'
 
   const props = withDefaults(
@@ -36,6 +39,9 @@
     coverPath: ''
   })
   const localError = ref<string | null>(null)
+  const onlineCoverAvailable = ref(false)
+  const isOnlineCoverDialogOpen = ref(false)
+  const selectedRemoteCover = ref<CoverCandidate | null>(null)
 
   const isEditing = computed(() => props.mode === 'edit')
   const modalTitle = computed(() => (isEditing.value ? '编辑游戏' : '手动添加游戏'))
@@ -43,10 +49,9 @@
   const displayedError = computed(() => localError.value || props.errorMessage || null)
   const previewGame = computed(() => ({
     name: form.name || props.game?.name || '',
-    cover: form.coverPath || props.game?.cover || null,
+    cover: selectedRemoteCover.value?.previewUrl || form.coverPath || props.game?.cover || null,
     icon: props.game?.icon || null
   }))
-  const coverActionText = computed(() => (previewGame.value.cover ? '更换封面' : '选择封面'))
 
   watch(
     () => [props.open, props.game, props.mode] as const,
@@ -58,10 +63,12 @@
 
       if (isEditing.value && props.game) {
         fillForm(props.game)
+        void loadOnlineCoverAvailability()
         return
       }
 
       resetForm()
+      void loadOnlineCoverAvailability()
     },
     { immediate: true }
   )
@@ -102,6 +109,18 @@
     if (typeof selected !== 'string') return
 
     form.coverPath = selected
+    selectedRemoteCover.value = null
+    localError.value = null
+  }
+
+  function openOnlineCoverDialog() {
+    isOnlineCoverDialogOpen.value = true
+  }
+
+  function selectRemoteCover(candidate: CoverCandidate) {
+    selectedRemoteCover.value = candidate
+    form.coverPath = ''
+    isOnlineCoverDialogOpen.value = false
     localError.value = null
   }
 
@@ -114,7 +133,8 @@
       exePath: form.exePath.trim(),
       workDir: form.workDir.trim() || null,
       args: form.args.trim() || null,
-      coverPath: form.coverPath.trim() || null
+      coverPath: null,
+      coverSelection: getCoverSelection()
     }
 
     if (isEditing.value) {
@@ -139,6 +159,8 @@
     form.workDir = game.workDir ?? game.folderPath
     form.args = game.args ?? ''
     form.coverPath = ''
+    selectedRemoteCover.value = null
+    isOnlineCoverDialogOpen.value = false
     localError.value = null
   }
 
@@ -148,7 +170,34 @@
     form.workDir = ''
     form.args = ''
     form.coverPath = ''
+    selectedRemoteCover.value = null
+    isOnlineCoverDialogOpen.value = false
     localError.value = null
+  }
+
+  function getCoverSelection(): CoverSelection {
+    if (selectedRemoteCover.value) {
+      return {
+        type: 'remote',
+        provider: selectedRemoteCover.value.provider,
+        providerGameId: selectedRemoteCover.value.providerGameId,
+        assetId: selectedRemoteCover.value.assetId
+      }
+    }
+    if (form.coverPath.trim()) {
+      return { type: 'local', path: form.coverPath.trim() }
+    }
+    return { type: 'unchanged' }
+  }
+
+  async function loadOnlineCoverAvailability() {
+    onlineCoverAvailable.value = false
+    try {
+      const settings = await getOnlineCoverSettings()
+      onlineCoverAvailable.value = settings.state === 'ready'
+    } catch {
+      onlineCoverAvailable.value = false
+    }
   }
 
   function validateForm() {
@@ -182,22 +231,40 @@
       <form class="game-form" @submit.prevent="submitForm">
         <div class="game-form__hero">
           <aside class="cover-preview" aria-label="游戏封面预览">
-            <button
+            <span class="form-field__label">游戏封面</span>
+            <div
               class="cover-preview__art"
               :class="{ 'cover-preview__art--empty': !previewGame.cover && !previewGame.icon }"
-              type="button"
-              :aria-label="coverActionText"
-              :disabled="saving"
-              @click="chooseCoverPath"
             >
               <GameArtwork :game="previewGame" variant="preview" />
-              <span class="cover-preview__overlay" aria-hidden="true">
-                <span class="cover-preview__action">
-                  <ImagePlus :size="17" />
-                  {{ coverActionText }}
-                </span>
-              </span>
-            </button>
+            </div>
+            <div class="cover-preview__actions">
+              <BaseButton
+                class="cover-preview__action"
+                variant="secondary"
+                size="sm"
+                type="button"
+                title="选择本地封面"
+                :disabled="saving"
+                @click="chooseCoverPath"
+              >
+                <template #icon><ImagePlus :size="15" /></template>
+                本地
+              </BaseButton>
+              <BaseButton
+                v-if="onlineCoverAvailable"
+                class="cover-preview__action"
+                variant="secondary"
+                size="sm"
+                type="button"
+                title="联网搜索封面"
+                :disabled="saving"
+                @click="openOnlineCoverDialog"
+              >
+                <template #icon><Globe2 :size="15" /></template>
+                联网
+              </BaseButton>
+            </div>
           </aside>
 
           <div class="game-form__hero-fields">
@@ -227,12 +294,12 @@
                 </BaseButton>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div class="form-field form-field--full">
-          <label class="form-field__label" for="game-args">启动参数</label>
-          <TextField id="game-args" v-model="form.args" placeholder="可选，例如 -windowed" />
+            <div class="form-field">
+              <label class="form-field__label" for="game-args">启动参数</label>
+              <TextField id="game-args" v-model="form.args" placeholder="可选，例如 -windowed" />
+            </div>
+          </div>
         </div>
 
         <p v-if="displayedError" class="form-error">{{ displayedError }}</p>
@@ -244,6 +311,13 @@
       <BaseButton variant="primary" type="button" :loading="saving" @click="submitForm">{{ submitText }}</BaseButton>
     </template>
   </BaseModal>
+
+  <OnlineCoverDialog
+    :open="isOnlineCoverDialogOpen"
+    :initial-query="form.name"
+    @close="isOnlineCoverDialogOpen = false"
+    @select="selectRemoteCover"
+  />
 </template>
 
 <style scoped>
@@ -266,12 +340,31 @@
   .game-form__hero-fields {
     display: grid;
     align-content: center;
-    gap: 14px;
+    gap: 12px;
     min-width: 0;
   }
 
   .cover-preview {
-    display: block;
+    display: grid;
+    align-content: start;
+    gap: 8px;
+  }
+
+  .cover-preview__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: 132px;
+  }
+
+  .cover-preview__action:only-child {
+    grid-column: 1 / -1;
+  }
+
+  .cover-preview__action {
+    gap: 4px;
+    min-width: 0;
+    padding-inline: 6px;
   }
 
   .cover-preview__art {
@@ -283,65 +376,13 @@
     place-items: center;
     border: 1px solid var(--accent-border);
     border-radius: 8px;
-    padding: 0;
     background: var(--surface);
-    cursor: pointer;
-    font-family: inherit;
-  }
-
-  .cover-preview__art:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
-  }
-
-  .cover-preview__art:disabled {
-    cursor: not-allowed;
-    opacity: 0.72;
-  }
-
-  .cover-preview__overlay {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    z-index: 2;
-    place-items: center;
-    background: rgba(10, 8, 15, 0.58);
-    opacity: 0;
-    transition: opacity 180ms ease;
-  }
-
-  .cover-preview__action {
-    display: inline-flex;
-    gap: 7px;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
-    color: #fff;
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.72);
-  }
-
-  .cover-preview__art:hover:not(:disabled) .cover-preview__overlay,
-  .cover-preview__art:focus-visible .cover-preview__overlay,
-  .cover-preview__art--empty .cover-preview__overlay {
-    opacity: 1;
-  }
-
-  .cover-preview__art:hover:not(:disabled) :deep(.game-artwork__cover) {
-    transform: scale(1.025);
   }
 
   .form-field {
     display: grid;
     gap: 7px;
     min-width: 0;
-  }
-
-  .form-field--full :deep(.text-field) {
-    width: 100%;
   }
 
   .form-field__label {
@@ -375,6 +416,10 @@
       width: 112px;
     }
 
+    .cover-preview__actions {
+      width: 112px;
+    }
+
     .path-field {
       align-items: stretch;
       grid-template-columns: 1fr;
@@ -382,6 +427,16 @@
 
     .path-field :deep(.base-button) {
       width: 100%;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .game-form__hero {
+      grid-template-columns: 1fr;
+    }
+
+    .cover-preview {
+      justify-items: center;
     }
   }
 </style>

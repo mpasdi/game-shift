@@ -25,6 +25,7 @@ pub struct CreateGamePayload {
     pub(super) work_dir: Option<String>,
     pub(super) args: Option<String>,
     pub(super) cover_path: Option<String>,
+    pub(super) cover_selection: Option<CoverSelection>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -36,6 +37,7 @@ pub struct UpdateGamePayload {
     pub(super) work_dir: Option<String>,
     pub(super) args: Option<String>,
     pub(super) cover_path: Option<String>,
+    pub(super) cover_selection: Option<CoverSelection>,
     pub(super) favorite: bool,
 }
 
@@ -56,3 +58,4 @@ pub(super) struct NormalizedGameFields {
     pub(super) work_dir: Option<String>,
     pub(super) args: Option<String>,
 }
+use super::covers::models::CoverSelection;

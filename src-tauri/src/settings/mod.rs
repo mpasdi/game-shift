@@ -16,6 +16,33 @@ fn get_online_cover_settings(app: &AppHandle) -> Result<OnlineCoverSettings, Str
     Ok(repository::get(&connection)?.to_public())
 }
 
+pub(crate) fn online_cover_provider(app: &AppHandle) -> Result<SteamGridDbProvider, String> {
+    let connection = db::open_connection(app)?;
+    let settings = repository::get(&connection)?;
+    if !settings.enabled {
+        return Err("联网封面尚未启用".to_string());
+    }
+    if settings.api_key_status == StoredApiKeyStatus::Invalid {
+        return Err("SteamGridDB API Key 无效，请在设置中重新配置".to_string());
+    }
+    let api_key = settings
+        .api_key
+        .ok_or_else(|| "请先在设置中保存 SteamGridDB API Key".to_string())?;
+    SteamGridDbProvider::new(api_key)
+}
+
+pub(crate) fn record_online_cover_provider_error(app: &AppHandle, error: String) -> String {
+    if error == SteamGridDbError::Unauthorized.to_string() {
+        if let Ok(connection) = db::open_connection(app) {
+            if let Ok(now) = current_timestamp_millis() {
+                let _ =
+                    repository::set_api_key_status(&connection, StoredApiKeyStatus::Invalid, now);
+            }
+        }
+    }
+    error
+}
+
 fn set_online_covers_enabled(
     app: &AppHandle,
     enabled: bool,

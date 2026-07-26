@@ -41,6 +41,19 @@ pub(super) fn cache_manual_cover(
     cache_cover_image(app, &source, game_id, &format!("cover-manual-{timestamp}"))
 }
 
+pub(super) fn cache_remote_cover(
+    app: &AppHandle,
+    bytes: Vec<u8>,
+    game_id: &str,
+) -> Result<String, String> {
+    if bytes.len() > MAX_COVER_FILE_SIZE_BYTES as usize {
+        return Err("联网封面文件不能超过 10 MB".to_string());
+    }
+    let image = decode_cover_image(bytes)?;
+    let timestamp = current_timestamp_millis()?;
+    encode_cached_cover(app, game_id, &format!("cover-remote-{timestamp}"), image)
+}
+
 fn cache_cover_image(
     app: &AppHandle,
     source: &Path,
@@ -179,6 +192,7 @@ pub(super) fn cleanup_stale_cover_files(
                 value == "cover"
                     || value.starts_with("cover-auto-")
                     || value.starts_with("cover-manual-")
+                    || value.starts_with("cover-remote-")
             });
         if is_cover
             && current_cover

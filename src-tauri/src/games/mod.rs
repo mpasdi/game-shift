@@ -15,6 +15,8 @@ use tauri::AppHandle;
 
 use crate::db;
 
+use covers::models::CoverSelection;
+use covers::provider::CoverProvider;
 use models::{CreateGamePayload, Game, NormalizedGameFields, UpdateGamePayload};
 
 fn list_games(app: &AppHandle) -> Result<Vec<Game>, String> {
@@ -56,7 +58,7 @@ fn get_game(app: &AppHandle, id: &str) -> Result<Option<Game>, String> {
     repository::get_by_id(&connection, id)
 }
 
-fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, String> {
+async fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, String> {
     let connection = db::open_connection(app)?;
     let input = normalize_game_fields(
         payload.name,
@@ -67,14 +69,19 @@ fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, Stri
     if repository::exe_path_exists(&connection, &input.exe_path)? {
         return Err("该游戏启动路径已存在".to_string());
     }
+    drop(connection);
 
     let now = current_timestamp_millis()?;
     let id = format!("game-{now}");
     let icon = assets::extract_game_icon(app, &input.exe_path, &id)?;
-    let cover = match normalize_optional_path(payload.cover_path) {
-        Some(path) => Some(assets::cache_manual_cover(app, &path, &id)?),
-        None => assets::detect_and_cache_cover(app, &input.folder_path, &id)?,
-    };
+    let cover = resolve_created_cover(
+        app,
+        &id,
+        &input.folder_path,
+        payload.cover_selection,
+        payload.cover_path,
+    )
+    .await?;
     let game = Game {
         id: id.clone(),
         name: input.name,
@@ -92,12 +99,13 @@ fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game, Stri
         update_time: now,
     };
 
+    let connection = db::open_connection(app)?;
     repository::insert(&connection, &game)?;
     assets::cleanup_stale_cover_files(app, &id, game.cover.as_deref());
     repository::get_by_id(&connection, &id)?.ok_or_else(|| "游戏创建后无法读取".to_string())
 }
 
-fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, String> {
+async fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, String> {
     let connection = db::open_connection(app)?;
     let id = payload.id.trim().to_string();
     if id.is_empty() {
@@ -115,6 +123,7 @@ fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, Stri
     if repository::exe_path_exists_for_other_game(&connection, &input.exe_path, &id)? {
         return Err("该游戏启动路径已存在".to_string());
     }
+    drop(connection);
 
     let now = current_timestamp_millis()?;
     let favorite_time = match (existing.favorite, payload.favorite) {
@@ -127,13 +136,15 @@ fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, Stri
     } else {
         existing.icon.clone()
     };
-    let cover = match normalize_optional_path(payload.cover_path) {
-        Some(path) => Some(assets::cache_manual_cover(app, &path, &id)?),
-        None if existing.folder_path != input.folder_path || existing.cover.is_none() => {
-            assets::detect_and_cache_cover(app, &input.folder_path, &id)?.or(existing.cover.clone())
-        }
-        None => existing.cover.clone(),
-    };
+    let cover = resolve_updated_cover(
+        app,
+        &id,
+        &input.folder_path,
+        &existing,
+        payload.cover_selection,
+        payload.cover_path,
+    )
+    .await?;
     let game = Game {
         id: id.clone(),
         name: input.name,
@@ -151,6 +162,7 @@ fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, Stri
         update_time: now,
     };
 
+    let connection = db::open_connection(app)?;
     repository::update_metadata(&connection, &game)?;
     assets::cleanup_stale_cover_files(app, &id, game.cover.as_deref());
     repository::get_by_id(&connection, &id)?.ok_or_else(|| "游戏更新后无法读取".to_string())
@@ -206,6 +218,86 @@ fn normalize_optional_path(path: Option<String>) -> Option<String> {
         let value = value.trim().to_string();
         (!value.is_empty()).then_some(value)
     })
+}
+
+async fn resolve_created_cover(
+    app: &AppHandle,
+    game_id: &str,
+    folder_path: &str,
+    selection: Option<CoverSelection>,
+    legacy_cover_path: Option<String>,
+) -> Result<Option<String>, String> {
+    match selection {
+        Some(CoverSelection::Local { path }) => {
+            Ok(Some(assets::cache_manual_cover(app, &path, game_id)?))
+        }
+        Some(CoverSelection::Remote {
+            provider,
+            provider_game_id,
+            asset_id,
+        }) => cache_remote_cover(app, game_id, &provider, &provider_game_id, &asset_id)
+            .await
+            .map(Some),
+        Some(CoverSelection::Remove) => Ok(None),
+        Some(CoverSelection::Unchanged) | None => {
+            match normalize_optional_path(legacy_cover_path) {
+                Some(path) => Ok(Some(assets::cache_manual_cover(app, &path, game_id)?)),
+                None => assets::detect_and_cache_cover(app, folder_path, game_id),
+            }
+        }
+    }
+}
+
+async fn resolve_updated_cover(
+    app: &AppHandle,
+    game_id: &str,
+    folder_path: &str,
+    existing: &Game,
+    selection: Option<CoverSelection>,
+    legacy_cover_path: Option<String>,
+) -> Result<Option<String>, String> {
+    match selection {
+        Some(CoverSelection::Local { path }) => {
+            Ok(Some(assets::cache_manual_cover(app, &path, game_id)?))
+        }
+        Some(CoverSelection::Remote {
+            provider,
+            provider_game_id,
+            asset_id,
+        }) => cache_remote_cover(app, game_id, &provider, &provider_game_id, &asset_id)
+            .await
+            .map(Some),
+        Some(CoverSelection::Remove) => Ok(None),
+        Some(CoverSelection::Unchanged) => Ok(existing.cover.clone()),
+        None => match normalize_optional_path(legacy_cover_path) {
+            Some(path) => Ok(Some(assets::cache_manual_cover(app, &path, game_id)?)),
+            None if existing.folder_path != folder_path || existing.cover.is_none() => {
+                Ok(assets::detect_and_cache_cover(app, folder_path, game_id)?
+                    .or(existing.cover.clone()))
+            }
+            None => Ok(existing.cover.clone()),
+        },
+    }
+}
+
+async fn cache_remote_cover(
+    app: &AppHandle,
+    game_id: &str,
+    provider_id: &str,
+    provider_game_id: &str,
+    asset_id: &str,
+) -> Result<String, String> {
+    let provider = crate::settings::online_cover_provider(app)?;
+    if provider_id.trim() != provider.provider_id() {
+        return Err("不支持的联网封面数据源".to_string());
+    }
+    let asset = provider
+        .resolve_cover(provider_game_id.trim(), asset_id.trim())
+        .await
+        .map_err(|error| crate::settings::record_online_cover_provider_error(app, error))?
+        .ok_or_else(|| "选择的联网封面已失效，请重新搜索".to_string())?;
+    let bytes = covers::download::download_cover(&asset.download_url).await?;
+    assets::cache_remote_cover(app, bytes, game_id)
 }
 
 pub(super) fn normalize_existing_exe_path(path: &str) -> Result<PathBuf, String> {

@@ -269,3 +269,61 @@ Game Shift 以 `方案 1` 设计稿为准，采用暗色半透明桌面游戏启
 - 分类管理
 - 设置页
 - 背景图资产
+
+## 8. 共享组件架构与演进
+
+### 8.1 对外组件体系
+
+Game Shift 以 `src/shared/components` 中的 `Base*` 组件作为业务模块唯一可直接依赖的 UI 组件体系。页面和业务模块应优先组合以下项目组件，不直接耦合第三方组件 API：
+
+- `BaseButton`
+- `BaseModal`
+- `BaseSelect`
+- `BaseSwitch`
+- `TextField`
+- `DataTable`
+- `EmptyState`
+- Toast 等全局反馈组件
+
+统一组件体系不仅指视觉一致，还包括 props、事件、插槽、尺寸、禁用、加载、错误、焦点和键盘行为一致。
+
+### 8.2 v0.2.0 边界
+
+`v0.2.0` 优先完成联网封面，不在本版本中引入第三方 UI 组件库。
+
+- 匹配游戏切换先封装项目自研 `BaseSelect`。
+- 业务组件只使用 `BaseSelect`，不得把下拉展开、点击外部关闭等逻辑重复写入 `OnlineCoverDialog`。
+- `BaseSelect` 的公开 API 应保持稳定，方便后续只替换内部实现。
+- 联网封面弹窗保持标题、搜索栏、当前匹配和底部操作固定，只有封面候选区域纵向滚动。
+
+### 8.3 v0.2.1 Reka UI 统一改造
+
+`v0.2.0` 发布并稳定后，在 `v0.2.1` 中集中引入 Reka UI。该改造以“替换共享组件内部复杂交互实现”为目标，不允许形成长期并存的两套业务组件体系。
+
+组件分层：
+
+```text
+页面与业务模块
+        ↓
+Game Shift Base* 共享组件
+        ↓
+Reka UI 无样式交互原语
+        ↓
+Game Shift 主题变量与组件样式
+```
+
+引用边界：
+
+- 只有 `src/shared/components/**` 可以直接导入 `reka-ui`。
+- `src/modules/**` 和 `src/pages/**` 禁止直接导入 `reka-ui`。
+- 业务模块继续使用 `BaseModal`、`BaseSelect`、`BaseSwitch` 等项目组件。
+- 引入 Reka UI 后，应删除已经被替代的自研复杂交互逻辑，不保留第二套 Select、Dialog 或 Switch 实现。
+- Reka UI 不引入新的视觉主题；颜色、圆角、间距、字体和动效继续由 Game Shift 设计变量控制。
+
+迁移优先级：
+
+1. 使用 Reka Select 重写 `BaseSelect`。
+2. 使用 Reka Dialog 重写 `BaseModal`。
+3. 使用 Reka Switch 重写 `BaseSwitch` 并迁移设置页开关。
+4. 评估 Toast、Popover、Tooltip 和 DropdownMenu。
+5. 对键盘、焦点、弹层、窗口缩放和主要页面进行统一回归。

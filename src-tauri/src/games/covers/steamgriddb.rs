@@ -8,6 +8,7 @@ use std::time::Duration;
 use reqwest::{StatusCode, Url};
 use serde::de::DeserializeOwned;
 
+use super::download::validate_trusted_url;
 use super::models::{CoverCandidate, GameMatch, ResolvedCoverAsset};
 use super::provider::{CoverProvider, ProviderFuture};
 
@@ -170,7 +171,7 @@ impl CoverProvider for SteamGridDbProvider {
             let grids = self.fetch_grids(provider_game_id).await?;
             Ok(grids
                 .into_iter()
-                .map(|grid| grid.into_candidate(provider_game_id))
+                .filter_map(|grid| grid.into_candidate(provider_game_id))
                 .collect())
         })
     }
@@ -228,15 +229,17 @@ struct SteamGridDbGrid {
 }
 
 impl SteamGridDbGrid {
-    fn into_candidate(self, provider_game_id: &str) -> CoverCandidate {
-        CoverCandidate {
+    fn into_candidate(self, provider_game_id: &str) -> Option<CoverCandidate> {
+        let preview_url = Url::parse(&self.thumb).ok()?;
+        validate_trusted_url(&preview_url).ok()?;
+        Some(CoverCandidate {
             provider: PROVIDER_ID.to_string(),
             asset_id: self.id.to_string(),
             provider_game_id: provider_game_id.to_string(),
             preview_url: self.thumb,
             width: None,
             height: None,
-        }
+        })
     }
 }
 
@@ -308,21 +311,26 @@ mod tests {
                     "id": 456,
                     "score": 5,
                     "style": "alternate",
-                    "url": "https://cdn.example.invalid/full.jpg",
-                    "thumb": "https://cdn.example.invalid/thumb.jpg",
+                    "url": "https://cdn2.steamgriddb.com/full.jpg",
+                    "thumb": "https://cdn2.steamgriddb.com/thumb.jpg",
                     "tags": [],
                     "author": { "name": "Author", "steam64": "1", "avatar": "https://example.invalid/a.jpg" }
                 }
             ]
         }"#;
         let grids: Vec<SteamGridDbGrid> = decode_body(body).unwrap();
-        let candidate = grids.into_iter().next().unwrap().into_candidate("123");
+        let candidate = grids
+            .into_iter()
+            .next()
+            .unwrap()
+            .into_candidate("123")
+            .unwrap();
 
         assert_eq!(candidate.asset_id, "456");
         assert_eq!(candidate.provider_game_id, "123");
         assert_eq!(
             candidate.preview_url,
-            "https://cdn.example.invalid/thumb.jpg"
+            "https://cdn2.steamgriddb.com/thumb.jpg"
         );
         assert_eq!(candidate.width, None);
         assert_eq!(candidate.height, None);

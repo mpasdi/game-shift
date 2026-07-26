@@ -13,13 +13,19 @@ pub fn get_game_command(app: AppHandle, id: String) -> Result<Option<Game>, Stri
 }
 
 #[tauri::command]
-pub fn create_game_command(app: AppHandle, payload: CreateGamePayload) -> Result<Game, String> {
-    super::create_game(&app, payload)
+pub async fn create_game_command(
+    app: AppHandle,
+    payload: CreateGamePayload,
+) -> Result<Game, String> {
+    super::create_game(&app, payload).await
 }
 
 #[tauri::command]
-pub fn update_game_command(app: AppHandle, payload: UpdateGamePayload) -> Result<Game, String> {
-    super::update_game(&app, payload)
+pub async fn update_game_command(
+    app: AppHandle,
+    payload: UpdateGamePayload,
+) -> Result<Game, String> {
+    super::update_game(&app, payload).await
 }
 
 #[tauri::command]
