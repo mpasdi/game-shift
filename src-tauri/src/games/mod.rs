@@ -238,7 +238,6 @@ async fn resolve_created_cover(
         }) => cache_remote_cover(app, game_id, &provider, &provider_game_id, &asset_id)
             .await
             .map(Some),
-        Some(CoverSelection::Remove) => Ok(None),
         Some(CoverSelection::Unchanged) | None => {
             match normalize_optional_path(legacy_cover_path) {
                 Some(path) => Ok(Some(assets::cache_manual_cover(app, &path, game_id)?)),
@@ -267,7 +266,6 @@ async fn resolve_updated_cover(
         }) => cache_remote_cover(app, game_id, &provider, &provider_game_id, &asset_id)
             .await
             .map(Some),
-        Some(CoverSelection::Remove) => Ok(None),
         Some(CoverSelection::Unchanged) => Ok(existing.cover.clone()),
         None => match normalize_optional_path(legacy_cover_path) {
             Some(path) => Ok(Some(assets::cache_manual_cover(app, &path, game_id)?)),

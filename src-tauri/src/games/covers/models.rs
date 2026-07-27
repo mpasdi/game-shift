@@ -60,7 +60,7 @@ pub(crate) struct CoverSearchResult {
 
 /// 用户保存游戏时对封面的明确处理意图。
 ///
-/// 使用枚举可以避免把“没有修改”“选择本地图片”“选择网络图片”和“主动删除”
+/// 使用枚举可以避免把“没有修改”“选择本地图片”和“选择网络图片”
 /// 都塞进一个可空路径，导致后端无法判断用户真正想做什么。
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
@@ -79,8 +79,6 @@ pub(crate) enum CoverSelection {
         #[serde(rename = "assetId")]
         asset_id: String,
     },
-    /// 主动移除当前封面。
-    Remove,
 }
 
 #[cfg(test)]
@@ -153,14 +151,10 @@ mod tests {
     }
 
     #[test]
-    fn serializes_cover_selection_states() {
+    fn serializes_unchanged_cover_selection_state() {
         assert_eq!(
             serde_json::to_value(CoverSelection::Unchanged).unwrap(),
             json!({ "type": "unchanged" })
-        );
-        assert_eq!(
-            serde_json::to_value(CoverSelection::Remove).unwrap(),
-            json!({ "type": "remove" })
         );
     }
 }

@@ -44,5 +44,3 @@ export type CoverSelection =
       providerGameId: string
       assetId: string
     }
-  // 主动移除当前封面。
-  | { type: 'remove' }
