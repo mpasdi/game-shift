@@ -7,6 +7,7 @@
     type?: 'text' | 'search' | 'password'
     readonly?: boolean
     autocomplete?: string
+    spellcheck?: boolean
     name?: string
   }>()
 
@@ -29,6 +30,7 @@
       :placeholder="props.placeholder"
       :readonly="props.readonly"
       :autocomplete="props.autocomplete"
+      :spellcheck="props.spellcheck"
       :name="props.name"
       @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />

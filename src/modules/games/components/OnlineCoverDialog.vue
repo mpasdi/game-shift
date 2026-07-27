@@ -176,7 +176,14 @@
     <div class="online-cover-dialog">
       <div class="cover-toolbar">
         <form class="cover-search" @submit.prevent="search">
-          <TextField id="online-cover-query" v-model="query" type="search" placeholder="输入其他名称重新搜索">
+          <TextField
+            id="online-cover-query"
+            v-model="query"
+            type="search"
+            placeholder="输入其他名称重新搜索"
+            autocomplete="off"
+            :spellcheck="false"
+          >
             <template #icon><Search :size="16" /></template>
           </TextField>
           <BaseButton variant="primary" type="submit" :loading="isSearching" :disabled="isSwitchingGame">
