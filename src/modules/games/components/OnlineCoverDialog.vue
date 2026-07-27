@@ -172,7 +172,7 @@
 </script>
 
 <template>
-  <BaseModal :open="props.open" title="联网搜索封面" size="lg" :body-scrollable="false" @close="emit('close')">
+  <BaseModal :open="props.open" title="联网封面" size="lg" :body-scrollable="false" @close="emit('close')">
     <div class="online-cover-dialog">
       <div class="cover-toolbar">
         <form class="cover-search" @submit.prevent="search">
@@ -199,7 +199,7 @@
         <div v-if="hasSearched && gameOptions.length" class="game-matches">
           <div class="section-heading">
             <span>匹配游戏</span>
-            <small>选择正确的游戏条目</small>
+            <small>可切换其他匹配结果</small>
           </div>
           <BaseSelect
             v-model="selectedGameId"
@@ -222,15 +222,14 @@
           </div>
         </div>
 
-        <template v-else-if="hasSearched">
+        <template v-else-if="hasSearched && (isSwitchingGame || candidates.length)">
           <div class="candidate-section">
             <div class="section-heading">
               <span>封面候选</span>
-              <small v-if="matchedGame">{{ matchedGame.name }}</small>
             </div>
 
             <div v-if="isSwitchingGame" class="candidate-state">正在加载这个游戏的封面...</div>
-            <div v-else-if="candidates.length" class="candidate-grid">
+            <div v-else class="candidate-grid">
               <button
                 v-for="candidate in candidates"
                 :key="`${candidate.provider}:${candidate.assetId}`"
@@ -244,17 +243,19 @@
                 <span class="cover-candidate__check">✓</span>
               </button>
             </div>
-            <div v-else class="candidate-state">
-              <ImageOff :size="24" />
-              <span>{{ matchedGame ? '这个游戏暂无可用的竖版封面' : '没有找到匹配的游戏' }}</span>
-            </div>
           </div>
         </template>
 
-        <div v-else class="candidate-state candidate-state--welcome">
-          <Images :size="28" />
-          <strong>输入游戏名称开始搜索</strong>
-          <span>找到封面后，可以在这里预览并选择。</span>
+        <div v-else class="candidate-state candidate-state--empty">
+          <ImageOff v-if="hasSearched" :size="28" />
+          <Images v-else :size="28" />
+          <strong>
+            {{ hasSearched ? (matchedGame ? '暂无可用的竖版封面' : '没有找到匹配的游戏') : '输入游戏名称开始搜索' }}
+          </strong>
+          <span v-if="hasSearched">
+            {{ matchedGame ? '可以切换其他匹配结果继续查找。' : '请尝试其他游戏名称。' }}
+          </span>
+          <span v-else>找到封面后，可以在这里预览并选择。</span>
         </div>
       </div>
     </div>
@@ -280,8 +281,6 @@
     display: grid;
     gap: 10px;
     min-width: 0;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 14px;
   }
 
   .cover-results {
@@ -420,16 +419,16 @@
     color: var(--text-subtle);
   }
 
-  .candidate-state--welcome strong {
+  .candidate-state--empty strong {
     color: var(--text-muted);
     font-size: var(--font-size-md);
   }
 
-  .candidate-state--welcome span {
+  .candidate-state--empty span {
     font-size: var(--font-size-sm);
   }
 
-  .cover-results > .candidate-state--welcome {
+  .cover-results > .candidate-state--empty {
     min-height: 100%;
   }
 
