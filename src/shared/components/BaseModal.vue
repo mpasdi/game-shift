@@ -1,30 +1,44 @@
 <script setup lang="ts">
   import { X } from '@lucide/vue'
-  withDefaults(
+  const props = withDefaults(
     defineProps<{
       open: boolean
       title: string
       size?: 'sm' | 'md' | 'lg'
       bodyScrollable?: boolean
+      closeOnBackdrop?: boolean
+      closeDisabled?: boolean
     }>(),
     {
       size: 'md',
-      bodyScrollable: true
+      bodyScrollable: true,
+      closeOnBackdrop: true,
+      closeDisabled: false
     }
   )
 
   const emit = defineEmits<{
     close: []
   }>()
+
+  function requestClose() {
+    if (props.closeDisabled) return
+    emit('close')
+  }
+
+  function closeFromBackdrop() {
+    if (!props.closeOnBackdrop) return
+    requestClose()
+  }
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="modal-backdrop" role="presentation" @click.self="emit('close')">
+    <div v-if="open" class="modal-backdrop" role="presentation" @click.self="closeFromBackdrop">
       <section class="modal-panel" :class="`modal-panel--${size}`" role="dialog" aria-modal="true" :aria-label="title">
         <header class="modal-header">
           <h2>{{ title }}</h2>
-          <button class="modal-close" type="button" aria-label="关闭" @click="emit('close')">
+          <button class="modal-close" type="button" aria-label="关闭" :disabled="closeDisabled" @click="requestClose">
             <X :size="16" :stroke-width="2.4" />
           </button>
         </header>
@@ -111,9 +125,14 @@
     line-height: 0;
   }
 
-  .modal-close:hover {
+  .modal-close:hover:not(:disabled) {
     background: var(--surface-hover);
     color: var(--text);
+  }
+
+  .modal-close:disabled {
+    cursor: not-allowed;
+    opacity: 0.42;
   }
 
   .modal-body {

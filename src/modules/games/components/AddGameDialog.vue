@@ -226,7 +226,14 @@
 </script>
 
 <template>
-  <BaseModal :open="props.open" :title="modalTitle" size="lg" @close="emit('close')">
+  <BaseModal
+    :open="props.open"
+    :title="modalTitle"
+    size="lg"
+    :close-on-backdrop="false"
+    :close-disabled="saving"
+    @close="emit('close')"
+  >
     <div class="game-dialog">
       <form class="game-form" @submit.prevent="submitForm">
         <div class="game-form__hero">
