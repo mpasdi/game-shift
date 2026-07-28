@@ -37,16 +37,20 @@ Select-String -Path package.json,src-tauri\tauri.conf.json,src-tauri\Cargo.toml 
 - 确认发布记录与准备填写的 GitHub Release 文案一致。
 - 确认安装包名称、版本号和文档描述一致。
 
-### 2.3 检查开发分支
+### 2.3 提交并推送开发分支
+
+先将版本号、README 和发布记录作为独立的发布准备提交落在 `dev`，再执行：
 
 ```powershell
 git switch dev
 git status --short
+git log -1 --oneline
 pnpm install --frozen-lockfile
 pnpm verify
+git push origin dev
 ```
 
-工作区必须干净，静态检查、前端构建和 Rust 检查必须全部通过。
+工作区必须干净，最新提交必须是本次发布准备提交，静态检查、前端构建和 Rust 检查必须全部通过。推送后确认 `dev` 与 `origin/dev` 指向同一个提交，避免只在本地合并尚未备份到远端的改动。
 
 ## 3. 手动验收
 
@@ -64,7 +68,7 @@ pnpm verify
 
 验收失败时回到 `dev` 修复，不继续合并、构建或创建 Tag。
 
-## 4. 合并到 master
+## 4. 合并并推送到 master
 
 项目优先使用 fast-forward，避免不必要的合并提交。
 
@@ -74,9 +78,10 @@ git pull --ff-only origin master
 git merge --ff-only dev
 git status --short
 pnpm verify
+git push origin master
 ```
 
-确认当前分支是 `master`、工作区干净、最新提交包含本版本的代码与文档，并且 `pnpm verify` 再次通过。fast-forward 失败时不使用强制参数，先检查并整理分支差异。
+确认当前分支是 `master`、工作区干净、最新提交包含本版本的代码与文档，并且 `pnpm verify` 再次通过。验证通过后立即推送 `master`，确保后续安装包和 Tag 都基于远端可追溯的发布提交。fast-forward 失败时不使用强制参数，先检查并整理分支差异。
 
 ## 5. 构建 Windows 安装包
 
@@ -111,18 +116,17 @@ Get-AuthenticodeSignature -LiteralPath '<installer>'
 pnpm release:checksum
 ```
 
-确认输出目录同时存在安装包和同名 `.sha256` 文件，并重新核对哈希值。
+此命令只能在项目仓库中用于生成发布校验文件，不用于验证从 GitHub 下载的安装包。确认输出目录同时存在安装包和同名 `.sha256` 文件，并重新核对哈希值。
 
 ## 8. 创建并推送 Tag
 
 ```powershell
 git tag -a v<version> -m 'Game Shift v<version>'
 git show v<version> --no-patch
-git push origin master
 git push origin v<version>
 ```
 
-仅在检查、构建和安装验收全部通过后创建 Tag。Tag 推送前发现问题可以删除本地 Tag；Tag 已公开后不得覆盖。
+仅在 `master` 已推送，并且检查、构建和安装验收全部通过后创建 Tag。Tag 推送前发现问题可以删除本地 Tag；Tag 已公开后不得覆盖。
 
 ## 9. 创建 GitHub Release
 
@@ -136,7 +140,29 @@ git push origin v<version>
 ## 10. 发布后验证
 
 - 从 GitHub Release 重新下载安装包，不使用本地原文件。
-- 重新计算下载文件的 SHA-256，并与 Release 中的校验文件比较。
+- 同时下载对应的 `.sha256` 文件。
+- 在只包含这两个下载文件的目录中打开 PowerShell，执行：
+
+```powershell
+$downloadedInstallers = @(Get-ChildItem -LiteralPath . -Filter '*_x64-setup.exe' -File)
+if ($downloadedInstallers.Count -ne 1) {
+  throw "Expected exactly one downloaded installer, found $($downloadedInstallers.Count)."
+}
+
+$downloadedInstaller = $downloadedInstallers[0]
+$downloadedChecksum = "$($downloadedInstaller.FullName).sha256"
+$actualHash = (Get-FileHash -LiteralPath $downloadedInstaller.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+$expectedHash = ((Get-Content -LiteralPath $downloadedChecksum -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
+
+if ($actualHash -ne $expectedHash) {
+  throw "SHA-256 verification failed. Actual: $actualHash Expected: $expectedHash"
+}
+
+Write-Host "SHA-256 verified: $actualHash"
+```
+
+- 看到 `SHA-256 verified` 表示下载的安装包与发布时生成校验文件的安装包完全一致。
+- GitHub 可能把安装包文件名中的空格显示或下载为点号；上述命令按实际下载文件名查找，不受此差异影响。
 - 在 Windows 10/11 x64 环境安装并启动。
 - 确认 Release 页面只包含正确版本的文件。
 - 确认 Tag 指向 `master` 的目标发布提交。
@@ -146,13 +172,14 @@ git push origin v<version>
 
 ## 11. 快速清单
 
-1. [ ] 在 `dev` 完成功能、版本号、README 和版本发布记录。
+1. [ ] 在 `dev` 完成功能、版本号、README 和版本发布记录，并提交发布准备改动。
 2. [ ] 在 `dev` 执行 `pnpm verify` 和手动验收。
-3. [ ] fast-forward 合并 `dev` 到 `master`。
-4. [ ] 在 `master` 再次执行 `pnpm verify`。
-5. [ ] 构建并安装测试 NSIS 安装包。
-6. [ ] 生成并核对 SHA-256 文件。
-7. [ ] 创建、检查并推送 annotated Tag。
-8. [ ] 创建 GitHub Release 并上传安装包与校验文件。
-9. [ ] 从 GitHub 重新下载并完成发布后验证。
-10. [ ] 切回 `dev`。
+3. [ ] 推送 `dev`，确认与 `origin/dev` 同步。
+4. [ ] fast-forward 合并 `dev` 到 `master`。
+5. [ ] 在 `master` 再次执行 `pnpm verify`，然后推送 `master`。
+6. [ ] 构建并安装测试 NSIS 安装包。
+7. [ ] 生成并核对 SHA-256 文件。
+8. [ ] 创建、检查并推送 annotated Tag。
+9. [ ] 创建 GitHub Release 并上传安装包与校验文件。
+10. [ ] 从 GitHub 重新下载并完成发布后验证。
+11. [ ] 切回 `dev`。
