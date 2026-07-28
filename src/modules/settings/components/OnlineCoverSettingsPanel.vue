@@ -48,7 +48,7 @@
   const currentStatus = computed(() => statusContent[settings.value?.state ?? 'disabled'])
   const isBusy = computed(() => activeOperation.value !== null)
   const canSaveKey = computed(() => apiKeyInput.value.trim().length > 0 && !isBusy.value)
-  const storedKeyStatusLabel = computed(() => (settings.value?.state === 'invalidApiKey' ? '验证失败' : '已验证'))
+  const storedKeyStatusLabel = computed(() => (settings.value?.state === 'invalidApiKey' ? '验证失败' : '验证通过'))
 
   async function loadSettings() {
     isLoading.value = true
@@ -224,7 +224,13 @@
             </div>
 
             <div class="api-key-summary__actions">
-              <BaseButton size="sm" :loading="activeOperation === 'test'" :disabled="isBusy" @click="testConnection">
+              <BaseButton
+                variant="ghost"
+                size="sm"
+                :loading="activeOperation === 'test'"
+                :disabled="isBusy"
+                @click="testConnection"
+              >
                 重新验证
               </BaseButton>
               <BaseButton variant="ghost" size="sm" :disabled="isBusy" @click="beginApiKeyEdit">更换</BaseButton>
@@ -251,22 +257,10 @@
               >
                 <template #icon><KeyRound :size="15" /></template>
               </TextField>
-              <BaseButton
-                variant="primary"
-                size="sm"
-                type="submit"
-                :loading="activeOperation === 'save'"
-                :disabled="!canSaveKey"
-              >
+              <BaseButton variant="primary" type="submit" :loading="activeOperation === 'save'" :disabled="!canSaveKey">
                 验证并保存
               </BaseButton>
-              <BaseButton
-                v-if="settings.hasApiKey"
-                variant="ghost"
-                size="sm"
-                :disabled="isBusy"
-                @click="cancelApiKeyEdit"
-              >
+              <BaseButton v-if="settings.hasApiKey" variant="ghost" :disabled="isBusy" @click="cancelApiKeyEdit">
                 取消
               </BaseButton>
             </div>
@@ -492,11 +486,11 @@
     gap: 12px;
     align-items: center;
     justify-content: space-between;
-    min-height: 42px;
+    min-height: 34px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface);
-    padding: 5px 7px 5px 12px;
+    padding: 1px 7px 1px 12px;
   }
 
   .api-key-summary__identity,
@@ -506,6 +500,7 @@
   }
 
   .api-key-summary__identity {
+    flex: 1;
     gap: 8px;
     min-width: 0;
   }

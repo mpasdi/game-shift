@@ -280,7 +280,6 @@
   .cover-results {
     min-height: 0;
     overflow-y: auto;
-    padding-right: 8px;
     overscroll-behavior: contain;
   }
 
