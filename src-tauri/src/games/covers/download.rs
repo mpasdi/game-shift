@@ -1,4 +1,5 @@
 use std::io;
+use std::sync::Arc;
 use std::time::Duration;
 
 use reqwest::redirect::Policy;
@@ -8,19 +9,54 @@ const MAX_REMOTE_COVER_BYTES: usize = 10 * 1024 * 1024;
 const DOWNLOAD_TIMEOUT_SECONDS: u64 = 20;
 const MAX_REDIRECTS: usize = 5;
 
+type UrlValidator = Arc<dyn Fn(&Url) -> Result<(), String> + Send + Sync>;
+
+#[derive(Clone, Copy)]
+struct DownloadOptions {
+    max_bytes: usize,
+    timeout: Duration,
+    max_redirects: usize,
+    https_only: bool,
+}
+
+impl DownloadOptions {
+    fn production() -> Self {
+        Self {
+            max_bytes: MAX_REMOTE_COVER_BYTES,
+            timeout: Duration::from_secs(DOWNLOAD_TIMEOUT_SECONDS),
+            max_redirects: MAX_REDIRECTS,
+            https_only: true,
+        }
+    }
+}
+
 pub(crate) async fn download_cover(url: &str) -> Result<Vec<u8>, String> {
+    download_cover_with_options(
+        url,
+        DownloadOptions::production(),
+        Arc::new(validate_trusted_url),
+    )
+    .await
+}
+
+async fn download_cover_with_options(
+    url: &str,
+    options: DownloadOptions,
+    validate_url: UrlValidator,
+) -> Result<Vec<u8>, String> {
     let url = Url::parse(url).map_err(|_| "联网封面下载地址无效".to_string())?;
-    validate_trusted_url(&url)?;
+    validate_url(&url)?;
 
     let _ = rustls::crypto::ring::default_provider().install_default();
+    let redirect_validator = Arc::clone(&validate_url);
     let client = reqwest::Client::builder()
-        .https_only(true)
-        .timeout(Duration::from_secs(DOWNLOAD_TIMEOUT_SECONDS))
-        .redirect(Policy::custom(|attempt| {
-            if attempt.previous().len() >= MAX_REDIRECTS {
+        .https_only(options.https_only)
+        .timeout(options.timeout)
+        .redirect(Policy::custom(move |attempt| {
+            if attempt.previous().len() >= options.max_redirects {
                 return attempt.error(io::Error::other("联网封面重定向次数过多"));
             }
-            if validate_trusted_url(attempt.url()).is_err() {
+            if redirect_validator(attempt.url()).is_err() {
                 return attempt.error(io::Error::other("联网封面重定向地址不受信任"));
             }
             attempt.follow()
@@ -30,7 +66,7 @@ pub(crate) async fn download_cover(url: &str) -> Result<Vec<u8>, String> {
         .map_err(|_| "无法初始化联网封面下载客户端".to_string())?;
 
     let mut response = client.get(url).send().await.map_err(map_download_error)?;
-    validate_trusted_url(response.url())?;
+    validate_url(response.url())?;
 
     if response.status() == StatusCode::TOO_MANY_REQUESTS {
         return Err("封面下载请求过于频繁，请稍后再试".to_string());
@@ -43,14 +79,14 @@ pub(crate) async fn download_cover(url: &str) -> Result<Vec<u8>, String> {
     }
     if response
         .content_length()
-        .is_some_and(|length| length > MAX_REMOTE_COVER_BYTES as u64)
+        .is_some_and(|length| length > options.max_bytes as u64)
     {
         return Err("联网封面文件不能超过 10 MB".to_string());
     }
 
     let mut bytes = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(map_download_error)? {
-        if bytes.len().saturating_add(chunk.len()) > MAX_REMOTE_COVER_BYTES {
+        if bytes.len().saturating_add(chunk.len()) > options.max_bytes {
             return Err("联网封面文件不能超过 10 MB".to_string());
         }
         bytes.extend_from_slice(&chunk);
@@ -87,24 +123,5 @@ fn map_download_error(error: reqwest::Error) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use reqwest::Url;
-
-    use super::validate_trusted_url;
-
-    #[test]
-    fn accepts_only_https_steamgriddb_hosts() {
-        assert!(validate_trusted_url(
-            &Url::parse("https://cdn2.steamgriddb.com/file/cover.png").unwrap()
-        )
-        .is_ok());
-        assert!(validate_trusted_url(
-            &Url::parse("http://cdn2.steamgriddb.com/file/cover.png").unwrap()
-        )
-        .is_err());
-        assert!(validate_trusted_url(
-            &Url::parse("https://steamgriddb.com.example.invalid/cover.png").unwrap()
-        )
-        .is_err());
-    }
-}
+#[path = "download_tests.rs"]
+mod tests;

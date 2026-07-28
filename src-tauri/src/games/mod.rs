@@ -99,10 +99,19 @@ async fn create_game(app: &AppHandle, payload: CreateGamePayload) -> Result<Game
         update_time: now,
     };
 
-    let connection = db::open_connection(app)?;
-    repository::insert(&connection, &game)?;
+    let persisted = persist_with_cover_rollback(game.cover.as_deref(), None, || {
+        let mut connection = db::open_connection(app)?;
+        let transaction = connection
+            .transaction()
+            .map_err(|error| error.to_string())?;
+        repository::insert(&transaction, &game)?;
+        let persisted = repository::get_by_id(&transaction, &id)?
+            .ok_or_else(|| "游戏创建后无法读取".to_string())?;
+        transaction.commit().map_err(|error| error.to_string())?;
+        Ok(persisted)
+    })?;
     assets::cleanup_stale_cover_files(app, &id, game.cover.as_deref());
-    repository::get_by_id(&connection, &id)?.ok_or_else(|| "游戏创建后无法读取".to_string())
+    Ok(persisted)
 }
 
 async fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game, String> {
@@ -162,10 +171,36 @@ async fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game
         update_time: now,
     };
 
-    let connection = db::open_connection(app)?;
-    repository::update_metadata(&connection, &game)?;
+    let persisted =
+        persist_with_cover_rollback(game.cover.as_deref(), existing.cover.as_deref(), || {
+            let mut connection = db::open_connection(app)?;
+            let transaction = connection
+                .transaction()
+                .map_err(|error| error.to_string())?;
+            repository::update_metadata(&transaction, &game)?;
+            let persisted = repository::get_by_id(&transaction, &id)?
+                .ok_or_else(|| "游戏更新后无法读取".to_string())?;
+            transaction.commit().map_err(|error| error.to_string())?;
+            Ok(persisted)
+        })?;
     assets::cleanup_stale_cover_files(app, &id, game.cover.as_deref());
-    repository::get_by_id(&connection, &id)?.ok_or_else(|| "游戏更新后无法读取".to_string())
+    Ok(persisted)
+}
+
+fn persist_with_cover_rollback<T>(
+    pending_cover: Option<&str>,
+    retained_cover: Option<&str>,
+    persist: impl FnOnce() -> Result<T, String>,
+) -> Result<T, String> {
+    match persist() {
+        Ok(value) => Ok(value),
+        Err(error) => {
+            if pending_cover != retained_cover {
+                assets::remove_cached_cover_file(pending_cover);
+            }
+            Err(error)
+        }
+    }
 }
 
 fn delete_game(app: &AppHandle, id: &str) -> Result<(), String> {
@@ -351,3 +386,7 @@ pub(super) fn current_timestamp_millis() -> Result<i64, String> {
         .map_err(|error| error.to_string())?;
     i64::try_from(duration.as_millis()).map_err(|_| "当前时间戳超出范围".to_string())
 }
+
+#[cfg(test)]
+#[path = "save_tests.rs"]
+mod tests;

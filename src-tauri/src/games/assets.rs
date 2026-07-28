@@ -204,6 +204,24 @@ pub(super) fn cleanup_stale_cover_files(
     }
 }
 
+pub(super) fn remove_cached_cover_file(path: Option<&str>) {
+    let Some(path) = path.map(PathBuf::from) else {
+        return;
+    };
+    let is_managed_cover = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .is_some_and(|value| {
+            value == "cover"
+                || value.starts_with("cover-auto-")
+                || value.starts_with("cover-manual-")
+                || value.starts_with("cover-remote-")
+        });
+    if is_managed_cover {
+        let _ = fs::remove_file(path);
+    }
+}
+
 pub(super) fn detect_and_cache_cover(
     app: &AppHandle,
     folder_path: &str,
@@ -511,6 +529,12 @@ mod tests {
     fn rejects_file_content_that_is_not_an_image() {
         let error = decode_cover_image(b"not an image".to_vec()).unwrap_err();
         assert_eq!(error, "封面仅支持 PNG、JPEG 或 WebP 格式");
+    }
+
+    #[test]
+    fn rejects_truncated_png_content() {
+        let error = decode_cover_image(b"\x89PNG\r\n\x1a\n".to_vec()).unwrap_err();
+        assert!(error.starts_with("读取封面尺寸失败："));
     }
 
     #[test]
