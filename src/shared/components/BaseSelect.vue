@@ -187,7 +187,7 @@
   .base-select__trigger {
     display: grid;
     width: 100%;
-    min-height: 38px;
+    min-height: 34px;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
     align-items: center;
