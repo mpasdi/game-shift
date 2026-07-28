@@ -1,6 +1,6 @@
 [package]
 name = "game-shift"
-version = "0.1.0"
+version = "0.2.0"
 description = "A lightweight local game launcher"
 authors = ["Game Shift"]
 edition = "2021"

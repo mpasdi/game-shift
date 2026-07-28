@@ -8,13 +8,15 @@
 
 Game Shift 用于集中管理 Windows 电脑上的本地游戏启动程序。你可以手动添加单个 `.exe`，也可以扫描游戏目录批量导入，并在统一界面中完成搜索、收藏、启动和最近游玩管理。
 
-> 当前版本：`v0.1.0 Beta`
+> 当前版本：`v0.2.0 Beta`
 
 ## 主要功能
 
 - 手动选择 `.exe` 添加本地游戏
 - 扫描文件夹并批量导入候选程序
 - 自动提取游戏图标和发现本地封面
+- 手动选择、预览和替换游戏封面
+- 可选使用 SteamGridDB 联网搜索游戏封面
 - 列表与网格两种游戏库视图
 - 按名称或启动程序文件名搜索
 - 收藏游戏，并按最近收藏时间排序
@@ -36,7 +38,7 @@ Game Shift 用于集中管理 Windows 电脑上的本地游戏启动程序。你
 前往 [GitHub Releases](https://github.com/mpasdi/game-shift/releases) 下载最新版本：
 
 ```text
-Game Shift_0.1.0_x64-setup.exe
+Game Shift_0.2.0_x64-setup.exe
 ```
 
 运行安装程序并按照提示完成安装。请只从本项目官方 GitHub Releases 下载，不要运行来源不明的二次打包文件。
@@ -54,7 +56,7 @@ Game Shift 是免费开源软件，当前 Beta 安装包暂未购买商业 Windo
 PowerShell 校验命令：
 
 ```powershell
-Get-FileHash -LiteralPath '.\Game Shift_0.1.0_x64-setup.exe' -Algorithm SHA256
+Get-FileHash -LiteralPath '.\Game Shift_0.2.0_x64-setup.exe' -Algorithm SHA256
 ```
 
 如果无法确认文件来源或校验值不一致，请不要继续安装。
@@ -75,9 +77,18 @@ Get-FileHash -LiteralPath '.\Game Shift_0.1.0_x64-setup.exe' -Algorithm SHA256
 3. 在扫描结果中勾选需要导入的候选程序。
 4. 确认导入。
 
+### 设置游戏封面
+
+- 在新增或编辑游戏时，点击封面下方的“本地”按钮选择本机图片。
+- 如需联网搜索，在设置页启用联网封面并保存自己的 SteamGridDB API Key，然后点击“联网”按钮搜索、匹配和选择封面。
+- 待选封面会先在编辑弹窗中预览，只有保存游戏后才会写入本地缓存并替换原封面。
+
 ### 数据与本地文件
 
 - 游戏库数据保存在本地 SQLite 数据库中，不会上传到服务器。
+- 联网封面默认关闭；API Key 只保存在本机。
+- 只有用户主动搜索时，搜索词和 API Key 才会发送给 SteamGridDB；本地游戏路径不会上传。
+- 已保存的联网封面会经过校验和转码，并作为本地缓存继续使用。
 - 设置页面会显示当前应用数据目录和数据库文件位置。
 - 从 Game Shift 中“移除游戏”只删除游戏库记录，不会删除磁盘中的游戏文件。
 - 卸载或手动清理应用数据前，如需保留游戏库，请先备份设置页面显示的数据库文件。
@@ -90,6 +101,7 @@ Get-FileHash -LiteralPath '.\Game Shift_0.1.0_x64-setup.exe' -Algorithm SHA256
 - 暂不统计单次或累计游玩时长。
 - 暂不提供自动更新，请从 GitHub Releases 获取新版本。
 - 分类与标签功能尚未开放。
+- 联网封面需要用户自行申请 SteamGridDB API Key。
 
 ## 技术栈
 
@@ -193,6 +205,7 @@ commit-msg -> commitlint
 - [UI 设计说明](./docs/ui-design.md)
 - [开发模块与实现清单](./workLine.md)
 - [Windows 发布 SOP](./docs/windows-release-sop.md)
+- [v0.2.0 发布记录](./docs/releases/v0.2.0.md)
 - [v0.1.0 发布记录](./docs/releases/v0.1.0.md)
 
 ## 反馈问题
