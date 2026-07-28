@@ -212,24 +212,18 @@
       </div>
 
       <div ref="candidateScroller" class="cover-results">
-        <div v-if="isSearching" class="candidate-section">
-          <div class="section-heading">
-            <span>正在搜索封面</span>
-            <small>{{ query.trim() }}</small>
-          </div>
-          <div class="candidate-grid" aria-label="正在加载封面候选">
-            <span v-for="index in 8" :key="index" class="cover-skeleton" />
-          </div>
+        <div v-if="isSearching || isSwitchingGame" class="candidate-loading" role="status">
+          <span class="candidate-loading__spinner" aria-hidden="true" />
+          <span>{{ isSearching ? '正在搜索封面...' : '正在加载封面...' }}</span>
         </div>
 
-        <template v-else-if="hasSearched && (isSwitchingGame || candidates.length)">
+        <template v-else-if="hasSearched && candidates.length">
           <div class="candidate-section">
             <div class="section-heading">
               <span>封面候选</span>
             </div>
 
-            <div v-if="isSwitchingGame" class="candidate-state">正在加载这个游戏的封面...</div>
-            <div v-else class="candidate-grid">
+            <div class="candidate-grid">
               <button
                 v-for="candidate in candidates"
                 :key="`${candidate.provider}:${candidate.assetId}`"
@@ -351,24 +345,6 @@
     transition: border-color 160ms ease;
   }
 
-  .cover-skeleton {
-    position: relative;
-    overflow: hidden;
-    aspect-ratio: 2 / 3;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-  }
-
-  .cover-skeleton::after {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, 0.08) 42%, transparent 66%);
-    content: '';
-    transform: translateX(-100%);
-    animation: skeleton-shimmer 1.25s ease-in-out infinite;
-  }
-
   .cover-candidate:hover:not(.cover-candidate--selected) {
     border-color: var(--border-strong);
   }
@@ -428,13 +404,32 @@
     font-size: var(--font-size-sm);
   }
 
+  .candidate-loading {
+    display: grid;
+    min-height: 100%;
+    align-content: center;
+    justify-items: center;
+    gap: 10px;
+    color: var(--text-subtle);
+    font-size: var(--font-size-sm);
+  }
+
+  .candidate-loading__spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--border-strong);
+    border-right-color: var(--accent-strong);
+    border-radius: 999px;
+    animation: candidate-loading-spin 680ms linear infinite;
+  }
+
   .cover-results > .candidate-state--empty {
     min-height: 100%;
   }
 
-  @keyframes skeleton-shimmer {
+  @keyframes candidate-loading-spin {
     to {
-      transform: translateX(100%);
+      transform: rotate(360deg);
     }
   }
 
