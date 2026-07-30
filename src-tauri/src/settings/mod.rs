@@ -9,7 +9,21 @@ use tauri::AppHandle;
 use crate::db;
 use crate::games::covers::steamgriddb::{SteamGridDbError, SteamGridDbProvider};
 
-use models::{OnlineCoverSettings, StoredApiKeyStatus};
+use models::{AppUpdateSettings, OnlineCoverSettings, StoredApiKeyStatus};
+
+fn get_app_update_settings(app: &AppHandle) -> Result<AppUpdateSettings, String> {
+    let connection = db::open_connection(app)?;
+    repository::get_app_update_settings(&connection)
+}
+
+fn set_auto_check_updates_enabled(
+    app: &AppHandle,
+    enabled: bool,
+) -> Result<AppUpdateSettings, String> {
+    let connection = db::open_connection(app)?;
+    repository::set_auto_check_updates_enabled(&connection, enabled, current_timestamp_millis()?)?;
+    repository::get_app_update_settings(&connection)
+}
 
 fn get_online_cover_settings(app: &AppHandle) -> Result<OnlineCoverSettings, String> {
     let connection = db::open_connection(app)?;

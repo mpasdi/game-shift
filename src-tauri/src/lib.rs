@@ -52,6 +52,8 @@ pub fn run() {
             games::commands::scan_games_command,
             games::covers::commands::search_cover_candidates_command,
             games::covers::commands::list_cover_candidates_command,
+            settings::commands::get_app_update_settings_command,
+            settings::commands::set_auto_check_updates_enabled_command,
             settings::commands::get_online_cover_settings_command,
             settings::commands::set_online_covers_enabled_command,
             settings::commands::save_steamgriddb_api_key_command,

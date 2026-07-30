@@ -7,6 +7,12 @@ pub(crate) enum OnlineCoverConfigState {
     InvalidApiKey,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AppUpdateSettings {
+    pub(crate) auto_check_enabled: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OnlineCoverSettings {

@@ -1,7 +1,8 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
-use super::models::{StoredApiKeyStatus, StoredOnlineCoverSettings};
+use super::models::{AppUpdateSettings, StoredApiKeyStatus, StoredOnlineCoverSettings};
 
+const AUTO_CHECK_UPDATES_ENABLED_KEY: &str = "auto_check_updates_enabled";
 const ONLINE_COVERS_ENABLED_KEY: &str = "online_covers_enabled";
 const STEAMGRIDDB_API_KEY: &str = "steamgriddb_api_key";
 const STEAMGRIDDB_API_KEY_STATUS: &str = "steamgriddb_api_key_status";
@@ -22,6 +23,27 @@ pub(super) fn get(connection: &Connection) -> Result<StoredOnlineCoverSettings, 
         api_key,
         api_key_status,
     })
+}
+
+pub(super) fn get_app_update_settings(
+    connection: &Connection,
+) -> Result<AppUpdateSettings, String> {
+    let auto_check_enabled = get_value(connection, AUTO_CHECK_UPDATES_ENABLED_KEY)?
+        .map_or(true, |value| value == "true");
+    Ok(AppUpdateSettings { auto_check_enabled })
+}
+
+pub(super) fn set_auto_check_updates_enabled(
+    connection: &Connection,
+    enabled: bool,
+    now: i64,
+) -> Result<(), String> {
+    put_value(
+        connection,
+        AUTO_CHECK_UPDATES_ENABLED_KEY,
+        if enabled { "true" } else { "false" },
+        now,
+    )
 }
 
 pub(super) fn set_enabled(connection: &Connection, enabled: bool, now: i64) -> Result<(), String> {
@@ -97,7 +119,10 @@ fn put_value(connection: &Connection, key: &str, value: &str, now: i64) -> Resul
 mod tests {
     use rusqlite::Connection;
 
-    use super::{delete_api_key, get, save_api_key, set_api_key_status, set_enabled};
+    use super::{
+        delete_api_key, get, get_app_update_settings, save_api_key, set_api_key_status,
+        set_auto_check_updates_enabled, set_enabled,
+    };
     use crate::settings::models::StoredApiKeyStatus;
 
     fn connection() -> Connection {
@@ -120,6 +145,30 @@ mod tests {
         assert!(!settings.enabled);
         assert_eq!(settings.api_key, None);
         assert_eq!(settings.api_key_status, StoredApiKeyStatus::Unknown);
+    }
+
+    #[test]
+    fn automatic_update_checks_default_to_enabled_and_are_persisted() {
+        let connection = connection();
+        assert!(
+            get_app_update_settings(&connection)
+                .unwrap()
+                .auto_check_enabled
+        );
+
+        set_auto_check_updates_enabled(&connection, false, 1).unwrap();
+        assert!(
+            !get_app_update_settings(&connection)
+                .unwrap()
+                .auto_check_enabled
+        );
+
+        set_auto_check_updates_enabled(&connection, true, 2).unwrap();
+        assert!(
+            get_app_update_settings(&connection)
+                .unwrap()
+                .auto_check_enabled
+        );
     }
 
     #[test]

@@ -1,6 +1,19 @@
 use tauri::AppHandle;
 
-use super::models::OnlineCoverSettings;
+use super::models::{AppUpdateSettings, OnlineCoverSettings};
+
+#[tauri::command]
+pub(crate) fn get_app_update_settings_command(app: AppHandle) -> Result<AppUpdateSettings, String> {
+    super::get_app_update_settings(&app)
+}
+
+#[tauri::command]
+pub(crate) fn set_auto_check_updates_enabled_command(
+    app: AppHandle,
+    enabled: bool,
+) -> Result<AppUpdateSettings, String> {
+    super::set_auto_check_updates_enabled(&app, enabled)
+}
 
 #[tauri::command]
 pub(crate) fn get_online_cover_settings_command(

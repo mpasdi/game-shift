@@ -17,11 +17,19 @@ export interface OnlineCoverSettings {
   state: OnlineCoverConfigState
 }
 
+export interface AppUpdateSettings {
+  autoCheckEnabled: boolean
+}
+
 const browserOnlineCoverSettings: OnlineCoverSettings = {
   enabled: false,
   hasApiKey: false,
   apiKeyHint: null,
   state: 'disabled'
+}
+
+const browserAppUpdateSettings: AppUpdateSettings = {
+  autoCheckEnabled: true
 }
 
 function isTauriRuntime() {
@@ -48,6 +56,17 @@ export async function getOnlineCoverSettings() {
   return invoke<OnlineCoverSettings>('get_online_cover_settings_command')
 }
 
+export async function getAppUpdateSettings() {
+  if (!isTauriRuntime()) return browserAppUpdateSettings
+
+  return invoke<AppUpdateSettings>('get_app_update_settings_command')
+}
+
+export async function setAutoCheckUpdatesEnabled(enabled: boolean) {
+  assertTauriRuntime('应用更新设置只能在 Tauri 桌面应用中修改')
+  return invoke<AppUpdateSettings>('set_auto_check_updates_enabled_command', { enabled })
+}
+
 export async function setOnlineCoversEnabled(enabled: boolean) {
   assertTauriRuntime()
   return invoke<OnlineCoverSettings>('set_online_covers_enabled_command', { enabled })
@@ -68,8 +87,8 @@ export async function testSteamGridDbConnection() {
   return invoke<OnlineCoverSettings>('test_steamgriddb_connection_command')
 }
 
-function assertTauriRuntime() {
+function assertTauriRuntime(message = '联网封面设置只能在 Tauri 桌面应用中修改') {
   if (!isTauriRuntime()) {
-    throw new Error('联网封面设置只能在 Tauri 桌面应用中修改')
+    throw new Error(message)
   }
 }

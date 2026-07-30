@@ -3,8 +3,10 @@ import { defineStore } from 'pinia'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { check, type Update } from '@tauri-apps/plugin-updater'
+import { getAppUpdateSettings, setAutoCheckUpdatesEnabled, type AppUpdateSettings } from '../../settings/api'
 import { getErrorMessage, useToast } from '../../../shared/composables/useToast'
 
+export type UpdateCheckTrigger = 'automatic' | 'manual'
 export type UpdatePhase = 'idle' | 'checking' | 'available' | 'downloading' | 'installing' | 'restarting' | 'failed'
 export type UpdateCheckResult = 'never' | 'upToDate' | 'available' | 'failed'
 
@@ -31,6 +33,8 @@ function getUpdateCheckErrorMessage(error: unknown) {
 
 export const useAppUpdaterStore = defineStore('appUpdater', () => {
   const toast = useToast()
+  const settings = ref<AppUpdateSettings | null>(null)
+  const settingsError = ref<string | null>(null)
   const phase = ref<UpdatePhase>('idle')
   const lastCheckResult = ref<UpdateCheckResult>('never')
   const lastError = ref<string | null>(null)
@@ -40,7 +44,10 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
   const totalBytes = ref<number | null>(null)
 
   let pendingUpdate: Update | null = null
+  let settingsPromise: Promise<void> | null = null
+  let automaticCheckRan = false
 
+  const autoCheckEnabled = computed(() => settings.value?.autoCheckEnabled ?? true)
   const isChecking = computed(() => phase.value === 'checking')
   const isInstalling = computed(() => ['downloading', 'installing', 'restarting'].includes(phase.value))
   const downloadProgress = computed(() => {
@@ -48,7 +55,51 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
     return Math.min(100, Math.round((downloadedBytes.value / totalBytes.value) * 100))
   })
 
-  async function checkForUpdates() {
+  async function loadSettings() {
+    if (settings.value) return
+    if (settingsPromise) return settingsPromise
+
+    settingsPromise = (async () => {
+      settingsError.value = null
+      try {
+        settings.value = await getAppUpdateSettings()
+      } catch (error) {
+        settingsError.value = getErrorMessage(error)
+        throw error
+      } finally {
+        settingsPromise = null
+      }
+    })()
+
+    return settingsPromise
+  }
+
+  async function setAutoCheckEnabled(enabled: boolean) {
+    settingsError.value = null
+    try {
+      settings.value = await setAutoCheckUpdatesEnabled(enabled)
+      return settings.value
+    } catch (error) {
+      settingsError.value = getErrorMessage(error)
+      throw error
+    }
+  }
+
+  async function runAutomaticCheck() {
+    if (automaticCheckRan) return
+    automaticCheckRan = true
+
+    try {
+      await loadSettings()
+      if (settings.value?.autoCheckEnabled) {
+        await checkForUpdates('automatic')
+      }
+    } catch {
+      // 自动检查失败不打断应用初始化，也不主动打扰用户。
+    }
+  }
+
+  async function checkForUpdates(trigger: UpdateCheckTrigger = 'manual') {
     if (isChecking.value || isInstalling.value) return
 
     phase.value = 'checking'
@@ -67,7 +118,9 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
       if (!update) {
         lastCheckResult.value = 'upToDate'
         phase.value = 'idle'
-        toast.success({ title: '当前已是最新版本' })
+        if (trigger === 'manual') {
+          toast.success({ title: '当前已是最新版本' })
+        }
         return
       }
 
@@ -86,7 +139,9 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
       lastError.value = message
       lastCheckResult.value = 'failed'
       phase.value = 'idle'
-      toast.error({ title: '检查更新失败', description: message })
+      if (trigger === 'manual') {
+        toast.error({ title: '检查更新失败', description: message })
+      }
     }
   }
 
@@ -151,14 +206,20 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
   }
 
   return {
+    settings,
+    settingsError,
     phase,
     lastCheckResult,
     lastError,
     availableUpdate,
     isDialogOpen,
+    autoCheckEnabled,
     isChecking,
     isInstalling,
     downloadProgress,
+    loadSettings,
+    setAutoCheckEnabled,
+    runAutomaticCheck,
     checkForUpdates,
     installUpdate,
     dismissUpdate,

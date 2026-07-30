@@ -12,6 +12,7 @@
   import { gameLibraryActionsKey } from '../modules/games/composables/useGameLibraryActions'
   import type { GameViewMode } from '../modules/games/composables/useGameLibraryActions'
   import { useGamesStore } from '../modules/games/stores/games'
+  import { useAppUpdaterStore } from '../modules/updates/stores/appUpdater'
   import type { CreateGamePayload, Game, ScanCandidate, UpdateGamePayload } from '../modules/games/types/game'
   import { routeNames } from '../router/routeNames'
   import BaseButton from '../shared/components/BaseButton.vue'
@@ -27,6 +28,7 @@
 
   const route = useRoute()
   const gamesStore = useGamesStore()
+  const appUpdater = useAppUpdaterStore()
   const toast = useToast()
   const { games, searchText, isLoading, launchingGameIds, libraryErrorMessage } = storeToRefs(gamesStore)
   type ViewModeScope = 'home' | 'games' | 'favorites' | 'recent'
@@ -83,8 +85,9 @@
     { name: routeNames.recent, label: '最近游玩', icon: Clock3 }
   ]
 
-  onMounted(() => {
-    void gamesStore.loadGames()
+  onMounted(async () => {
+    await gamesStore.loadGames()
+    await appUpdater.runAutomaticCheck()
   })
 
   watch(
