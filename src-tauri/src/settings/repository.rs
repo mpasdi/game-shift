@@ -29,7 +29,7 @@ pub(super) fn get_app_update_settings(
     connection: &Connection,
 ) -> Result<AppUpdateSettings, String> {
     let auto_check_enabled = get_value(connection, AUTO_CHECK_UPDATES_ENABLED_KEY)?
-        .map_or(true, |value| value == "true");
+        .is_none_or(|value| value == "true");
     Ok(AppUpdateSettings { auto_check_enabled })
 }
 

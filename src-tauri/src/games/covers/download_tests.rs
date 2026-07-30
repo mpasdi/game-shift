@@ -29,8 +29,18 @@ fn spawn_server(
         while handled < request_count && Instant::now() < deadline {
             match listener.accept() {
                 Ok((mut stream, _)) => {
-                    let mut request = [0_u8; 2048];
-                    let _ = stream.read(&mut request);
+                    stream
+                        .set_read_timeout(Some(Duration::from_secs(1)))
+                        .unwrap();
+                    let mut request = Vec::new();
+                    let mut buffer = [0_u8; 1024];
+                    while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                        let read = stream.read(&mut buffer).unwrap();
+                        if read == 0 {
+                            break;
+                        }
+                        request.extend_from_slice(&buffer[..read]);
+                    }
                     let response = handler(handled);
                     let _ = stream.write_all(&response);
                     handled += 1;
