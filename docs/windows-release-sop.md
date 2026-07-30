@@ -1,6 +1,6 @@
 # Game Shift Windows 发布 SOP
 
-本文档用于指导 Game Shift 从 `dev` 合并到 `master`、创建版本 Tag、构建 Windows NSIS 安装包、生成 SHA-256 校验文件并发布到 GitHub Releases。
+本文档用于指导 Game Shift 从 `dev` 合并到 `master`、构建并签名 Windows NSIS 更新安装包、生成 SHA-256 与 Updater 元数据、创建版本 Tag 并发布到 GitHub Releases。
 
 ## 1. 发布原则
 
@@ -11,7 +11,9 @@
 - 安装包必须从 `master` 的目标发布提交构建。
 - 不从存在未提交修改的工作区构建发布包。
 - GitHub Release 只上传由项目维护者从目标版本提交生成的文件。
-- 未签名安装包必须同时提供 SHA-256，并在发布说明中提示 SmartScreen 风险。
+- 未进行 Windows Authenticode 代码签名的安装包必须同时提供 SHA-256，并在发布说明中提示 SmartScreen 风险。
+- Updater 安装包、`.sig` 和 `latest.json` 必须来自同一次正式构建，不得混用或覆盖。
+- Updater 私钥和密码不得提交到仓库；公钥一经随正式版本发布，不得随意更换。
 - 应用标识 `com.gameshift.desktop` 不随普通版本变更。
 
 ## 2. 发布前准备
@@ -37,7 +39,14 @@ Select-String -Path package.json,src-tauri\tauri.conf.json,src-tauri\Cargo.toml 
 - 确认发布记录与准备填写的 GitHub Release 文案一致。
 - 确认安装包名称、版本号和文档描述一致。
 
-### 2.3 提交并推送开发分支
+### 2.3 准备 Updater 签名
+
+- 确认 `src-tauri/tauri.conf.json` 已启用 `createUpdaterArtifacts`，并配置正式公钥和 HTTPS 更新端点。
+- 确认私钥文件已安全备份且不在仓库目录中。
+- 在执行构建的 PowerShell 或 IDE 运行配置中设置 `TAURI_SIGNING_PRIVATE_KEY` 和 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。
+- 不在终端日志、截图、提交记录或发布附件中暴露私钥及密码。
+
+### 2.4 提交并推送开发分支
 
 先将版本号、README 和发布记录作为独立的发布准备提交落在 `dev`，再执行：
 
@@ -85,6 +94,8 @@ git push origin master
 
 ## 5. 构建 Windows 安装包
 
+确认当前分支为 `master`、工作区干净，并且签名环境变量已传入当前构建进程，然后执行：
+
 ```powershell
 pnpm tauri build --bundles nsis
 ```
@@ -93,17 +104,21 @@ pnpm tauri build --bundles nsis
 
 ```text
 src-tauri/target/release/bundle/nsis/
+├── Game Shift_<version>_x64-setup.exe
+└── Game Shift_<version>_x64-setup.exe.sig
 ```
 
-只发布 NSIS `*-setup.exe` 安装包，不直接发布 `target/release/game-shift.exe`。代码或版本号发生变化后必须重新构建，不复用旧安装包。
+构建成功时必须同时存在安装包和同名 `.sig`。只发布 NSIS `*-setup.exe` 安装包，不直接发布 `target/release/game-shift.exe`。代码、版本号、私钥或公钥发生变化后必须重新构建，不复用旧安装包或签名。
 
 ## 6. 验证安装包
 
 ```powershell
 Get-Item -LiteralPath '<installer>' | Select-Object Name, Length, LastWriteTime
+Get-Item -LiteralPath '<installer>.sig' | Select-Object Name, Length, LastWriteTime
 Get-AuthenticodeSignature -LiteralPath '<installer>'
 ```
 
+- `.sig` 文件存在且内容非空。
 - 安装、启动和卸载流程正常。
 - 安装版本的名称、版本、图标和功能正确。
 - 应用可以正常读写本地数据目录。
@@ -118,7 +133,50 @@ pnpm release:checksum
 
 此命令只能在项目仓库中用于生成发布校验文件，不用于验证从 GitHub 下载的安装包。确认输出目录同时存在安装包和同名 `.sha256` 文件，并重新核对哈希值。
 
-## 8. 创建并推送 Tag
+## 8. 生成 Updater 元数据
+
+`latest.json` 中的下载 URL 可以在 Release 发布前按 Tag 和安装包名称预先确定。发布前该地址返回 404 属于正常现象，Release 发布并上传对应文件后才会生效。
+
+在项目根目录执行以下 PowerShell，并填写本版本的简要更新说明：
+
+```powershell
+$package = Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json
+$tauriConfig = Get-Content -LiteralPath 'src-tauri\tauri.conf.json' -Raw | ConvertFrom-Json
+$version = $package.version
+$bundleDir = 'src-tauri\target\release\bundle\nsis'
+$installerName = "$($tauriConfig.productName)_$($version)_x64-setup.exe"
+$installer = Get-Item -LiteralPath (Join-Path $bundleDir $installerName)
+$signaturePath = "$($installer.FullName).sig"
+$signature = (Get-Content -LiteralPath $signaturePath -Raw).Trim()
+$assetName = [Uri]::EscapeDataString($installer.Name)
+$downloadUrl = "https://github.com/mpasdi/game-shift/releases/download/v$version/$assetName"
+
+$latest = [ordered]@{
+  version = $version
+  notes = '填写本版本的简要更新说明'
+  pub_date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+  platforms = [ordered]@{
+    'windows-x86_64' = [ordered]@{
+      signature = $signature
+      url = $downloadUrl
+    }
+  }
+}
+
+$outputPath = Join-Path $bundleDir 'latest.json'
+$json = $latest | ConvertTo-Json -Depth 5
+[System.IO.File]::WriteAllText($outputPath, $json, [System.Text.UTF8Encoding]::new($false))
+Write-Host "Created: $outputPath"
+```
+
+生成后确认：
+
+- `version` 与三个项目版本号和安装包一致。
+- `platforms.windows-x86_64.signature` 等于 `.sig` 文件的完整内容，不是文件路径或 URL。
+- `platforms.windows-x86_64.url` 指向同一 Tag 下准备上传的 NSIS 安装包。
+- `pub_date` 是 RFC 3339 格式的 UTC 时间。
+
+## 9. 创建并推送 Tag
 
 ```powershell
 git tag -a v<version> -m 'Game Shift v<version>'
@@ -128,16 +186,17 @@ git push origin v<version>
 
 仅在 `master` 已推送，并且检查、构建和安装验收全部通过后创建 Tag。Tag 推送前发现问题可以删除本地 Tag；Tag 已公开后不得覆盖。
 
-## 9. 创建 GitHub Release
+## 10. 创建 GitHub Release
 
 1. 选择对应的版本 Tag。
 2. Release 标题使用 `Game Shift v<version>`。
 3. 发布说明与 `docs/releases/<version>.md` 保持一致。
-4. 上传 NSIS 安装包和对应 SHA-256 文件。
-5. 复核文件名、版本号、系统要求、安全说明和已知限制。
-6. 确认无误后发布。
+4. 上传 NSIS 安装包、同名 `.sig`、同名 `.sha256` 和 `latest.json`。
+5. 复核 `latest.json` 中的版本、下载地址和签名与本次上传文件完全对应。
+6. 复核文件名、版本号、系统要求、安全说明和已知限制。
+7. 所有文件上传完成后再发布 Release。
 
-## 10. 发布后验证
+## 11. 发布后验证
 
 - 从 GitHub Release 重新下载安装包，不使用本地原文件。
 - 同时下载对应的 `.sha256` 文件。
@@ -165,21 +224,24 @@ Write-Host "SHA-256 verified: $actualHash"
 - GitHub 可能把安装包文件名中的空格显示或下载为点号；上述命令按实际下载文件名查找，不受此差异影响。
 - 在 Windows 10/11 x64 环境安装并启动。
 - 确认 Release 页面只包含正确版本的文件。
+- 打开 `https://github.com/mpasdi/game-shift/releases/latest/download/latest.json`，确认可以访问且内容与 Release 附件一致。
+- 使用包含相同正式公钥、但版本低于本次 Release 的内部验收构建执行一次应用内检查、下载、签名验证、安装和重启测试。
+- 首个 Updater 版本的低版本验收构建只用于测试，不得覆盖或重新上传到既有公开版本。
 - 确认 Tag 指向 `master` 的目标发布提交。
 - 确认 README 下载说明和版本信息有效。
 - 将发现的问题记录到 Issues 或版本发布记录。
 - 切回 `dev` 继续开发。
 
-## 11. 快速清单
+## 12. 快速清单
 
 1. [ ] 在 `dev` 完成功能、版本号、README 和版本发布记录，并提交发布准备改动。
 2. [ ] 在 `dev` 执行 `pnpm verify` 和手动验收。
 3. [ ] 推送 `dev`，确认与 `origin/dev` 同步。
 4. [ ] fast-forward 合并 `dev` 到 `master`。
 5. [ ] 在 `master` 再次执行 `pnpm verify`，然后推送 `master`。
-6. [ ] 构建并安装测试 NSIS 安装包。
-7. [ ] 生成并核对 SHA-256 文件。
+6. [ ] 使用正式私钥构建并安装测试 NSIS 安装包，确认同名 `.sig` 存在。
+7. [ ] 生成并核对 SHA-256 和 `latest.json`。
 8. [ ] 创建、检查并推送 annotated Tag。
-9. [ ] 创建 GitHub Release 并上传安装包与校验文件。
-10. [ ] 从 GitHub 重新下载并完成发布后验证。
+9. [ ] 创建 GitHub Release，上传安装包、`.sig`、`.sha256` 和 `latest.json`。
+10. [ ] 从 GitHub 重新下载，完成校验和应用内更新验收。
 11. [ ] 切回 `dev`。
