@@ -3,6 +3,7 @@
   import { AppWindow, Database, FolderOpen, Info, Settings } from '@lucide/vue'
   import { getAppInfo, type AppInfo } from '../modules/settings/api'
   import OnlineCoverSettingsPanel from '../modules/settings/components/OnlineCoverSettingsPanel.vue'
+  import AppUpdateSettingsPanel from '../modules/updates/components/AppUpdateSettingsPanel.vue'
 
   const appInfo = ref<AppInfo | null>(null)
   const isLoading = ref(false)
@@ -69,6 +70,7 @@
     <p v-if="errorMessage" class="settings-page__error">{{ errorMessage }}</p>
 
     <div class="settings-grid">
+      <AppUpdateSettingsPanel />
       <OnlineCoverSettingsPanel />
 
       <article class="settings-panel">

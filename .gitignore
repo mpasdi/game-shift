@@ -21,6 +21,10 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# Updater signing keys
+*.key
+*.key.pub
+
 # IDE
 .idea/
 .vscode/
