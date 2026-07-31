@@ -39,4 +39,7 @@ export interface ScanCandidate {
   folderPath: string
   exeFileName: string
   exists: boolean
+  recommended: boolean
+  confidence: number
+  reasons: string[]
 }

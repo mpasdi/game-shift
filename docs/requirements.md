@@ -547,8 +547,12 @@ interface ScanCandidate {
   exeFileName: string
   exists: boolean
   recommended: boolean
+  confidence: number
+  reasons: string[]
 }
 ```
+
+`confidence` 是用于排序和调试规则的 `0-100` 识别分，不表示统计概率；`reasons` 记录影响判断的主要证据。
 
 ### 9.3 SQLite 表结构
 

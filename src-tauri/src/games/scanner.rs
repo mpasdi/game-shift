@@ -1,6 +1,16 @@
-use std::collections::HashSet;
+//! 本地 EXE 扫描与游戏主程序推荐。
+//!
+//! 处理流程：
+//! 1. 递归查找 `.exe`，跳过明确无效的目录和程序；
+//! 2. 为每个保留下来的 EXE 收集路径、同目录文件和 PE 版本信息；
+//! 3. 根据游戏特征加分、辅助程序特征减分；
+//! 4. 将同一游戏目录中的 EXE 放在一起比较，只推荐证据明显更强的一个；
+//! 5. 返回推荐项、其他候选和已存在状态，最终是否导入仍由用户决定。
+
+use std::cmp::Reverse;
+use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use tauri::AppHandle;
 
@@ -10,26 +20,117 @@ use super::models::ScanCandidate;
 use super::repository;
 use super::{has_exe_extension, normalize_existing_directory, path_to_string};
 
+// 单个候选达到该分数后，才有资格进入“推荐游戏”。
+// 该分数是规则评分，不是统计概率；对外展示时限制在 0-100。
+const RECOMMEND_THRESHOLD: i32 = 55;
+// 同目录前两名都没有强游戏特征时，第一名至少领先该分数才会被推荐。
+// 这样可以避免在两个很相似的 EXE 之间武断选择。
+const MIN_RECOMMENDATION_MARGIN: i32 = 8;
+
+/// Windows PE 版本资源中可用于识别程序身份的文本字段。
+///
+/// 很多游戏不会完整填写这些字段，所以它们只能作为辅助证据，不能单独证明某个 EXE 是游戏。
+#[derive(Debug, Clone, Default)]
+struct ExecutableMetadata {
+    product_name: Option<String>,
+    file_description: Option<String>,
+    original_filename: Option<String>,
+    company_name: Option<String>,
+}
+
+/// 从文件本身及周边目录采集到的原始证据。
+///
+/// 这里不做“是否推荐”的决定，只记录事实，方便评分规则与文件遍历解耦。
+#[derive(Debug, Clone, Default)]
+struct CandidateEvidence {
+    file_size: u64,
+    metadata: ExecutableMetadata,
+    has_unity_data_directory: bool,
+    has_unity_runtime: bool,
+    has_game_platform_runtime: bool,
+    is_unreal_shipping_binary: bool,
+    filename_matches_game_root: bool,
+    metadata_matches_identity: bool,
+    directly_in_game_root: bool,
+    prefers_64_bit: bool,
+    is_in_auxiliary_path: bool,
+}
+
+/// 单个 EXE 独立评分后的结果。
+#[derive(Debug, Clone)]
+struct CandidateAssessment {
+    score: i32,
+    reasons: Vec<String>,
+    has_strong_game_signal: bool,
+}
+
+/// 扫描阶段的内部候选。
+///
+/// `ScanCandidate` 是返回给前端的数据；其余字段只用于同一游戏目录内的横向比较。
+#[derive(Debug)]
+struct CandidateDraft {
+    candidate: ScanCandidate,
+    group_key: PathBuf,
+    score: i32,
+    has_strong_game_signal: bool,
+}
+
+// -----------------------------------------------------------------------------
+// 扫描主流程
+// -----------------------------------------------------------------------------
+
+/// 扫描入口：加载已入库路径、递归采集候选、同目录择优，最后按展示顺序排序。
 pub(super) fn scan_games(app: &AppHandle, directory: &str) -> Result<Vec<ScanCandidate>, String> {
     let connection = db::open_connection(app)?;
     let root = normalize_existing_directory(directory)?;
     let existing_exe_paths = repository::query_existing_exe_paths(&connection)?;
-    let mut candidates = Vec::new();
+    let mut drafts = Vec::new();
+    let mut visited_directories = HashSet::new();
+    let mut sibling_name_cache = HashMap::new();
 
-    scan_directory(&root, &existing_exe_paths, &mut candidates)?;
+    scan_directory(
+        &root,
+        &root,
+        &existing_exe_paths,
+        &mut visited_directories,
+        &mut sibling_name_cache,
+        &mut drafts,
+    )?;
+    select_recommendations(&mut drafts);
+
+    let mut candidates: Vec<_> = drafts.into_iter().map(|draft| draft.candidate).collect();
+    // 展示顺序：未入库优先、推荐优先、分数高的优先，最后按名称稳定排序。
     candidates.sort_by(|left, right| {
         left.exists
             .cmp(&right.exists)
+            .then_with(|| right.recommended.cmp(&left.recommended))
+            .then_with(|| right.confidence.cmp(&left.confidence))
             .then_with(|| left.name.to_lowercase().cmp(&right.name.to_lowercase()))
     });
 
     Ok(candidates)
 }
+
+/// 递归遍历目录并生成尚未决定 `recommended` 的候选草稿。
+///
+/// 无权访问、无法规范化或包含无效 Unicode 的单个目录/文件会被跳过，不中断整次扫描。
 fn scan_directory(
+    root: &Path,
     directory: &Path,
     existing_exe_paths: &HashSet<String>,
-    candidates: &mut Vec<ScanCandidate>,
+    visited_directories: &mut HashSet<PathBuf>,
+    sibling_name_cache: &mut HashMap<PathBuf, HashSet<String>>,
+    drafts: &mut Vec<CandidateDraft>,
 ) -> Result<(), String> {
+    // Windows 目录联接和符号链接可能形成环；使用规范路径确保同一目录只扫描一次。
+    let canonical_directory = match directory.canonicalize() {
+        Ok(path) => path,
+        Err(_) => return Ok(()),
+    };
+    if !visited_directories.insert(canonical_directory) {
+        return Ok(());
+    }
+
     let entries = match fs::read_dir(directory) {
         Ok(entries) => entries,
         Err(_) => return Ok(()),
@@ -45,41 +146,79 @@ fn scan_directory(
             if should_skip_directory(&path) {
                 continue;
             }
-            scan_directory(&path, existing_exe_paths, candidates)?;
+            scan_directory(
+                root,
+                &path,
+                existing_exe_paths,
+                visited_directories,
+                sibling_name_cache,
+                drafts,
+            )?;
             continue;
         }
 
-        if !path.is_file() || !has_exe_extension(&path) || should_skip_exe(&path) {
+        // 只有“明确无效”的 EXE 才在此处彻底丢弃。不确定的程序必须继续进入评分流程。
+        if !path.is_file() || !has_exe_extension(&path) || should_exclude_exe(&path) {
             continue;
         }
 
-        let exe_path = path_to_string(path.canonicalize().map_err(|error| error.to_string())?)?;
-        let folder_path = path
-            .parent()
-            .ok_or_else(|| "无法识别候选程序所在目录".to_string())?
-            .to_path_buf();
-        let exe_file_name = path
-            .file_name()
-            .and_then(|value| value.to_str())
-            .ok_or_else(|| "无法识别候选程序文件名".to_string())?
-            .to_string();
+        let canonical_path = match path.canonicalize() {
+            Ok(path) => path,
+            Err(_) => continue,
+        };
+        let folder_path = match canonical_path.parent() {
+            Some(path) => path.to_path_buf(),
+            None => continue,
+        };
+        let exe_file_name = match canonical_path.file_name().and_then(|value| value.to_str()) {
+            Some(name) => name.to_string(),
+            None => continue,
+        };
+        let exe_path = match path_to_string(canonical_path.clone()) {
+            Ok(path) => path,
+            Err(_) => continue,
+        };
+        let folder_path_string = match path_to_string(folder_path.clone()) {
+            Ok(path) => path,
+            Err(_) => continue,
+        };
 
-        candidates.push(ScanCandidate {
-            name: infer_game_name(&path),
-            exists: existing_exe_paths.contains(&exe_path),
-            exe_path,
-            folder_path: path_to_string(
-                folder_path
-                    .canonicalize()
-                    .map_err(|error| error.to_string())?,
-            )?,
-            exe_file_name,
+        // 先推断游戏根目录，后续的名称匹配、候选分组和评分都会依赖它。
+        let game_root = infer_game_root(&canonical_path, root);
+        let evidence = collect_candidate_evidence(&canonical_path, &game_root, sibling_name_cache);
+        let assessment = assess_candidate(&canonical_path, &evidence);
+        let name = infer_game_name(&canonical_path, root, &game_root, &evidence.metadata);
+        let group_key = candidate_group_key(&canonical_path, root, &game_root);
+
+        drafts.push(CandidateDraft {
+            candidate: ScanCandidate {
+                name,
+                exists: existing_exe_paths.contains(&exe_path),
+                exe_path,
+                folder_path: folder_path_string,
+                exe_file_name,
+                recommended: false,
+                // 内部允许负分，返回前端时压缩到 0-100，便于排序和调试。
+                confidence: assessment.score.clamp(0, 100) as u8,
+                reasons: assessment.reasons,
+            },
+            group_key,
+            score: assessment.score,
+            has_strong_game_signal: assessment.has_strong_game_signal,
         });
     }
 
     Ok(())
 }
 
+// -----------------------------------------------------------------------------
+// 明确排除规则
+// -----------------------------------------------------------------------------
+
+/// 判断整个目录是否可以安全跳过。
+///
+/// 这里只放回收站、开发依赖、运行库安装包等明确不是游戏主体的目录。
+/// `bin`、`Binaries`、`Win64` 等目录可能包含真正主程序，绝不能在这里排除。
 fn should_skip_directory(path: &Path) -> bool {
     path.file_name()
         .and_then(|value| value.to_str())
@@ -87,47 +226,655 @@ fn should_skip_directory(path: &Path) -> bool {
             matches!(
                 name.to_ascii_lowercase().as_str(),
                 "$recycle.bin"
+                    | "system volume information"
                     | ".git"
+                    | ".svn"
+                    | ".idea"
+                    | ".vscode"
                     | "node_modules"
+                    | "__pycache__"
                     | "redist"
                     | "redistributable"
                     | "redistributables"
                     | "_commonredist"
                     | "directx"
                     | "vcredist"
+                    | "prereq"
+                    | "prereqs"
+                    | "prerequisites"
             )
         })
 }
 
-fn should_skip_exe(path: &Path) -> bool {
-    path.file_stem()
-        .and_then(|value| value.to_str())
-        .is_some_and(|name| {
-            let name = name.to_ascii_lowercase();
-            name.contains("unins")
-                || name.contains("uninstall")
-                || name.contains("crash")
-                || name.contains("reporter")
-                || name.contains("redist")
-                || name.contains("vcredist")
-                || name.contains("dxsetup")
-                || name.contains("eac")
-                || name.contains("easyanticheat")
-        })
-}
+/// 判断 EXE 是否明确不应作为候选返回。
+///
+/// 启动器、服务器、编辑器等仍可能是用户需要的入口，因此不会在这里删除，只在评分时减分。
+fn should_exclude_exe(path: &Path) -> bool {
+    let Some(stem) = path.file_stem().and_then(|value| value.to_str()) else {
+        return true;
+    };
+    let name = compact_identifier(stem);
 
-fn infer_game_name(path: &Path) -> String {
-    path.parent()
-        .and_then(|parent| parent.file_name())
-        .and_then(|value| value.to_str())
-        .filter(|value| !value.trim().is_empty())
-        .map_or_else(
-            || {
-                path.file_stem()
-                    .and_then(|value| value.to_str())
-                    .unwrap_or("Game")
-                    .to_string()
-            },
-            ToString::to_string,
+    name.starts_with("unins")
+        || name.starts_with("uninstall")
+        || name.starts_with("vcredist")
+        || name.starts_with("dotnet")
+        || name.starts_with("dxsetup")
+        || name.starts_with("ue4prereqsetup")
+        || name.starts_with("ue5prereqsetup")
+        || name.starts_with("unitycrashhandler")
+        || name.starts_with("crashreportclient")
+        || name.starts_with("crashpadhandler")
+        || name.starts_with("steamerrorreporter")
+        || name.starts_with("easyanticheat")
+        || name.starts_with("eacsetup")
+        || name.starts_with("beservice")
+        || matches!(
+            name.as_str(),
+            "setup" | "installer" | "install" | "dotnetfx" | "werfault"
         )
 }
+
+// -----------------------------------------------------------------------------
+// 证据采集与评分
+// -----------------------------------------------------------------------------
+
+/// 收集候选证据，不在这里决定是否推荐。
+///
+/// 同目录文件名会按目录缓存，避免一个目录存在多个 EXE 时反复读取磁盘。
+fn collect_candidate_evidence(
+    path: &Path,
+    game_root: &Path,
+    sibling_name_cache: &mut HashMap<PathBuf, HashSet<String>>,
+) -> CandidateEvidence {
+    let parent = path.parent().unwrap_or(game_root);
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    let stem_lower = stem.to_ascii_lowercase();
+    let sibling_names = sibling_name_cache
+        .entry(parent.to_path_buf())
+        .or_insert_with(|| read_sibling_names(parent));
+    let unity_data_directory = format!("{}_data", stem_lower);
+    let root_name = game_root
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    let metadata = read_executable_metadata(path);
+
+    CandidateEvidence {
+        file_size: fs::metadata(path).map_or(0, |metadata| metadata.len()),
+        metadata_matches_identity: metadata_matches_candidate(&metadata, stem, root_name),
+        metadata,
+        has_unity_data_directory: sibling_names.contains(&unity_data_directory),
+        has_unity_runtime: sibling_names.contains("unityplayer.dll")
+            || sibling_names.contains("gameassembly.dll"),
+        has_game_platform_runtime: sibling_names.contains("steam_api.dll")
+            || sibling_names.contains("steam_api64.dll")
+            || sibling_names.contains("galaxycsharpglue.dll")
+            || sibling_names
+                .iter()
+                .any(|name| name.starts_with("eossdk-") && name.ends_with("-shipping.dll")),
+        is_unreal_shipping_binary: stem_lower.ends_with("-win64-shipping")
+            || stem_lower.ends_with("-win32-shipping")
+            || stem_lower.ends_with("-shipping"),
+        filename_matches_game_root: identifiers_match(stem, root_name),
+        directly_in_game_root: parent == game_root,
+        prefers_64_bit: path.components().any(|component| {
+            component.as_os_str().to_str().is_some_and(|value| {
+                matches!(
+                    value.to_ascii_lowercase().as_str(),
+                    "win64" | "x64" | "amd64"
+                )
+            })
+        }) || stem_lower.contains("win64")
+            || stem_lower.ends_with("x64"),
+        is_in_auxiliary_path: path.components().any(|component| {
+            component.as_os_str().to_str().is_some_and(|value| {
+                matches!(
+                    value.to_ascii_lowercase().as_str(),
+                    "tool"
+                        | "tools"
+                        | "sdk"
+                        | "support"
+                        | "extras"
+                        | "thirdparty"
+                        | "installer"
+                        | "installers"
+                        | "benchmark"
+                )
+            })
+        }),
+    }
+}
+
+/// 将原始证据换算成规则分数和可解释的原因。
+///
+/// 分数越高表示“更像游戏主程序”，但不表示真实概率。规则分为：
+/// - 强游戏证据：Unity 同名数据目录、Unreal Shipping 结构；
+/// - 一般正向证据：平台运行库、名称匹配、PE 信息、文件大小；
+/// - 负向证据：工具目录以及启动器、服务器、更新器等程序角色。
+fn assess_candidate(path: &Path, evidence: &CandidateEvidence) -> CandidateAssessment {
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    let mut score = 0;
+    let mut reasons = Vec::new();
+    let mut has_strong_game_signal = false;
+
+    // 强游戏证据：可以显著提高推荐可信度，并允许在同目录候选分数接近时择优。
+    if evidence.has_unity_data_directory {
+        score += 65;
+        has_strong_game_signal = true;
+        reasons.push("存在与程序同名的 Unity 数据目录".to_string());
+    }
+    if evidence.has_unity_runtime {
+        score += 20;
+        reasons.push("同目录包含 Unity 游戏运行库".to_string());
+    }
+    if evidence.is_unreal_shipping_binary {
+        score += 65;
+        has_strong_game_signal = true;
+        reasons.push("符合 Unreal Shipping 主程序结构".to_string());
+    }
+    // 一般游戏证据：只能组合使用，单项不应被理解为“确定是游戏”。
+    if evidence.has_game_platform_runtime {
+        score += 15;
+        reasons.push("同目录包含游戏平台运行库".to_string());
+    }
+    if evidence.filename_matches_game_root {
+        score += 35;
+        reasons.push("程序名与游戏目录名一致".to_string());
+    }
+    if evidence.directly_in_game_root {
+        score += 8;
+        reasons.push("程序位于游戏根目录".to_string());
+    }
+    if evidence.prefers_64_bit {
+        score += 8;
+        reasons.push("优先选择 64 位程序".to_string());
+    }
+
+    // PE 元数据有助于确认程序身份，但普通桌面软件也具备这些字段，所以权重较低。
+    if let Some(product_name) = evidence
+        .metadata
+        .product_name
+        .as_deref()
+        .filter(|value| is_meaningful_name(value))
+    {
+        score += 10;
+        reasons.push(format!("PE 产品名：{product_name}"));
+    }
+    if let Some(company_name) = evidence
+        .metadata
+        .company_name
+        .as_deref()
+        .filter(|value| is_meaningful_name(value))
+    {
+        reasons.push(format!("PE 发布者：{company_name}"));
+    }
+    if evidence.metadata_matches_identity {
+        score += 20;
+        reasons.push("PE 版本信息与程序或目录名称一致".to_string());
+    }
+
+    // 文件大小只用于区分很小的辅助程序，不能单独作为游戏判断依据。
+    match evidence.file_size {
+        20_000_000.. => {
+            score += 12;
+            reasons.push("程序体积符合常见游戏主程序特征".to_string());
+        }
+        2_000_000.. => {
+            score += 7;
+            reasons.push("程序体积不像小型辅助工具".to_string());
+        }
+        256_000.. => score += 2,
+        0..128_000 => {
+            score -= 12;
+            reasons.push("程序体积很小，可能是启动器或辅助工具".to_string());
+        }
+        _ => {}
+    }
+
+    // 路径和程序角色提供负向证据；候选仍会保留在“其他可执行文件”中。
+    if evidence.is_in_auxiliary_path {
+        score -= 25;
+        reasons.push("程序位于工具或辅助目录".to_string());
+    }
+
+    let role_text = [
+        Some(stem),
+        evidence.metadata.product_name.as_deref(),
+        evidence.metadata.file_description.as_deref(),
+        evidence.metadata.original_filename.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>()
+    .join(" ")
+    .to_ascii_lowercase();
+    if let Some((penalty, reason)) = auxiliary_role_penalty(&role_text) {
+        score -= penalty;
+        reasons.push(reason.to_string());
+    }
+
+    CandidateAssessment {
+        score: score.clamp(-100, 100),
+        reasons,
+        has_strong_game_signal,
+    }
+}
+
+/// 根据文件名和 PE 文本判断程序更像哪类辅助角色，并返回减分值及解释。
+///
+/// 该函数只减分、不直接排除，避免误伤必须经 Launcher 启动的游戏。
+fn auxiliary_role_penalty(value: &str) -> Option<(i32, &'static str)> {
+    let compact = compact_identifier(value);
+    if compact.contains("dedicatedserver") || compact.contains("server") {
+        return Some((55, "名称表明它更可能是服务器程序"));
+    }
+    if compact.contains("crash") || compact.contains("errorreport") {
+        return Some((60, "名称表明它更可能是崩溃或错误上报程序"));
+    }
+    if compact.contains("updater") || compact.contains("patcher") {
+        return Some((45, "名称表明它更可能是更新或补丁程序"));
+    }
+    if compact.contains("editor") {
+        return Some((50, "名称表明它更可能是编辑器"));
+    }
+    if compact.contains("helper")
+        || compact.contains("webview")
+        || compact.contains("webhelper")
+        || compact.contains("service")
+    {
+        return Some((45, "名称表明它更可能是辅助或服务程序"));
+    }
+    if compact.contains("benchmark") {
+        return Some((40, "名称表明它更可能是性能测试程序"));
+    }
+    if compact.contains("config") || compact.contains("settings") {
+        return Some((35, "名称表明它更可能是配置程序"));
+    }
+    if compact.contains("launcher") || compact.contains("bootstrap") {
+        return Some((30, "名称表明它可能只是启动器"));
+    }
+    if compact.contains("tool") {
+        return Some((25, "名称表明它更可能是工具程序"));
+    }
+    None
+}
+
+// -----------------------------------------------------------------------------
+// 同一游戏目录内择优
+// -----------------------------------------------------------------------------
+
+/// 在每个推断出的游戏目录中选择至多一个推荐 EXE。
+///
+/// 推荐必须同时满足：
+/// - 第一名达到推荐阈值；
+/// - 第一名有强游戏证据，或比第二名领先足够多。
+///
+/// `exists` 不参与评分，它只表示数据库中是否已有该路径，与识别结果保持独立。
+fn select_recommendations(drafts: &mut [CandidateDraft]) {
+    let mut groups: HashMap<PathBuf, Vec<usize>> = HashMap::new();
+    for (index, draft) in drafts.iter().enumerate() {
+        groups
+            .entry(draft.group_key.clone())
+            .or_default()
+            .push(index);
+    }
+
+    for indices in groups.values_mut() {
+        indices.sort_by_key(|index| {
+            (
+                Reverse(drafts[*index].score),
+                drafts[*index].candidate.exe_path.to_ascii_lowercase(),
+            )
+        });
+        let best_index = indices[0];
+        let best_score = drafts[best_index].score;
+        if best_score < RECOMMEND_THRESHOLD {
+            continue;
+        }
+
+        let runner_up_score = indices.get(1).map(|index| drafts[*index].score);
+        // 强游戏证据可以打破接近分数；没有强证据时必须依靠足够的领先差值。
+        let has_clear_winner = drafts[best_index].has_strong_game_signal
+            || runner_up_score
+                .is_none_or(|runner_up| best_score - runner_up >= MIN_RECOMMENDATION_MARGIN);
+        if has_clear_winner {
+            drafts[best_index].candidate.recommended = true;
+            drafts[best_index]
+                .candidate
+                .reasons
+                .push("同一游戏目录中综合证据最强".to_string());
+        } else {
+            for index in indices.iter().take(2) {
+                drafts[*index]
+                    .candidate
+                    .reasons
+                    .push("同目录候选证据接近，保留待确认".to_string());
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 游戏根目录、分组和名称推断
+// -----------------------------------------------------------------------------
+
+/// 从 EXE 所在位置向上跳过通用二进制目录，推断游戏安装根目录。
+///
+/// 例如 `Example/Game/Binaries/Win64/Example-Win64-Shipping.exe` 会回溯到 `Example`。
+fn infer_game_root(path: &Path, scan_root: &Path) -> PathBuf {
+    let mut current = path.parent().unwrap_or(scan_root);
+    let mut ascended = false;
+
+    while current != scan_root {
+        let Some(name) = current.file_name().and_then(|value| value.to_str()) else {
+            break;
+        };
+        if !is_generic_executable_directory(name)
+            && !(ascended && name.eq_ignore_ascii_case("game"))
+        {
+            break;
+        }
+        let Some(parent) = current.parent() else {
+            break;
+        };
+        current = parent;
+        ascended = true;
+    }
+
+    current.to_path_buf()
+}
+
+/// 生成同目录比较所使用的分组键。
+///
+/// 如果用户直接扫描 `Games` 这类库目录，散落在根目录的多个 EXE 不应被当成同一个游戏，
+/// 因此这些文件分别成组；正常子目录中的候选仍按推断出的游戏根目录分组。
+fn candidate_group_key(path: &Path, scan_root: &Path, game_root: &Path) -> PathBuf {
+    let root_is_library = scan_root
+        .file_name()
+        .and_then(|value| value.to_str())
+        .is_some_and(is_library_container_name);
+    if game_root == scan_root && path.parent() == Some(scan_root) && root_is_library {
+        return path.to_path_buf();
+    }
+    game_root.to_path_buf()
+}
+
+/// 推断默认游戏名称。
+///
+/// 优先级：有效的游戏根目录名 -> PE 产品名 -> EXE 文件名。
+/// 通用库目录、纯数字目录和 `Win64` 等无意义名称不会直接成为游戏名。
+fn infer_game_name(
+    path: &Path,
+    scan_root: &Path,
+    game_root: &Path,
+    metadata: &ExecutableMetadata,
+) -> String {
+    let game_root_name = game_root.file_name().and_then(|value| value.to_str());
+    let root_is_library = scan_root
+        .file_name()
+        .and_then(|value| value.to_str())
+        .is_some_and(is_library_container_name);
+
+    if let Some(name) = game_root_name
+        .filter(|name| is_meaningful_name(name) && (game_root != scan_root || !root_is_library))
+    {
+        return name.trim().to_string();
+    }
+    if let Some(name) = metadata
+        .product_name
+        .as_deref()
+        .filter(|value| is_meaningful_name(value))
+    {
+        return name.trim().to_string();
+    }
+    path.file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or("Game")
+        .to_string()
+}
+
+/// 判断 PE 产品名、文件描述或原始文件名是否与 EXE/游戏根目录名称一致。
+fn metadata_matches_candidate(metadata: &ExecutableMetadata, stem: &str, root_name: &str) -> bool {
+    [
+        metadata.product_name.as_deref(),
+        metadata.file_description.as_deref(),
+        metadata.original_filename.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .any(|value| identifiers_match(value, stem) || identifiers_match(value, root_name))
+}
+
+/// 读取同目录全部文件名并统一为小写，用于寻找引擎和平台运行库特征。
+fn read_sibling_names(directory: &Path) -> HashSet<String> {
+    let Ok(entries) = fs::read_dir(directory) else {
+        return HashSet::new();
+    };
+    entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .map(|name| name.to_ascii_lowercase())
+        .collect()
+}
+
+/// 真正主程序经常位于这些通用目录中，推断根目录时需要继续向上回溯。
+fn is_generic_executable_directory(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "bin"
+            | "binary"
+            | "binaries"
+            | "win32"
+            | "win64"
+            | "x86"
+            | "x64"
+            | "amd64"
+            | "retail"
+            | "release"
+            | "shipping"
+    )
+}
+
+/// 常见的多游戏库目录名，用于区分“库根目录”和“单个游戏根目录”。
+fn is_library_container_name(name: &str) -> bool {
+    matches!(
+        name.trim().to_ascii_lowercase().as_str(),
+        "game"
+            | "games"
+            | "library"
+            | "libraries"
+            | "apps"
+            | "common"
+            | "steamapps"
+            | "gog games"
+            | "epic games"
+    )
+}
+
+/// 过滤过短、纯数字、占位符和通用目录名，避免生成无意义的默认游戏名。
+fn is_meaningful_name(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.len() < 2 || trimmed.chars().all(|character| character.is_ascii_digit()) {
+        return false;
+    }
+    !matches!(
+        compact_identifier(trimmed).as_str(),
+        "game"
+            | "application"
+            | "launcher"
+            | "program"
+            | "productname"
+            | "defaultcompanyname"
+            | "todo"
+            | "win32"
+            | "win64"
+            | "x86"
+            | "x64"
+            | "bin"
+            | "binary"
+            | "binaries"
+    )
+}
+
+/// 忽略大小写、标点、`.exe` 和架构/Shipping 后缀后比较两个名称。
+fn identifiers_match(left: &str, right: &str) -> bool {
+    let left = normalized_game_identifier(left);
+    let right = normalized_game_identifier(right);
+    left.len() >= 3 && left == right
+}
+
+/// 将游戏标识归一化，便于比较 `Example` 与 `Example-Win64-Shipping.exe`。
+fn normalized_game_identifier(value: &str) -> String {
+    let mut value = compact_identifier(value);
+    if value.len() > 5 && value.ends_with("exe") {
+        value.truncate(value.len() - 3);
+    }
+    for suffix in [
+        "win64shipping",
+        "win32shipping",
+        "shipping",
+        "win64",
+        "win32",
+        "amd64",
+        "x64",
+        "x86",
+    ] {
+        if value.len() > suffix.len() + 2 && value.ends_with(suffix) {
+            value.truncate(value.len() - suffix.len());
+            break;
+        }
+    }
+    value
+}
+
+/// 去除非字母数字字符并转为小写，用于不区分格式的规则匹配。
+fn compact_identifier(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| character.is_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
+// -----------------------------------------------------------------------------
+// Windows PE 版本信息
+// -----------------------------------------------------------------------------
+
+/// 从 Windows 版本资源读取 ProductName、FileDescription 等文本。
+///
+/// 读取失败或 EXE 没有版本资源时返回空元数据，扫描过程不会因此失败。
+#[cfg(windows)]
+fn read_executable_metadata(path: &Path) -> ExecutableMetadata {
+    use std::ffi::c_void;
+    use std::os::windows::ffi::OsStrExt;
+    use std::ptr;
+    use std::slice;
+
+    use windows_sys::Win32::Storage::FileSystem::{
+        GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW,
+    };
+
+    let path_wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let mut ignored_handle = 0;
+    // SAFETY: `path_wide` is NUL terminated and remains alive for the duration of the call.
+    let size = unsafe { GetFileVersionInfoSizeW(path_wide.as_ptr(), &mut ignored_handle) };
+    if size == 0 {
+        return ExecutableMetadata::default();
+    }
+
+    let mut version_data = vec![0_u8; size as usize];
+    // SAFETY: the destination buffer has exactly the size requested by Windows.
+    let loaded = unsafe {
+        GetFileVersionInfoW(
+            path_wide.as_ptr(),
+            0,
+            size,
+            version_data.as_mut_ptr().cast::<c_void>(),
+        )
+    };
+    if loaded == 0 {
+        return ExecutableMetadata::default();
+    }
+
+    // 查询版本资源中的原始指针；返回值只在 `version_data` 存活期间有效。
+    fn query_raw(version_data: &[u8], key: &str) -> Option<(*mut c_void, u32)> {
+        let key_wide: Vec<u16> = key.encode_utf16().chain(Some(0)).collect();
+        let mut value = ptr::null_mut();
+        let mut length = 0;
+        // SAFETY: Windows owns the returned pointer inside `version_data`; all pointers live
+        // through this call and the caller consumes them before `version_data` is dropped.
+        let found = unsafe {
+            VerQueryValueW(
+                version_data.as_ptr().cast::<c_void>(),
+                key_wide.as_ptr(),
+                &mut value,
+                &mut length,
+            )
+        };
+        (found != 0 && !value.is_null() && length > 0).then_some((value, length))
+    }
+
+    // 将 StringFileInfo 中的 UTF-16 文本转换为 Rust String。
+    fn query_string(version_data: &[u8], key: &str) -> Option<String> {
+        let (value, length) = query_raw(version_data, key)?;
+        // SAFETY: for StringFileInfo keys Windows returns `length` UTF-16 code units.
+        let value = unsafe { slice::from_raw_parts(value.cast::<u16>(), length as usize) };
+        let value = String::from_utf16_lossy(value)
+            .trim_matches('\0')
+            .trim()
+            .to_string();
+        (!value.is_empty()).then_some(value)
+    }
+
+    // 优先使用 EXE 自己声明的语言/代码页，再补充常见的英文和简体中文组合。
+    let mut translations = Vec::new();
+    if let Some((value, length)) = query_raw(&version_data, r"\VarFileInfo\Translation") {
+        // SAFETY: Translation is documented as an array of language/code-page u16 pairs.
+        let bytes = unsafe { slice::from_raw_parts(value.cast::<u8>(), length as usize) };
+        for translation in bytes.chunks_exact(4) {
+            translations.push((
+                u16::from_le_bytes([translation[0], translation[1]]),
+                u16::from_le_bytes([translation[2], translation[3]]),
+            ));
+        }
+    }
+    for fallback in [(0x0409, 1200), (0x0409, 1252), (0x0804, 1200)] {
+        if !translations.contains(&fallback) {
+            translations.push(fallback);
+        }
+    }
+
+    let query_field = |field: &str| {
+        translations.iter().find_map(|(language, code_page)| {
+            query_string(
+                &version_data,
+                &format!(r"\StringFileInfo\{language:04x}{code_page:04x}\{field}"),
+            )
+        })
+    };
+
+    ExecutableMetadata {
+        product_name: query_field("ProductName"),
+        file_description: query_field("FileDescription"),
+        original_filename: query_field("OriginalFilename"),
+        company_name: query_field("CompanyName"),
+    }
+}
+
+/// 非 Windows 平台没有 PE 版本资源，返回空值以保持核心评分逻辑可测试、可编译。
+#[cfg(not(windows))]
+fn read_executable_metadata(_path: &Path) -> ExecutableMetadata {
+    ExecutableMetadata::default()
+}
+
+#[cfg(test)]
+#[path = "scanner_tests.rs"]
+mod tests;

@@ -49,6 +49,9 @@ pub struct ScanCandidate {
     pub(super) folder_path: String,
     pub(super) exe_file_name: String,
     pub(super) exists: bool,
+    pub(super) recommended: bool,
+    pub(super) confidence: u8,
+    pub(super) reasons: Vec<String>,
 }
 
 pub(super) struct NormalizedGameFields {
