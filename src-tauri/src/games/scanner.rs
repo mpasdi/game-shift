@@ -576,8 +576,8 @@ fn infer_game_root(path: &Path, scan_root: &Path) -> PathBuf {
         let Some(name) = current.file_name().and_then(|value| value.to_str()) else {
             break;
         };
-        if !is_generic_executable_directory(name)
-            && !(ascended && name.eq_ignore_ascii_case("game"))
+        if !(is_generic_executable_directory(name)
+            || ascended && name.eq_ignore_ascii_case("game"))
         {
             break;
         }
