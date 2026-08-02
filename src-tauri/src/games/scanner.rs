@@ -23,9 +23,13 @@ use super::{has_exe_extension, normalize_existing_directory, path_to_string};
 // 单个候选达到该分数后，才有资格进入“推荐游戏”。
 // 该分数是规则评分，不是统计概率；对外展示时限制在 0-100。
 const RECOMMEND_THRESHOLD: i32 = 55;
+// 有强游戏证据且在同组明显领先时，可使用稍低门槛，兼容主程序位于资源子目录的游戏。
+const STRONG_SIGNAL_RECOMMEND_THRESHOLD: i32 = 50;
 // 同目录前两名都没有强游戏特征时，第一名至少领先该分数才会被推荐。
 // 这样可以避免在两个很相似的 EXE 之间武断选择。
 const MIN_RECOMMENDATION_MARGIN: i32 = 8;
+// 游戏根目录直属程序相对子目录程序获得的结构性优势。
+const DIRECT_GAME_ROOT_BONUS: i32 = 8;
 
 /// Windows PE 版本资源中可用于识别程序身份的文本字段。
 ///
@@ -48,11 +52,15 @@ struct CandidateEvidence {
     has_unity_data_directory: bool,
     has_unity_runtime: bool,
     has_game_platform_runtime: bool,
+    has_renpy_runtime: bool,
+    has_rpg_maker_nwjs_runtime: bool,
     is_unreal_shipping_binary: bool,
     filename_matches_game_root: bool,
     metadata_matches_identity: bool,
     directly_in_game_root: bool,
     prefers_64_bit: bool,
+    has_game_data_files: bool,
+    is_32_bit_variant_with_default: bool,
     is_in_auxiliary_path: bool,
 }
 
@@ -70,6 +78,7 @@ struct CandidateAssessment {
 #[derive(Debug)]
 struct CandidateDraft {
     candidate: ScanCandidate,
+    executable_directory: PathBuf,
     group_key: PathBuf,
     score: i32,
     has_strong_game_signal: bool,
@@ -96,6 +105,7 @@ pub(super) fn scan_games(app: &AppHandle, directory: &str) -> Result<Vec<ScanCan
         &mut sibling_name_cache,
         &mut drafts,
     )?;
+    reconcile_nested_candidate_groups(&root, &mut drafts);
     select_recommendations(&mut drafts);
 
     let mut candidates: Vec<_> = drafts.into_iter().map(|draft| draft.candidate).collect();
@@ -202,6 +212,7 @@ fn scan_directory(
                 confidence: assessment.score.clamp(0, 100) as u8,
                 reasons: assessment.reasons,
             },
+            executable_directory: folder_path,
             group_key,
             score: assessment.score,
             has_strong_game_signal: assessment.has_strong_game_signal,
@@ -271,7 +282,15 @@ fn should_exclude_exe(path: &Path) -> bool {
         || name.starts_with("beservice")
         || matches!(
             name.as_str(),
-            "setup" | "installer" | "install" | "dotnetfx" | "werfault"
+            "setup"
+                | "installer"
+                | "install"
+                | "dotnetfx"
+                | "werfault"
+                | "7z"
+                | "7za"
+                | "7zr"
+                | "unrar"
         )
 }
 
@@ -293,6 +312,8 @@ fn collect_candidate_evidence(
         .and_then(|value| value.to_str())
         .unwrap_or_default();
     let stem_lower = stem.to_ascii_lowercase();
+    let has_rpg_maker_nwjs_runtime =
+        detect_rpg_maker_nwjs_runtime(parent, sibling_name_cache);
     let sibling_names = sibling_name_cache
         .entry(parent.to_path_buf())
         .or_insert_with(|| read_sibling_names(parent));
@@ -316,6 +337,8 @@ fn collect_candidate_evidence(
             || sibling_names
                 .iter()
                 .any(|name| name.starts_with("eossdk-") && name.ends_with("-shipping.dll")),
+        has_renpy_runtime: contains_renpy_runtime(sibling_names, &stem_lower),
+        has_rpg_maker_nwjs_runtime,
         is_unreal_shipping_binary: stem_lower.ends_with("-win64-shipping")
             || stem_lower.ends_with("-win32-shipping")
             || stem_lower.ends_with("-shipping"),
@@ -330,20 +353,17 @@ fn collect_candidate_evidence(
             })
         }) || stem_lower.contains("win64")
             || stem_lower.ends_with("x64"),
-        is_in_auxiliary_path: path.components().any(|component| {
-            component.as_os_str().to_str().is_some_and(|value| {
-                matches!(
-                    value.to_ascii_lowercase().as_str(),
-                    "tool"
-                        | "tools"
-                        | "sdk"
-                        | "support"
-                        | "extras"
-                        | "thirdparty"
-                        | "installer"
-                        | "installers"
-                        | "benchmark"
-                )
+        has_game_data_files: contains_game_data_files(sibling_names),
+        is_32_bit_variant_with_default: stem_lower.strip_suffix("-32").is_some_and(|base| {
+            sibling_names.contains(&format!("{base}.exe"))
+        }),
+        // 只检查游戏根目录之下的相对路径，避免用户把整个游戏库放在 Backup 盘时全部减分。
+        is_in_auxiliary_path: parent.strip_prefix(game_root).ok().is_some_and(|relative| {
+            relative.components().any(|component| {
+                component
+                    .as_os_str()
+                    .to_str()
+                    .is_some_and(is_auxiliary_directory_name)
             })
         }),
     }
@@ -384,17 +404,33 @@ fn assess_candidate(path: &Path, evidence: &CandidateEvidence) -> CandidateAsses
         score += 15;
         reasons.push("同目录包含游戏平台运行库".to_string());
     }
+    if evidence.has_renpy_runtime {
+        score += 55;
+        has_strong_game_signal = true;
+        reasons.push("符合 Ren'Py 游戏发行结构".to_string());
+    }
+    if evidence.has_rpg_maker_nwjs_runtime {
+        score += 55;
+        has_strong_game_signal = true;
+        reasons.push("符合 RPG Maker（NW.js）游戏发行结构".to_string());
+    }
     if evidence.filename_matches_game_root {
         score += 35;
         reasons.push("程序名与游戏目录名一致".to_string());
     }
     if evidence.directly_in_game_root {
-        score += 8;
+        score += DIRECT_GAME_ROOT_BONUS;
         reasons.push("程序位于游戏根目录".to_string());
     }
     if evidence.prefers_64_bit {
         score += 8;
         reasons.push("优先选择 64 位程序".to_string());
+    }
+    // 老视觉小说和独立游戏往往没有可靠 PE 信息，但会在主程序旁放置引擎数据文件。
+    if evidence.has_game_data_files {
+        score += 40;
+        has_strong_game_signal = true;
+        reasons.push("同目录包含常见游戏引擎或资源数据".to_string());
     }
 
     // PE 元数据有助于确认程序身份，但普通桌面软件也具备这些字段，所以权重较低。
@@ -442,6 +478,10 @@ fn assess_candidate(path: &Path, evidence: &CandidateEvidence) -> CandidateAsses
     if evidence.is_in_auxiliary_path {
         score -= 25;
         reasons.push("程序位于工具或辅助目录".to_string());
+    }
+    if evidence.is_32_bit_variant_with_default {
+        score -= 12;
+        reasons.push("同目录存在默认版本，降低 32 位兼容程序优先级".to_string());
     }
 
     let role_text = [
@@ -535,15 +575,23 @@ fn select_recommendations(drafts: &mut [CandidateDraft]) {
         });
         let best_index = indices[0];
         let best_score = drafts[best_index].score;
-        if best_score < RECOMMEND_THRESHOLD {
+        let best_has_strong_signal = drafts[best_index].has_strong_game_signal;
+        let reaches_standard_threshold = best_score >= RECOMMEND_THRESHOLD;
+        let reaches_relaxed_strong_threshold = best_has_strong_signal
+            && best_score >= STRONG_SIGNAL_RECOMMEND_THRESHOLD;
+        if !reaches_standard_threshold && !reaches_relaxed_strong_threshold {
             continue;
         }
 
         let runner_up_score = indices.get(1).map(|index| drafts[*index].score);
-        // 强游戏证据可以打破接近分数；没有强证据时必须依靠足够的领先差值。
-        let has_clear_winner = drafts[best_index].has_strong_game_signal
-            || runner_up_score
-                .is_none_or(|runner_up| best_score - runner_up >= MIN_RECOMMENDATION_MARGIN);
+        let clearly_leads_group = runner_up_score
+            .is_none_or(|runner_up| best_score - runner_up >= MIN_RECOMMENDATION_MARGIN);
+        // 达到标准门槛时，强游戏证据可以打破接近分数；使用较低门槛时仍必须明显领先。
+        let has_clear_winner = if reaches_standard_threshold {
+            best_has_strong_signal || clearly_leads_group
+        } else {
+            clearly_leads_group
+        };
         if has_clear_winner {
             drafts[best_index].candidate.recommended = true;
             drafts[best_index]
@@ -565,6 +613,72 @@ fn select_recommendations(drafts: &mut [CandidateDraft]) {
 // 游戏根目录、分组和名称推断
 // -----------------------------------------------------------------------------
 
+/// 根据全部扫描结果校正嵌套目录的游戏边界。
+///
+/// 如果 `A` 目录本身已有直属 EXE，那么 `A/B` 中独立成组的候选应回到 `A` 组竞争；
+/// 如果 `A` 没有直属 EXE，则继续保留 `B` 自己推断出的游戏边界。已被 Unity、Unreal、
+/// 备份目录等结构规则归到同一组的候选不会重复扣分。
+fn reconcile_nested_candidate_groups(scan_root: &Path, drafts: &mut [CandidateDraft]) {
+    let direct_candidate_directories: HashSet<PathBuf> = drafts
+        .iter()
+        .map(|draft| draft.executable_directory.clone())
+        .collect();
+    let root_is_library = scan_root
+        .file_name()
+        .and_then(|value| value.to_str())
+        .is_some_and(is_library_container_name);
+
+    for draft in drafts {
+        let original_group = draft.group_key.clone();
+        let mut current = original_group.parent();
+        let mut containing_game_root = None;
+
+        while let Some(directory) = current {
+            if !directory.starts_with(scan_root) {
+                break;
+            }
+            if direct_candidate_directories.contains(directory)
+                && !(directory == scan_root && root_is_library)
+            {
+                // 继续向上检查，使 A、A/B、A/B/C 都有 EXE 时统一由最外层 A 作为游戏边界。
+                containing_game_root = Some(directory.to_path_buf());
+            }
+            if directory == scan_root {
+                break;
+            }
+            current = directory.parent();
+        }
+
+        let Some(containing_game_root) = containing_game_root else {
+            continue;
+        };
+        if containing_game_root == original_group {
+            continue;
+        }
+
+        draft.group_key = containing_game_root.clone();
+        // 该候选此前被当作自己目录的直属程序加过分；归入父游戏目录后应撤销这项优势。
+        draft.score -= DIRECT_GAME_ROOT_BONUS;
+        draft.candidate.confidence = draft.score.clamp(0, 100) as u8;
+        draft
+            .candidate
+            .reasons
+            .retain(|reason| reason != "程序位于游戏根目录");
+        draft
+            .candidate
+            .reasons
+            .push("上级目录存在直属程序，归入同一游戏目录比较".to_string());
+
+        if let Some(name) = containing_game_root
+            .file_name()
+            .and_then(|value| value.to_str())
+            .filter(|name| is_meaningful_name(name))
+        {
+            draft.candidate.name = name.to_string();
+        }
+    }
+}
+
 /// 从 EXE 所在位置向上跳过通用二进制目录，推断游戏安装根目录。
 ///
 /// 例如 `Example/Game/Binaries/Win64/Example-Win64-Shipping.exe` 会回溯到 `Example`。
@@ -577,6 +691,7 @@ fn infer_game_root(path: &Path, scan_root: &Path) -> PathBuf {
             break;
         };
         if !(is_generic_executable_directory(name)
+            || is_auxiliary_directory_name(name)
             || ascended && name.eq_ignore_ascii_case("game"))
         {
             break;
@@ -728,12 +843,27 @@ fn is_meaningful_name(value: &str) -> bool {
 fn identifiers_match(left: &str, right: &str) -> bool {
     let left = normalized_game_identifier(left);
     let right = normalized_game_identifier(right);
-    left.len() >= 3 && left == right
+    if left.len() < 3 || right.len() < 3 {
+        return false;
+    }
+    if left == right {
+        return true;
+    }
+
+    let (shorter, longer) = if left.len() <= right.len() {
+        (left.as_str(), right.as_str())
+    } else {
+        (right.as_str(), left.as_str())
+    };
+    // 支持 `Title.exe` 对应 `Title - Complete Edition`，但拒绝过短的 Game/App 等泛化命中。
+    shorter.len() >= 5
+        && !matches!(shorter, "game" | "games" | "application" | "launcher")
+        && longer.contains(shorter)
 }
 
 /// 将游戏标识归一化，便于比较 `Example` 与 `Example-Win64-Shipping.exe`。
 fn normalized_game_identifier(value: &str) -> String {
-    let mut value = compact_identifier(value);
+    let mut value = compact_identifier(&strip_bracketed_annotations(value));
     if value.len() > 5 && value.ends_with("exe") {
         value.truncate(value.len() - 3);
     }
@@ -753,6 +883,132 @@ fn normalized_game_identifier(value: &str) -> String {
         }
     }
     value
+}
+
+/// 去除目录名中的语言、汉化组和版本注记，例如 `RIDDLE JOKER[官中]`。
+fn strip_bracketed_annotations(value: &str) -> String {
+    let mut result = String::with_capacity(value.len());
+    let mut depth = 0_u32;
+    for character in value.chars() {
+        match character {
+            '[' | '【' | '(' | '（' => depth = depth.saturating_add(1),
+            ']' | '】' | ')' | '）' if depth > 0 => depth -= 1,
+            _ if depth == 0 => result.push(character),
+            _ => {}
+        }
+    }
+    result
+}
+
+/// 备份、破解、补丁和工具目录仍会被扫描，但其中的 EXE 不应作为独立游戏优先推荐。
+fn is_auxiliary_directory_name(value: &str) -> bool {
+    matches!(
+        compact_identifier(value).as_str(),
+        "tool"
+            | "tools"
+            | "sdk"
+            | "support"
+            | "extras"
+            | "thirdparty"
+            | "installer"
+            | "installers"
+            | "benchmark"
+            | "backup"
+            | "backups"
+            | "originalbackup"
+            | "originalfiles"
+            | "原版备份"
+            | "原始备份"
+            | "备份"
+            | "crack"
+            | "cracks"
+            | "破解"
+            | "patch"
+            | "patches"
+            | "补丁"
+            | "汉化补丁"
+            | "mod"
+            | "mods"
+            | "修改器"
+            | "trainer"
+            | "download"
+            | "downloads"
+    )
+}
+
+/// 识别老游戏常见的数据文件；这些证据只在 EXE 同目录内生效。
+fn contains_game_data_files(names: &HashSet<String>) -> bool {
+    names.iter().any(|name| {
+        name.ends_with(".xp3")
+            || name.ends_with(".rpa")
+            || name.ends_with(".pfs")
+            || name.ends_with(".wolf")
+            || matches!(
+                name.as_str(),
+                "game.ini" | "data.arc" | "script.arc" | "data.pck" | "game.pak"
+            )
+    }) || names.contains("nw.dll") && names.contains("www")
+}
+
+/// Ren'Py 的 Windows 发行包通常同时包含三个运行目录，以及与 EXE 同名的 Python 启动脚本。
+/// `Game-32.exe` 会复用 `Game.py`，因此识别脚本名时允许移除明确的 `-32` 后缀。
+fn contains_renpy_runtime(names: &HashSet<String>, executable_stem: &str) -> bool {
+    if !(names.contains("game") && names.contains("lib") && names.contains("renpy")) {
+        return false;
+    }
+
+    let script_stem = executable_stem
+        .strip_suffix("-32")
+        .unwrap_or(executable_stem);
+    names.contains(&format!("{script_stem}.py"))
+}
+
+/// 检查候选目录及常见网页资源位置，识别通过 NW.js/Chromium 发布的 RPG Maker 游戏。
+fn detect_rpg_maker_nwjs_runtime(
+    executable_directory: &Path,
+    sibling_name_cache: &mut HashMap<PathBuf, HashSet<String>>,
+) -> bool {
+    let has_chromium_runtime = {
+        let runtime_names = sibling_name_cache
+            .entry(executable_directory.to_path_buf())
+            .or_insert_with(|| read_sibling_names(executable_directory));
+        contains_nwjs_runtime_markers(runtime_names)
+    };
+    if !has_chromium_runtime {
+        return false;
+    }
+
+    [
+        executable_directory.join("resources").join("App"),
+        executable_directory.join("www"),
+    ]
+    .into_iter()
+    .any(|app_directory| {
+        let app_names = sibling_name_cache
+            .entry(app_directory.clone())
+            .or_insert_with(|| read_sibling_names(&app_directory));
+        contains_rpg_maker_web_app(app_names)
+    })
+}
+
+/// Chromium 文件只能证明存在网页运行容器，必须继续结合 RPG Maker 资源结构判断。
+fn contains_nwjs_runtime_markers(names: &HashSet<String>) -> bool {
+    names.contains("resources.pak")
+        && names.contains("icudtl.dat")
+        && names.contains("locales")
+        && (names.contains("chrome_100_percent.pak")
+            || names.contains("chrome_200_percent.pak")
+            || names.contains("v8_context_snapshot.bin")
+            || names.contains("nw.dll"))
+}
+
+/// RPG Maker MV/MZ 的网页游戏目录包含入口清单、页面和固定的资源目录组合。
+fn contains_rpg_maker_web_app(names: &HashSet<String>) -> bool {
+    names.contains("package.json")
+        && names.contains("index.html")
+        && names.contains("data")
+        && names.contains("js")
+        && (names.contains("img") || names.contains("audio"))
 }
 
 /// 去除非字母数字字符并转为小写，用于不区分格式的规则匹配。
