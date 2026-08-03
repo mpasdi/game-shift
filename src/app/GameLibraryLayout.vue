@@ -191,14 +191,6 @@
       scanCandidates.value = []
       scanCandidates.value = await gamesStore.scanGames(selected)
       isScanResultsOpen.value = true
-      const recommendedCount = scanCandidates.value.filter(
-        (candidate) => candidate.recommended && !candidate.exists
-      ).length
-      const otherCount = scanCandidates.value.filter((candidate) => !candidate.recommended && !candidate.exists).length
-      toast.info({
-        title: '目录扫描完成',
-        description: `推荐 ${recommendedCount} 个游戏，另有 ${otherCount} 个程序待确认`
-      })
     } catch (error) {
       scanErrorMessage.value = getErrorMessage(error)
       isScanResultsOpen.value = true
