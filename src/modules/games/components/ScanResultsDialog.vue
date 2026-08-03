@@ -1,6 +1,17 @@
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
-  import { CheckSquare, ChevronDown, ChevronRight, CircleAlert, Square } from '@lucide/vue'
+  import {
+    CheckSquare,
+    ChevronDown,
+    ChevronRight,
+    CircleCheck,
+    CircleHelp,
+    Info,
+    ListChecks,
+    MinusSquare,
+    Sparkles,
+    Square
+  } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
   import BaseModal from '../../../shared/components/BaseModal.vue'
   import type { ScanCandidate } from '../types/game'
@@ -96,6 +107,20 @@
     row.selected = !row.selected
   }
 
+  function sectionSelectionState(sectionRows: ScanRow[]) {
+    const selectableRows = sectionRows.filter((row) => !row.exists)
+    const selectedRows = selectableRows.filter((row) => row.selected)
+    if (selectableRows.length > 0 && selectedRows.length === selectableRows.length) return 'all'
+    if (selectedRows.length > 0) return 'some'
+    return 'none'
+  }
+
+  function toggleSectionSelection(sectionRows: ScanRow[]) {
+    const selectableRows = sectionRows.filter((row) => !row.exists)
+    const shouldSelect = sectionSelectionState(selectableRows) !== 'all'
+    for (const row of selectableRows) row.selected = shouldSelect
+  }
+
   function toggleSection(section: string) {
     if (section === 'recommended') {
       recommendedExpanded.value = !recommendedExpanded.value
@@ -106,11 +131,6 @@
       return
     }
     if (section === 'existing') existingExpanded.value = !existingExpanded.value
-  }
-
-  function statusLabel(row: ScanRow) {
-    if (row.exists) return '已存在'
-    return row.recommended ? '推荐' : '待确认'
   }
 
   function showRecognitionTooltip(row: ScanRow, event: MouseEvent | FocusEvent) {
@@ -158,24 +178,36 @@
     <div class="scan-dialog">
       <div class="scan-summary">
         <div class="scan-summary-item">
+          <span class="scan-summary-icon scan-summary-icon--recommended" aria-hidden="true">
+            <Sparkles :size="16" />
+          </span>
           <span>推荐游戏</span>
 
           <strong>{{ recommendedRows.length }}</strong>
         </div>
 
         <div class="scan-summary-item">
+          <span class="scan-summary-icon scan-summary-icon--other" aria-hidden="true">
+            <CircleHelp :size="16" />
+          </span>
           <span>其他程序</span>
 
           <strong>{{ otherRows.length }}</strong>
         </div>
 
         <div class="scan-summary-item">
+          <span class="scan-summary-icon scan-summary-icon--existing" aria-hidden="true">
+            <CircleCheck :size="16" />
+          </span>
           <span>已存在</span>
 
           <strong>{{ existingRows.length }}</strong>
         </div>
 
         <div class="scan-summary-item scan-summary-item--selected">
+          <span class="scan-summary-icon scan-summary-icon--selected" aria-hidden="true">
+            <ListChecks :size="16" />
+          </span>
           <span>已选程序</span>
 
           <strong>{{ selectedCount }}</strong>
@@ -190,28 +222,40 @@
           <span></span>
           <span>游戏名称</span>
           <span>启动程序</span>
-          <span>状态</span>
         </div>
 
         <template v-for="section in candidateSections" :key="section.key">
-          <component
-            :is="section.collapsible ? 'button' : 'div'"
-            v-if="section.rows.length > 0"
-            class="scan-section-header"
-            :class="{ 'scan-section-header--button': section.collapsible }"
-            :type="section.collapsible ? 'button' : undefined"
-            role="row"
-            @click="section.collapsible ? toggleSection(section.key) : undefined"
-          >
-            <ChevronDown v-if="section.collapsible && section.expanded" :size="16" />
-            <ChevronRight v-else-if="section.collapsible" :size="16" />
-            <span v-else></span>
-            <span class="scan-section-title">
+          <div v-if="section.rows.length > 0" class="scan-section-header" role="row">
+            <div class="scan-section-controls">
+              <button
+                class="section-toggle-button"
+                type="button"
+                :aria-label="section.expanded ? `收起${section.title}` : `展开${section.title}`"
+                :aria-expanded="section.expanded"
+                @click="toggleSection(section.key)"
+              >
+                <ChevronDown v-if="section.expanded" :size="16" />
+                <ChevronRight v-else :size="16" />
+              </button>
+              <button
+                v-if="section.key !== 'existing'"
+                class="check-button"
+                type="button"
+                :aria-label="
+                  sectionSelectionState(section.rows) === 'all' ? `取消全选${section.title}` : `全选${section.title}`
+                "
+                @click="toggleSectionSelection(section.rows)"
+              >
+                <CheckSquare v-if="sectionSelectionState(section.rows) === 'all'" :size="16" />
+                <MinusSquare v-else-if="sectionSelectionState(section.rows) === 'some'" :size="16" />
+                <Square v-else :size="16" />
+              </button>
+            </div>
+            <button class="scan-section-title" type="button" @click="toggleSection(section.key)">
               <strong>{{ section.title }}</strong>
               <small>{{ section.description }}</small>
-            </span>
-            <span class="scan-section-count">{{ section.rows.length }}</span>
-          </component>
+            </button>
+          </div>
 
           <template v-if="section.expanded">
             <div
@@ -227,32 +271,23 @@
               </button>
               <input v-model="row.name" class="name-input" :disabled="row.exists" />
               <div class="path-cell">
-                <strong>{{ row.exeFileName }}</strong>
-                <span :title="row.exePath">{{ row.exePath }}</span>
-              </div>
-              <div class="status-cell">
-                <span
-                  class="status-pill"
-                  :class="{
-                    'status-pill--other': !row.recommended && !row.exists,
-                    'status-pill--exists': row.exists
-                  }"
-                >
-                  {{ statusLabel(row) }}
-                </span>
-                <button
-                  v-if="row.reasons.length"
-                  class="recognition-trigger"
-                  type="button"
-                  aria-label="查看识别依据"
-                  :aria-describedby="recognitionTooltip?.exePath === row.exePath ? 'recognition-tooltip' : undefined"
-                  @mouseenter="showRecognitionTooltip(row, $event)"
-                  @mouseleave="hideRecognitionTooltip"
-                  @focus="showRecognitionTooltip(row, $event)"
-                  @blur="hideRecognitionTooltip"
-                >
-                  <CircleAlert :size="15" />
-                </button>
+                <div class="path-heading">
+                  <strong>{{ row.exeFileName }}</strong>
+                  <button
+                    v-if="row.reasons.length"
+                    class="recognition-trigger"
+                    type="button"
+                    aria-label="查看识别依据"
+                    :aria-describedby="recognitionTooltip?.exePath === row.exePath ? 'recognition-tooltip' : undefined"
+                    @mouseenter="showRecognitionTooltip(row, $event)"
+                    @mouseleave="hideRecognitionTooltip"
+                    @focus="showRecognitionTooltip(row, $event)"
+                    @blur="hideRecognitionTooltip"
+                  >
+                    <Info :size="15" />
+                  </button>
+                </div>
+                <span :title="row.folderPath">{{ row.folderPath }}</span>
               </div>
             </div>
           </template>
@@ -305,23 +340,52 @@
   }
 
   .scan-summary {
-    display: flex;
-    width: fit-content;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
   }
 
   .scan-summary-item {
     display: inline-flex;
     gap: 6px;
-    align-items: baseline;
+    align-items: center;
     border-radius: 7px;
     background: rgba(255, 255, 255, 0.04);
     padding: 6px 8px;
   }
 
+  .scan-summary-icon {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    margin-right: 1px;
+    border-radius: 999px;
+    place-items: center;
+  }
+
+  .scan-summary-icon--recommended {
+    background: rgba(139, 92, 246, 0.16);
+    color: #c4b5fd;
+  }
+
+  .scan-summary-icon--other {
+    background: rgba(245, 158, 11, 0.13);
+    color: #fcd34d;
+  }
+
+  .scan-summary-icon--existing {
+    background: rgba(34, 197, 94, 0.13);
+    color: #86efac;
+  }
+
+  .scan-summary-icon--selected {
+    background: rgba(139, 92, 246, 0.2);
+    color: var(--accent-strong);
+  }
+
   .scan-summary strong {
+    margin-left: auto;
     color: var(--text);
     font-size: var(--font-size-lg);
   }
@@ -335,7 +399,7 @@
     color: var(--accent-strong);
   }
 
-  .scan-summary span,
+  .scan-summary span:not(.scan-summary-icon),
   .scan-empty {
     color: var(--text-muted);
     font-size: var(--font-size-sm);
@@ -358,7 +422,7 @@
 
   .scan-row {
     display: grid;
-    grid-template-columns: 34px minmax(130px, 190px) minmax(0, 1fr) 112px;
+    grid-template-columns: 64px minmax(130px, 190px) minmax(0, 1fr);
     gap: 10px;
     align-items: center;
     min-height: 52px;
@@ -391,7 +455,7 @@
 
   .scan-section-header {
     display: grid;
-    grid-template-columns: 34px minmax(0, 1fr) 112px;
+    grid-template-columns: 64px minmax(0, 1fr);
     width: 100%;
     gap: 10px;
     align-items: center;
@@ -403,26 +467,45 @@
     text-align: left;
   }
 
-  .scan-section-header--button:hover {
+  .scan-section-header:hover {
     background: rgba(124, 92, 255, 0.13);
+  }
+
+  .scan-section-controls {
+    display: flex;
+    align-items: center;
+  }
+
+  .section-toggle-button {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    padding: 0;
+    place-items: center;
+  }
+
+  .section-toggle-button:hover {
+    background: rgba(255, 255, 255, 0.06);
   }
 
   .scan-section-title {
     display: grid;
+    width: 100%;
     gap: 2px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    text-align: left;
   }
 
-  .scan-section-title small,
-  .scan-section-count {
+  .scan-section-title small {
     color: var(--text-muted);
     font-size: var(--font-size-xs);
-  }
-
-  .scan-section-count {
-    justify-self: start;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-    padding: 3px 7px;
   }
 
   .check-button {
@@ -435,6 +518,11 @@
     color: var(--accent-strong);
     padding: 0;
     place-items: center;
+  }
+
+  .scan-row > .check-button {
+    justify-self: start;
+    margin-left: 28px;
   }
 
   .check-button:hover:not(:disabled) {
@@ -469,6 +557,13 @@
     min-width: 0;
   }
 
+  .path-heading {
+    display: flex;
+    min-width: 0;
+    gap: 5px;
+    align-items: center;
+  }
+
   .path-cell strong,
   .path-cell span {
     overflow: hidden;
@@ -477,6 +572,7 @@
   }
 
   .path-cell strong {
+    min-width: 0;
     color: rgba(245, 242, 255, 0.9);
     font-size: var(--font-size-sm);
   }
@@ -484,36 +580,6 @@
   .path-cell span {
     color: var(--text-muted);
     font-size: var(--font-size-xs);
-  }
-
-  .status-cell {
-    display: flex;
-    gap: 5px;
-    align-items: center;
-    min-width: 0;
-  }
-
-  .status-pill {
-    justify-self: start;
-    border: 1px solid rgba(124, 92, 255, 0.34);
-    border-radius: 999px;
-    background: rgba(124, 92, 255, 0.13);
-    color: var(--accent-strong);
-    font-size: var(--font-size-xs);
-    padding: 4px 8px;
-    white-space: nowrap;
-  }
-
-  .status-pill--other {
-    border-color: rgba(245, 158, 11, 0.3);
-    background: rgba(245, 158, 11, 0.1);
-    color: #fcd34d;
-  }
-
-  .status-pill--exists {
-    border-color: var(--border);
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-muted);
   }
 
   .recognition-trigger {
@@ -589,18 +655,21 @@
   }
 
   @media (max-width: 720px) {
+    .scan-summary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .scan-row {
-      grid-template-columns: 34px minmax(0, 1fr);
+      grid-template-columns: 64px minmax(0, 1fr);
     }
 
     .scan-section-header {
-      grid-template-columns: 34px minmax(0, 1fr) auto;
+      grid-template-columns: 64px minmax(0, 1fr);
     }
 
     .scan-row--head span:nth-of-type(2),
     .scan-row--head span:nth-of-type(3),
-    .path-cell,
-    .status-cell {
+    .path-cell {
       grid-column: 2;
     }
   }
