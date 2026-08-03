@@ -54,6 +54,8 @@ struct CandidateEvidence {
     has_game_platform_runtime: bool,
     has_renpy_runtime: bool,
     has_rpg_maker_nwjs_runtime: bool,
+    has_numbered_pack_game_runtime: bool,
+    has_alicesoft_system_runtime: bool,
     is_unreal_shipping_binary: bool,
     filename_matches_game_root: bool,
     metadata_matches_identity: bool,
@@ -314,6 +316,8 @@ fn collect_candidate_evidence(
     let stem_lower = stem.to_ascii_lowercase();
     let has_rpg_maker_nwjs_runtime =
         detect_rpg_maker_nwjs_runtime(parent, sibling_name_cache);
+    let has_numbered_pack_game_runtime =
+        detect_numbered_pack_game_runtime(parent, sibling_name_cache);
     let sibling_names = sibling_name_cache
         .entry(parent.to_path_buf())
         .or_insert_with(|| read_sibling_names(parent));
@@ -339,6 +343,8 @@ fn collect_candidate_evidence(
                 .any(|name| name.starts_with("eossdk-") && name.ends_with("-shipping.dll")),
         has_renpy_runtime: contains_renpy_runtime(sibling_names, &stem_lower),
         has_rpg_maker_nwjs_runtime,
+        has_numbered_pack_game_runtime,
+        has_alicesoft_system_runtime: contains_alicesoft_system_runtime(sibling_names),
         is_unreal_shipping_binary: stem_lower.ends_with("-win64-shipping")
             || stem_lower.ends_with("-win32-shipping")
             || stem_lower.ends_with("-shipping"),
@@ -413,6 +419,16 @@ fn assess_candidate(path: &Path, evidence: &CandidateEvidence) -> CandidateAsses
         score += 55;
         has_strong_game_signal = true;
         reasons.push("符合 RPG Maker（NW.js）游戏发行结构".to_string());
+    }
+    if evidence.has_numbered_pack_game_runtime {
+        score += 55;
+        has_strong_game_signal = true;
+        reasons.push("符合编号资源包游戏发行结构".to_string());
+    }
+    if evidence.has_alicesoft_system_runtime {
+        score += 55;
+        has_strong_game_signal = true;
+        reasons.push("符合 AliceSoft System 游戏发行结构".to_string());
     }
     if evidence.filename_matches_game_root {
         score += 35;
@@ -531,10 +547,16 @@ fn auxiliary_role_penalty(value: &str) -> Option<(i32, &'static str)> {
     {
         return Some((45, "名称表明它更可能是辅助或服务程序"));
     }
+    if compact.contains("opensavefolder") {
+        return Some((50, "名称表明它只是存档目录工具"));
+    }
     if compact.contains("benchmark") {
         return Some((40, "名称表明它更可能是性能测试程序"));
     }
-    if compact.contains("config") || compact.contains("settings") {
+    if compact.contains("config")
+        || compact.contains("settings")
+        || compact.contains("エンジン設定")
+    {
         return Some((35, "名称表明它更可能是配置程序"));
     }
     if compact.contains("launcher") || compact.contains("bootstrap") {
@@ -542,6 +564,9 @@ fn auxiliary_role_penalty(value: &str) -> Option<(i32, &'static str)> {
     }
     if compact.contains("tool") {
         return Some((25, "名称表明它更可能是工具程序"));
+    }
+    if compact.contains("arcconv") {
+        return Some((35, "名称表明它更可能是资源转换工具"));
     }
     None
 }
@@ -1009,6 +1034,78 @@ fn contains_rpg_maker_web_app(names: &HashSet<String>) -> bool {
         && names.contains("data")
         && names.contains("js")
         && (names.contains("img") || names.contains("audio"))
+}
+
+/// 检查部分商业视觉小说使用的编号资源包发行结构。
+fn detect_numbered_pack_game_runtime(
+    executable_directory: &Path,
+    sibling_name_cache: &mut HashMap<PathBuf, HashSet<String>>,
+) -> bool {
+    let has_runtime_layout = {
+        let root_names = sibling_name_cache
+            .entry(executable_directory.to_path_buf())
+            .or_insert_with(|| read_sibling_names(executable_directory));
+        contains_numbered_pack_runtime_markers(root_names)
+    };
+    if !has_runtime_layout {
+        return false;
+    }
+
+    let game_data_directory = executable_directory.join("GameData");
+    let game_data_names = sibling_name_cache
+        .entry(game_data_directory.clone())
+        .or_insert_with(|| read_sibling_names(&game_data_directory));
+    contains_multiple_numbered_pack_files(game_data_names)
+}
+
+/// 单个 `GameData` 或 `.pack` 文件过于常见，必须结合运行库和引擎配置文件判断。
+fn contains_numbered_pack_runtime_markers(names: &HashSet<String>) -> bool {
+    names.contains("gamedata")
+        && names.contains("dll")
+        && (names.contains("enginesetting.exe")
+            || names.contains("エンジン設定.exe")
+            || names.contains("engine_gui.u.txt") && names.contains("engine_message.u.txt"))
+}
+
+fn contains_multiple_numbered_pack_files(names: &HashSet<String>) -> bool {
+    names
+        .iter()
+        .filter(|name| {
+            name.strip_prefix("data")
+                .and_then(|value| value.strip_suffix(".pack"))
+                .is_some_and(|index| !index.is_empty() && index.chars().all(|character| character.is_ascii_digit()))
+        })
+        .take(2)
+        .count()
+        >= 2
+}
+
+/// AliceSoft 多代 System 引擎具有稳定但不同年代的发行结构。
+/// 单独的 `.ain`、`.ald` 或通用 `system*.exe` 均不足以作为游戏证据。
+fn contains_alicesoft_system_runtime(names: &HashSet<String>) -> bool {
+    let has_ain = names.iter().any(|name| name.ends_with(".ain"));
+    let has_alice_archive = names
+        .iter()
+        .any(|name| name.ends_with(".afa") || name.ends_with(".ald"));
+
+    let alice_start_layout = names.contains("alicestart.ini") && has_ain && has_alice_archive;
+    let system_39_or_40_layout = has_ain
+        && has_alice_archive
+        && ((names.contains("system39.exe") && names.contains("system39.ini"))
+            || ((names.contains("system40.exe") || names.contains("system40_chs.exe"))
+                && names.contains("system40.ini")));
+    let xsystem_35_layout = names.contains(".xsys35rc") && has_ain && has_alice_archive;
+    let system_3_data_layout = names.contains("system3.exe")
+        && names.contains("system3.ini")
+        && names.contains("adisk.dat")
+        && ["acg.dat", "bcg.dat", "ccg.dat"]
+            .into_iter()
+            .filter(|name| names.contains(*name))
+            .take(2)
+            .count()
+            >= 2;
+
+    alice_start_layout || system_39_or_40_layout || xsystem_35_layout || system_3_data_layout
 }
 
 /// 去除非字母数字字符并转为小写，用于不区分格式的规则匹配。

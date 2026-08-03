@@ -2,8 +2,10 @@ use std::path::{Path, PathBuf};
 
 use super::{
     assess_candidate, candidate_group_key, contains_game_data_files,
-    contains_nwjs_runtime_markers, contains_renpy_runtime, contains_rpg_maker_web_app,
-    identifiers_match, infer_game_name, infer_game_root, is_auxiliary_directory_name,
+    contains_alicesoft_system_runtime, contains_multiple_numbered_pack_files,
+    contains_nwjs_runtime_markers, contains_numbered_pack_runtime_markers,
+    contains_renpy_runtime, contains_rpg_maker_web_app, identifiers_match, infer_game_name,
+    infer_game_root, is_auxiliary_directory_name,
     reconcile_nested_candidate_groups, select_recommendations, should_exclude_exe,
     should_skip_directory, CandidateDraft, CandidateEvidence, ExecutableMetadata, ScanCandidate,
     DIRECT_GAME_ROOT_BONUS, RECOMMEND_THRESHOLD,
@@ -197,6 +199,151 @@ fn does_not_treat_an_ordinary_chromium_app_as_an_rpg_maker_game() {
 
     assert!(!contains_nwjs_runtime_markers(&partial_runtime));
     assert!(!contains_rpg_maker_web_app(&ordinary_web_app));
+}
+
+#[test]
+fn recognizes_a_strict_numbered_pack_game_distribution_structure() {
+    let root_names = [
+        "dll",
+        "gamedata",
+        "savedata",
+        "enginesetting.exe",
+        "engine_gui.u.txt",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect();
+    let game_data_names = ["system", "data0.pack", "data1.pack", "data2.pack"]
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+
+    assert!(contains_numbered_pack_runtime_markers(&root_names));
+    assert!(contains_multiple_numbered_pack_files(&game_data_names));
+
+    let localized_root_names = ["dll", "gamedata", "エンジン設定.exe"]
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    assert!(contains_numbered_pack_runtime_markers(
+        &localized_root_names
+    ));
+
+    let assessment = assess_candidate(
+        Path::new(r"C:\Games\Bimanibun\startup.exe"),
+        &CandidateEvidence {
+            file_size: 32_269_840,
+            has_numbered_pack_game_runtime: true,
+            directly_in_game_root: true,
+            ..CandidateEvidence::default()
+        },
+    );
+    assert!(assessment.score >= RECOMMEND_THRESHOLD);
+    assert!(assessment.has_strong_game_signal);
+
+    let localized_settings = assess_candidate(
+        Path::new(r"C:\Games\Bimanibun\エンジン設定.exe"),
+        &CandidateEvidence {
+            file_size: 646_656,
+            has_numbered_pack_game_runtime: true,
+            directly_in_game_root: true,
+            ..CandidateEvidence::default()
+        },
+    );
+    assert!(assessment.score > localized_settings.score);
+    assert!(localized_settings
+        .reasons
+        .iter()
+        .any(|reason| reason.contains("配置程序")));
+}
+
+#[test]
+fn does_not_treat_a_single_pack_file_as_a_numbered_pack_game() {
+    let partial_root = ["dll", "gamedata"]
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    let single_pack = ["data0.pack", "assets.pack", "database.pack"]
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+
+    assert!(!contains_numbered_pack_runtime_markers(&partial_root));
+    assert!(!contains_multiple_numbered_pack_files(&single_pack));
+}
+
+#[test]
+fn recognizes_alicesoft_system_generations_from_strict_layouts() {
+    let alice_start = ["alicestart.ini", "rance9.ain", "rance9cg.afa"]
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    let system_40 = [
+        "system40.exe",
+        "system40.ini",
+        "rance6.ain",
+        "rance6ba.ald",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect();
+    let xsystem_35 = [".xsys35rc", "system39.ain", "rance4ga.ald"]
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    let system_3 = [
+        "system3.exe",
+        "system3.ini",
+        "adisk.dat",
+        "acg.dat",
+        "bcg.dat",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect();
+
+    assert!(contains_alicesoft_system_runtime(&alice_start));
+    assert!(contains_alicesoft_system_runtime(&system_40));
+    assert!(contains_alicesoft_system_runtime(&xsystem_35));
+    assert!(contains_alicesoft_system_runtime(&system_3));
+
+    let assessment = assess_candidate(
+        Path::new(r"C:\Games\Rance 8\RanceQuest.exe"),
+        &CandidateEvidence {
+            file_size: 3_284_480,
+            has_alicesoft_system_runtime: true,
+            directly_in_game_root: true,
+            ..CandidateEvidence::default()
+        },
+    );
+    assert!(assessment.score >= RECOMMEND_THRESHOLD);
+    assert!(assessment.has_strong_game_signal);
+}
+
+#[test]
+fn rejects_partial_alicesoft_markers_and_penalizes_known_tools() {
+    let partial = ["game.ain", "assets.ald", "system40.exe"]
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    assert!(!contains_alicesoft_system_runtime(&partial));
+
+    for tool in ["OpenSaveFolder.exe", "arc_conv.exe"] {
+        let assessment = assess_candidate(
+            Path::new(tool),
+            &CandidateEvidence {
+                has_alicesoft_system_runtime: true,
+                ..CandidateEvidence::default()
+            },
+        );
+        assert!(
+            assessment
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("工具")),
+            "{tool}"
+        );
+    }
 }
 
 #[test]
