@@ -8,7 +8,7 @@
 
 Game Shift 用于集中管理 Windows 电脑上的本地游戏启动程序。你可以手动添加单个 `.exe`，也可以扫描游戏目录批量导入，并在统一界面中完成搜索、收藏、启动和最近游玩管理。
 
-> 当前版本：`v0.2.1 Beta`
+> 当前版本：`v0.2.2 Beta`
 
 ## 主要功能
 
@@ -39,7 +39,7 @@ Game Shift 用于集中管理 Windows 电脑上的本地游戏启动程序。你
 前往 [GitHub Releases](https://github.com/mpasdi/game-shift/releases) 下载最新版本：
 
 ```text
-Game Shift_0.2.1_x64-setup.exe
+Game Shift_0.2.2_x64-setup.exe
 ```
 
 运行安装程序并按照提示完成安装。请只从本项目官方 GitHub Releases 下载，不要运行来源不明的二次打包文件。
@@ -57,7 +57,7 @@ Game Shift 是免费开源软件，当前 Beta 安装包暂未购买商业 Windo
 PowerShell 校验命令：
 
 ```powershell
-Get-FileHash -LiteralPath '.\Game Shift_0.2.1_x64-setup.exe' -Algorithm SHA256
+Get-FileHash -LiteralPath '.\Game Shift_0.2.2_x64-setup.exe' -Algorithm SHA256
 ```
 
 如果无法确认文件来源或校验值不一致，请不要继续安装。
@@ -89,7 +89,7 @@ Get-FileHash -LiteralPath '.\Game Shift_0.2.1_x64-setup.exe' -Algorithm SHA256
 - 应用启动并完成游戏库加载后会自动检查一次更新，可在设置页关闭。
 - 设置页始终提供“检查更新”入口。
 - 发现新版本后，由用户确认是否下载和安装，不进行静默或强制更新。
-- v0.2.0 及更早版本需要手动安装一次 v0.2.1，后续版本即可使用应用内更新。
+- v0.2.1 用户可以通过应用内更新升级到后续版本；v0.2.0 及更早版本需要从 GitHub Releases 手动安装最新版本。
 
 ### 数据与本地文件
 
@@ -212,6 +212,7 @@ commit-msg -> commitlint
 - [UI 设计说明](./docs/ui-design.md)
 - [开发模块与实现清单](./workLine.md)
 - [Windows 发布 SOP](./docs/windows-release-sop.md)
+- [v0.2.2 发布记录](./docs/releases/v0.2.2.md)
 - [v0.2.1 发布记录](./docs/releases/v0.2.1.md)
 - [v0.2.0 发布记录](./docs/releases/v0.2.0.md)
 - [v0.1.0 发布记录](./docs/releases/v0.1.0.md)

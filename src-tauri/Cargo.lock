@@ -1157,7 +1157,7 @@ dependencies = [
 
 [[package]]
 name = "game-shift"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "image",
  "png 0.17.16",
