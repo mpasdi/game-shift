@@ -29,6 +29,7 @@ fn spawn_server(
         while handled < request_count && Instant::now() < deadline {
             match listener.accept() {
                 Ok((mut stream, _)) => {
+                    stream.set_nonblocking(false).unwrap();
                     stream
                         .set_read_timeout(Some(Duration::from_secs(1)))
                         .unwrap();
@@ -42,7 +43,8 @@ fn spawn_server(
                         request.extend_from_slice(&buffer[..read]);
                     }
                     let response = handler(handled);
-                    let _ = stream.write_all(&response);
+                    stream.write_all(&response).unwrap();
+                    stream.flush().unwrap();
                     handled += 1;
                 }
                 Err(error) if error.kind() == ErrorKind::WouldBlock => {
