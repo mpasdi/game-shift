@@ -702,11 +702,11 @@
 #### 8.5.1 前端工具链维护
 
 - [x] 将 Vite 升级到 8.x，并同步升级 `@vitejs/plugin-vue`
-- [ ] 将 TypeScript 升级到 6.x，并同步升级 `vue-tsc`、`typescript-eslint` 等关联工具
+- [x] 将 TypeScript 升级到 6.x，并同步升级 `vue-tsc`、`typescript-eslint` 等关联工具
 - [x] Vue 保持稳定版 3.5.x，并升级到通过供应链发布年龄策略的 `3.5.40`；不在本版本引入 Vue 3.6 预发布版或 Vapor Mode
 - [ ] TypeScript 7 暂缓，等待 Vue / Volar / `vue-tsc` / `typescript-eslint` 完成原生编译器 API 适配
 - [x] 完成 `pnpm verify`，确认前端构建、Rust 检查、测试和 Clippy 通过
-- [ ] 完成 `pnpm tauri dev` 桌面端手动冒烟验证
+- [x] 完成 `pnpm tauri dev` 桌面端手动冒烟验证
 - [ ] 在发布环境完成带 Updater 签名的 Windows NSIS 构建；本地已生成 EXE 和 NSIS 安装包，最终签名因未配置私钥而按预期停止
 
 #### 8.5.2 共享 UI 组件改造
