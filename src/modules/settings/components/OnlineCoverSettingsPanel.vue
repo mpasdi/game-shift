@@ -3,6 +3,7 @@
   import { Image as ImageIcon, KeyRound, ShieldCheck, Trash2, TriangleAlert, Wifi } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
   import BaseModal from '../../../shared/components/BaseModal.vue'
+  import BaseSwitch from '../../../shared/components/BaseSwitch.vue'
   import TextField from '../../../shared/components/TextField.vue'
   import { getErrorMessage, useToast } from '../../../shared/composables/useToast'
   import {
@@ -166,20 +167,14 @@
         </div>
       </div>
 
-      <button
-        class="online-cover-switch"
-        type="button"
-        role="switch"
-        :aria-checked="settings?.enabled ?? false"
-        :aria-label="settings?.enabled ? '关闭联网封面' : '启用联网封面'"
+      <BaseSwitch
+        :model-value="settings?.enabled ?? false"
+        :accessible-label="settings?.enabled ? '关闭联网封面' : '启用联网封面'"
         :disabled="!settings || isLoading || isBusy"
-        @click="toggleOnlineCovers"
+        @update:model-value="toggleOnlineCovers"
       >
-        <span class="online-cover-switch__track" aria-hidden="true">
-          <span class="online-cover-switch__thumb" />
-        </span>
-        <span>{{ settings?.enabled ? '已开启' : '已关闭' }}</span>
-      </button>
+        {{ settings?.enabled ? '已开启' : '已关闭' }}
+      </BaseSwitch>
     </div>
 
     <div v-if="isLoading && !settings" class="online-cover-panel__placeholder">正在读取联网封面设置...</div>
@@ -333,62 +328,6 @@
     margin-top: 4px;
     color: var(--text-muted);
     font-size: var(--font-size-xs);
-  }
-
-  .online-cover-switch {
-    display: inline-flex;
-    gap: 8px;
-    align-items: center;
-    border: 0;
-    background: transparent;
-    color: var(--text-muted);
-    padding: 4px;
-    font-size: var(--font-size-sm);
-  }
-
-  .online-cover-switch__track {
-    display: flex;
-    width: 34px;
-    height: 19px;
-    align-items: center;
-    border: 1px solid var(--border-strong);
-    border-radius: 999px;
-    background: var(--surface);
-    padding: 2px;
-    transition: background 160ms ease;
-  }
-
-  .online-cover-switch__thumb {
-    width: 13px;
-    height: 13px;
-    border-radius: 999px;
-    background: var(--text-muted);
-    transition:
-      background 160ms ease,
-      transform 160ms ease;
-  }
-
-  .online-cover-switch[aria-checked='true'] {
-    color: var(--text);
-  }
-
-  .online-cover-switch[aria-checked='true'] .online-cover-switch__track {
-    border-color: var(--accent-border);
-    background: var(--accent);
-  }
-
-  .online-cover-switch[aria-checked='true'] .online-cover-switch__thumb {
-    background: #ffffff;
-    transform: translateX(15px);
-  }
-
-  .online-cover-switch:focus-visible {
-    border-radius: 7px;
-    outline: 3px solid var(--focus-ring);
-  }
-
-  .online-cover-switch:disabled {
-    opacity: 0.5;
   }
 
   .online-cover-panel__placeholder,

@@ -3,6 +3,7 @@
   import { storeToRefs } from 'pinia'
   import { CheckCircle2, Download, RefreshCw, TriangleAlert } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
+  import BaseSwitch from '../../../shared/components/BaseSwitch.vue'
   import { getErrorMessage, useToast } from '../../../shared/composables/useToast'
   import { useAppUpdaterStore } from '../stores/appUpdater'
 
@@ -91,20 +92,14 @@
       </div>
 
       <div class="app-update-panel__controls">
-        <button
-          class="app-update-switch"
-          type="button"
-          role="switch"
-          :aria-checked="autoCheckEnabled"
-          :aria-label="autoCheckEnabled ? '关闭自动检查更新' : '开启自动检查更新'"
+        <BaseSwitch
+          :model-value="autoCheckEnabled"
+          :accessible-label="autoCheckEnabled ? '关闭自动检查更新' : '开启自动检查更新'"
           :disabled="!settings || isSettingsLoading || isToggling"
-          @click="toggleAutoCheck"
+          @update:model-value="toggleAutoCheck"
         >
-          <span class="app-update-switch__track" aria-hidden="true">
-            <span class="app-update-switch__thumb" />
-          </span>
-          <span>{{ autoCheckEnabled ? '自动检查已开启' : '自动检查已关闭' }}</span>
-        </button>
+          {{ autoCheckEnabled ? '自动检查已开启' : '自动检查已关闭' }}
+        </BaseSwitch>
 
         <BaseButton :loading="isChecking" :disabled="isInstalling" size="sm" @click="updater.checkForUpdates()">
           检查更新
@@ -189,62 +184,6 @@
     font-size: var(--font-size-xs);
   }
 
-  .app-update-switch {
-    display: inline-flex;
-    gap: 8px;
-    align-items: center;
-    border: 0;
-    background: transparent;
-    color: var(--text-muted);
-    padding: 4px;
-    font-size: var(--font-size-sm);
-  }
-
-  .app-update-switch__track {
-    display: flex;
-    width: 34px;
-    height: 19px;
-    align-items: center;
-    border: 1px solid var(--border-strong);
-    border-radius: 999px;
-    background: var(--surface);
-    padding: 2px;
-    transition: background 160ms ease;
-  }
-
-  .app-update-switch__thumb {
-    width: 13px;
-    height: 13px;
-    border-radius: 999px;
-    background: var(--text-muted);
-    transition:
-      background 160ms ease,
-      transform 160ms ease;
-  }
-
-  .app-update-switch[aria-checked='true'] {
-    color: var(--text);
-  }
-
-  .app-update-switch[aria-checked='true'] .app-update-switch__track {
-    border-color: var(--accent-border);
-    background: var(--accent);
-  }
-
-  .app-update-switch[aria-checked='true'] .app-update-switch__thumb {
-    background: #ffffff;
-    transform: translateX(15px);
-  }
-
-  .app-update-switch:focus-visible {
-    border-radius: 7px;
-    outline: 3px solid var(--focus-ring);
-  }
-
-  .app-update-switch:disabled {
-    opacity: 0.5;
-  }
-
   .app-update-panel__body {
     justify-content: space-between;
     gap: 16px;
@@ -283,7 +222,7 @@
       gap: 12px;
     }
 
-    .app-update-switch {
+    .base-switch {
       align-self: flex-start;
     }
   }
