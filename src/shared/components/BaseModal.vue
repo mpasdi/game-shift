@@ -1,5 +1,7 @@
 <script setup lang="ts">
   import { X } from '@lucide/vue'
+  import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
+
   const props = withDefaults(
     defineProps<{
       open: boolean
@@ -26,18 +28,34 @@
     emit('close')
   }
 
-  function closeFromBackdrop() {
-    if (!props.closeOnBackdrop) return
-    requestClose()
+  function handleOpenChange(open: boolean) {
+    if (!open) requestClose()
+  }
+
+  function handleInteractOutside(event: Event) {
+    if (!props.closeOnBackdrop || props.closeDisabled) event.preventDefault()
+  }
+
+  function handleEscapeKeyDown(event: KeyboardEvent) {
+    if (props.closeDisabled) event.preventDefault()
   }
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="open" class="modal-backdrop" role="presentation" @click.self="closeFromBackdrop">
-      <section class="modal-panel" :class="`modal-panel--${size}`" role="dialog" aria-modal="true" :aria-label="title">
+  <DialogRoot :open="props.open" @update:open="handleOpenChange">
+    <DialogPortal>
+      <DialogOverlay class="modal-backdrop" />
+      <DialogContent
+        class="modal-panel"
+        :class="`modal-panel--${size}`"
+        aria-describedby="undefined"
+        @interact-outside="handleInteractOutside"
+        @escape-key-down="handleEscapeKeyDown"
+      >
         <header class="modal-header">
-          <h2>{{ title }}</h2>
+          <DialogTitle as-child>
+            <h2>{{ title }}</h2>
+          </DialogTitle>
           <button class="modal-close" type="button" aria-label="关闭" :disabled="closeDisabled" @click="requestClose">
             <X :size="16" :stroke-width="2.4" />
           </button>
@@ -48,39 +66,42 @@
         <footer v-if="$slots.footer" class="modal-footer">
           <slot name="footer" />
         </footer>
-      </section>
-    </div>
-  </Teleport>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
 </template>
 
-<style scoped>
+<!-- DialogPortal 挂载到 body，弹框样式需保持非 scoped。 -->
+<style>
   .modal-backdrop {
     position: fixed;
     inset: 0;
     z-index: 100;
-    display: grid;
-    place-items: center;
     background: rgba(8, 7, 10, 0.78);
-    padding: 22px;
     backdrop-filter: blur(14px);
     animation: fade-in 150ms ease-out both;
   }
 
   .modal-panel {
+    position: fixed;
+    z-index: 101;
+    top: 50%;
+    left: 50%;
     display: flex;
-    width: min(560px, 100%);
+    width: min(560px, calc(100vw - 44px));
     flex-direction: column;
     max-height: min(760px, calc(100vh - 44px));
     overflow: hidden;
     border: 1px solid var(--border-strong);
     border-radius: 8px;
+    outline: 0;
     background: var(--panel-strong);
     box-shadow: var(--shadow);
     animation: modal-in 180ms ease-out both;
   }
 
   .modal-panel--sm {
-    width: min(420px, 100%);
+    width: min(420px, calc(100vw - 44px));
   }
 
   .modal-panel--sm .modal-footer {
@@ -88,7 +109,7 @@
   }
 
   .modal-panel--lg {
-    width: min(760px, 100%);
+    width: min(760px, calc(100vw - 44px));
   }
 
   .modal-header,
@@ -163,12 +184,12 @@
   @keyframes modal-in {
     from {
       opacity: 0;
-      transform: translateY(12px) scale(0.98);
+      transform: translate(-50%, calc(-50% + 12px)) scale(0.98);
     }
 
     to {
       opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translate(-50%, -50%) scale(1);
     }
   }
 
@@ -178,7 +199,7 @@
       flex-direction: column;
     }
 
-    .modal-footer :deep(.base-button) {
+    .modal-footer .base-button {
       width: 100%;
     }
   }
