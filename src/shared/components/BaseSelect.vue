@@ -132,8 +132,7 @@
     opacity: 0.58;
   }
 
-  .base-select__value,
-  .base-select__option-label {
+  .base-select__value {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -161,7 +160,16 @@
     animation: select-spin 680ms linear infinite;
   }
 
-  :global(.base-select__content) {
+  @keyframes select-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>
+
+<!-- SelectPortal 挂载到 body，以下样式需保持非 scoped。 -->
+<style>
+  .base-select__content {
     z-index: 200;
     width: var(--reka-select-trigger-width);
     max-height: min(230px, var(--reka-select-content-available-height));
@@ -172,11 +180,11 @@
     box-shadow: var(--shadow);
   }
 
-  :global(.base-select__viewport) {
+  .base-select__viewport {
     padding: 6px;
   }
 
-  :global(.base-select__option) {
+  .base-select__option {
     display: grid;
     min-height: 38px;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -190,36 +198,36 @@
     text-align: left;
   }
 
-  :global(.base-select__option[data-highlighted]) {
+  .base-select__option[data-highlighted] {
     outline: 0;
     background: var(--surface-hover);
     color: var(--text);
   }
 
-  :global(.base-select__option[data-state='checked']) {
+  .base-select__option[data-state='checked'] {
     color: var(--text);
   }
 
-  :global(.base-select__option-copy) {
+  .base-select__option-copy {
     display: grid;
     min-width: 0;
     gap: 2px;
   }
 
-  :global(.base-select__option-copy small) {
+  .base-select__option-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .base-select__option-copy small {
     color: var(--text-subtle);
     font-size: var(--font-size-xs);
   }
 
-  :global(.base-select__indicator) {
+  .base-select__indicator {
     display: grid;
     color: var(--accent-strong);
     place-items: center;
-  }
-
-  @keyframes select-spin {
-    to {
-      transform: rotate(360deg);
-    }
   }
 </style>
