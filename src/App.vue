@@ -1,10 +1,13 @@
 <script setup lang="ts">
   import AppUpdateDialog from './modules/updates/components/AppUpdateDialog.vue'
+  import BaseTooltipProvider from './shared/components/BaseTooltipProvider.vue'
   import ToastContainer from './shared/components/ToastContainer.vue'
 </script>
 
 <template>
-  <RouterView />
-  <AppUpdateDialog />
-  <ToastContainer />
+  <BaseTooltipProvider>
+    <RouterView />
+    <AppUpdateDialog />
+    <ToastContainer />
+  </BaseTooltipProvider>
 </template>

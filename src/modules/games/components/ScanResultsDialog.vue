@@ -14,19 +14,11 @@
   } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
   import BaseModal from '../../../shared/components/BaseModal.vue'
+  import BaseTooltip from '../../../shared/components/BaseTooltip.vue'
   import type { ScanCandidate } from '../types/game'
 
   interface ScanRow extends ScanCandidate {
     selected: boolean
-  }
-
-  interface RecognitionTooltip {
-    exePath: string
-    confidence: number
-    reasons: string[]
-    top: number
-    left: number
-    width: number
   }
 
   const props = withDefaults(
@@ -51,8 +43,6 @@
   const recommendedExpanded = ref(true)
   const otherExpanded = ref(false)
   const existingExpanded = ref(false)
-  const recognitionTooltip = ref<RecognitionTooltip | null>(null)
-
   const selectedRows = computed(() => rows.value.filter((row) => !row.exists && row.selected))
   const selectedCount = computed(() => selectedRows.value.length)
   const recommendedRows = computed(() => rows.value.filter((row) => !row.exists && row.recommended))
@@ -97,7 +87,6 @@
       recommendedExpanded.value = true
       otherExpanded.value = false
       existingExpanded.value = false
-      recognitionTooltip.value = null
     },
     { immediate: true }
   )
@@ -131,27 +120,6 @@
       return
     }
     if (section === 'existing') existingExpanded.value = !existingExpanded.value
-  }
-
-  function showRecognitionTooltip(row: ScanRow, event: MouseEvent | FocusEvent) {
-    const trigger = event.currentTarget as HTMLElement
-    const rect = trigger.getBoundingClientRect()
-    const width = Math.min(280, window.innerWidth - 24)
-    const preferredLeft = rect.left - width - 8
-    const left = preferredLeft >= 12 ? preferredLeft : Math.min(rect.right + 8, window.innerWidth - width - 12)
-
-    recognitionTooltip.value = {
-      exePath: row.exePath,
-      confidence: row.confidence,
-      reasons: row.reasons,
-      top: Math.min(Math.max(rect.top + rect.height / 2, 72), window.innerHeight - 72),
-      left,
-      width
-    }
-  }
-
-  function hideRecognitionTooltip() {
-    recognitionTooltip.value = null
   }
 
   function importSelected() {
@@ -217,7 +185,7 @@
       <p v-if="props.errorMessage" class="scan-error">{{ props.errorMessage }}</p>
 
       <div v-if="rows.length === 0" class="scan-empty">没有扫描到可导入的 .exe 文件。</div>
-      <div v-else class="scan-table" role="table" aria-label="扫描候选列表" @scroll="hideRecognitionTooltip">
+      <div v-else class="scan-table" role="table" aria-label="扫描候选列表">
         <div class="scan-row scan-row--head" role="row">
           <span></span>
           <span>游戏名称</span>
@@ -273,19 +241,21 @@
               <div class="path-cell">
                 <div class="path-heading">
                   <strong>{{ row.exeFileName }}</strong>
-                  <button
-                    v-if="row.reasons.length"
-                    class="recognition-trigger"
-                    type="button"
-                    aria-label="查看识别依据"
-                    :aria-describedby="recognitionTooltip?.exePath === row.exePath ? 'recognition-tooltip' : undefined"
-                    @mouseenter="showRecognitionTooltip(row, $event)"
-                    @mouseleave="hideRecognitionTooltip"
-                    @focus="showRecognitionTooltip(row, $event)"
-                    @blur="hideRecognitionTooltip"
-                  >
-                    <Info :size="15" />
-                  </button>
+                  <BaseTooltip v-if="row.reasons.length" side="left">
+                    <template #trigger>
+                      <button class="recognition-trigger" type="button" aria-label="查看识别依据">
+                        <Info :size="15" />
+                      </button>
+                    </template>
+
+                    <div class="recognition-tooltip-heading">
+                      <strong>识别依据</strong>
+                      <span>识别分 {{ row.confidence }} / 100</span>
+                    </div>
+                    <ul class="recognition-tooltip-reasons">
+                      <li v-for="reason in row.reasons" :key="reason">{{ reason }}</li>
+                    </ul>
+                  </BaseTooltip>
                 </div>
                 <span :title="row.folderPath">{{ row.folderPath }}</span>
               </div>
@@ -308,28 +278,6 @@
       </BaseButton>
     </template>
   </BaseModal>
-
-  <Teleport to="body">
-    <div
-      v-if="recognitionTooltip"
-      id="recognition-tooltip"
-      class="recognition-tooltip"
-      role="tooltip"
-      :style="{
-        top: `${recognitionTooltip.top}px`,
-        left: `${recognitionTooltip.left}px`,
-        width: `${recognitionTooltip.width}px`
-      }"
-    >
-      <div class="recognition-tooltip-heading">
-        <strong>识别依据</strong>
-        <span>识别分 {{ recognitionTooltip.confidence }} / 100</span>
-      </div>
-      <ul>
-        <li v-for="reason in recognitionTooltip.reasons" :key="reason">{{ reason }}</li>
-      </ul>
-    </div>
-  </Teleport>
 </template>
 
 <style scoped>
@@ -607,21 +555,6 @@
     outline-offset: 2px;
   }
 
-  .recognition-tooltip {
-    position: fixed;
-    z-index: 3000;
-    max-height: calc(100vh - 24px);
-    overflow: auto;
-    transform: translateY(-50%);
-    border: 1px solid rgba(139, 92, 246, 0.32);
-    border-radius: 9px;
-    background: rgba(24, 21, 32, 0.98);
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.38);
-    color: var(--text);
-    padding: 10px 12px;
-    pointer-events: none;
-  }
-
   .recognition-tooltip-heading {
     display: flex;
     gap: 10px;
@@ -641,14 +574,14 @@
     white-space: nowrap;
   }
 
-  .recognition-tooltip ul {
+  .recognition-tooltip-reasons {
     display: grid;
     gap: 4px;
     margin: 0;
     padding-left: 17px;
   }
 
-  .recognition-tooltip li {
+  .recognition-tooltip-reasons li {
     color: var(--text-muted);
     font-size: var(--font-size-xs);
     line-height: 1.45;

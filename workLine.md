@@ -720,7 +720,7 @@
 - [x] 使用 Reka Select 重写 `BaseSelect` 内部实现，并删除旧的自研下拉交互逻辑
 - [x] 使用 Reka Dialog 重写 `BaseModal` 内部实现，保持现有 props、slots 和视觉样式尽量兼容
 - [x] 抽取统一 `BaseSwitch`，迁移设置页联网封面和自动更新开关并删除局部开关实现
-- [ ] 评估 Toast、Popover、Tooltip、DropdownMenu 是否纳入统一基础组件
+- [x] 评估 Toast、Popover、Tooltip、DropdownMenu：迁移 Tooltip；Toast 保留现有实现，Popover 和 DropdownMenu 按后续业务需求引入
 - [ ] 统一共享组件的尺寸、禁用、加载、错误、焦点和键盘交互规范
 - [ ] 补充 Tab、方向键、Enter、Escape、点击外部关闭、焦点锁定和焦点恢复测试
 - [ ] 完成主要页面与弹窗视觉回归，避免引入第二套视觉主题和重复组件
