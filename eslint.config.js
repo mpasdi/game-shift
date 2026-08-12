@@ -38,5 +38,27 @@ export default tseslint.config(
       ]
     }
   },
+  {
+    files: ['src/modules/**/*.{ts,vue}', 'src/pages/**/*.{ts,vue}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'reka-ui',
+              message: '业务模块请使用 shared/components 中的 Base* 组件，不要直接依赖 Reka UI。'
+            }
+          ],
+          patterns: [
+            {
+              group: ['reka-ui/*'],
+              message: '业务模块请使用 shared/components 中的 Base* 组件，不要直接依赖 Reka UI。'
+            }
+          ]
+        }
+      ]
+    }
+  },
   prettier
 )

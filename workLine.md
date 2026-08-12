@@ -715,8 +715,8 @@
 
 - [x] 盘点 `shared/components` 和业务模块中的弹窗、开关、下拉、浮层、提示等交互组件
 - [x] 引入 Reka UI，并明确版本、安装方式和升级策略
-- [ ] 保持 `Base*` 作为 Game Shift 对业务模块公开的唯一 UI 组件 API
-- [ ] 禁止 `src/modules/**` 和 `src/pages/**` 直接导入 `reka-ui`
+- [x] 保持 `Base*` 作为 Game Shift 对业务模块公开的唯一 UI 组件 API
+- [x] 通过 ESLint 禁止 `src/modules/**` 和 `src/pages/**` 直接导入 `reka-ui`
 - [x] 使用 Reka Select 重写 `BaseSelect` 内部实现，并删除旧的自研下拉交互逻辑
 - [x] 使用 Reka Dialog 重写 `BaseModal` 内部实现，保持现有 props、slots 和视觉样式尽量兼容
 - [x] 抽取统一 `BaseSwitch`，迁移设置页联网封面和自动更新开关并删除局部开关实现
