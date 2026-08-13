@@ -1,15 +1,34 @@
 <script setup lang="ts">
-  const props = defineProps<{
-    id: string
-    modelValue: string
-    placeholder?: string
-    label?: string
-    type?: 'text' | 'search' | 'password'
-    readonly?: boolean
-    autocomplete?: string
-    spellcheck?: boolean
-    name?: string
-  }>()
+  const props = withDefaults(
+    defineProps<{
+      id: string
+      modelValue: string
+      placeholder?: string
+      label?: string
+      type?: 'text' | 'search' | 'password'
+      size?: 'sm' | 'md'
+      readonly?: boolean
+      disabled?: boolean
+      invalid?: boolean
+      describedBy?: string
+      autocomplete?: string
+      spellcheck?: boolean
+      name?: string
+    }>(),
+    {
+      type: 'text',
+      size: 'md',
+      readonly: false,
+      disabled: false,
+      invalid: false,
+      placeholder: undefined,
+      label: undefined,
+      describedBy: undefined,
+      autocomplete: undefined,
+      spellcheck: undefined,
+      name: undefined
+    }
+  )
 
   const emit = defineEmits<{
     'update:modelValue': [value: string]
@@ -17,7 +36,18 @@
 </script>
 
 <template>
-  <label class="text-field" :class="{ 'text-field--readonly': props.readonly }" :for="props.id">
+  <label
+    class="text-field"
+    :class="[
+      `text-field--${props.size}`,
+      {
+        'text-field--readonly': props.readonly,
+        'text-field--disabled': props.disabled,
+        'text-field--invalid': props.invalid
+      }
+    ]"
+    :for="props.id"
+  >
     <span v-if="$slots.icon" class="text-field__icon">
       <slot name="icon" />
     </span>
@@ -25,10 +55,13 @@
     <input
       :id="props.id"
       class="text-field__input"
-      :type="props.type ?? 'text'"
+      :type="props.type"
       :value="props.modelValue"
       :placeholder="props.placeholder"
       :readonly="props.readonly"
+      :disabled="props.disabled"
+      :aria-invalid="props.invalid || undefined"
+      :aria-describedby="props.describedBy"
       :autocomplete="props.autocomplete"
       :spellcheck="props.spellcheck"
       :name="props.name"
@@ -42,9 +75,8 @@
     display: flex;
     align-items: center;
     width: min(560px, 100%);
-    min-height: 34px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--control-radius);
     background: var(--surface);
     color: var(--text);
     padding: 0 12px;
@@ -54,14 +86,36 @@
       box-shadow 160ms ease;
   }
 
-  .text-field:hover {
+  .text-field--md {
+    min-height: var(--control-height-md);
+  }
+
+  .text-field--sm {
+    min-height: var(--control-height-sm);
+  }
+
+  .text-field:hover:not(.text-field--disabled) {
     border-color: var(--border-strong);
     background: var(--surface-hover);
   }
 
-  .text-field:focus-within {
+  .text-field:has(.text-field__input:focus-visible) {
     border-color: var(--accent-border);
-    box-shadow: 0 0 0 3px var(--focus-ring);
+    box-shadow: var(--control-focus-shadow);
+  }
+
+  .text-field--invalid {
+    border-color: var(--control-error-border);
+  }
+
+  .text-field--invalid:has(.text-field__input:focus-visible) {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px var(--control-error-ring);
+  }
+
+  .text-field--disabled {
+    cursor: not-allowed;
+    opacity: var(--control-disabled-opacity);
   }
 
   .text-field--readonly {
@@ -75,7 +129,7 @@
     background: rgba(255, 255, 255, 0.026);
   }
 
-  .text-field--readonly:focus-within {
+  .text-field--readonly:has(.text-field__input:focus-visible) {
     border-color: rgba(255, 255, 255, 0.14);
     box-shadow: none;
   }
@@ -111,6 +165,10 @@
     background: transparent;
     color: inherit;
     padding: 0;
+  }
+
+  .text-field__input:disabled {
+    cursor: not-allowed;
   }
 
   .text-field__icon + .text-field__input,

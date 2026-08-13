@@ -26,6 +26,7 @@
     :class="[`base-button--${variant}`, `base-button--${size}`]"
     :type="type"
     :disabled="disabled || loading"
+    :aria-busy="loading || undefined"
   >
     <span v-if="loading" class="base-button__spinner" aria-hidden="true" />
     <span v-else-if="$slots.icon" class="base-button__icon">
@@ -43,7 +44,7 @@
     align-items: center;
     justify-content: center;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: var(--control-radius);
     color: var(--text);
     white-space: nowrap;
     transition:
@@ -54,12 +55,12 @@
   }
 
   .base-button--md {
-    min-height: 34px;
+    min-height: var(--control-height-md);
     padding: 0 12px;
   }
 
   .base-button--sm {
-    min-height: 30px;
+    min-height: var(--control-height-sm);
     padding: 0 10px;
     font-size: 13px;
   }
@@ -69,7 +70,13 @@
   }
 
   .base-button:disabled {
-    opacity: 0.52;
+    cursor: not-allowed;
+    opacity: var(--control-disabled-opacity);
+  }
+
+  .base-button:focus-visible {
+    outline: 0;
+    box-shadow: var(--control-focus-shadow);
   }
 
   .base-button__spinner {
@@ -86,6 +93,13 @@
     color: #ffffff;
     font-weight: 700;
     box-shadow: 0 12px 28px rgba(41, 30, 110, 0.34);
+  }
+
+  .base-button--primary:focus-visible,
+  .base-button--danger:focus-visible {
+    box-shadow:
+      var(--control-focus-shadow),
+      0 12px 28px rgba(41, 30, 110, 0.34);
   }
 
   .base-button--secondary {

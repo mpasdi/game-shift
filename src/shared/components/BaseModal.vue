@@ -151,6 +151,11 @@
     color: var(--text);
   }
 
+  .modal-close:focus-visible {
+    outline: 0;
+    box-shadow: var(--control-focus-shadow);
+  }
+
   .modal-close:disabled {
     cursor: not-allowed;
     opacity: 0.42;

@@ -26,6 +26,7 @@
   const isLoading = ref(false)
   const activeOperation = ref<Operation | null>(null)
   const loadError = ref<string | null>(null)
+  const pendingOnlineCoversEnabled = ref<boolean | null>(null)
 
   const statusContent: Record<OnlineCoverConfigState, { label: string; description: string }> = {
     disabled: {
@@ -48,6 +49,9 @@
 
   const currentStatus = computed(() => statusContent[settings.value?.state ?? 'disabled'])
   const isBusy = computed(() => activeOperation.value !== null)
+  const displayedOnlineCoversEnabled = computed(
+    () => pendingOnlineCoversEnabled.value ?? settings.value?.enabled ?? false
+  )
   const canSaveKey = computed(() => apiKeyInput.value.trim().length > 0 && !isBusy.value)
   const storedKeyStatusLabel = computed(() => (settings.value?.state === 'invalidApiKey' ? '验证失败' : '验证通过'))
 
@@ -63,15 +67,17 @@
     }
   }
 
-  async function toggleOnlineCovers() {
+  async function toggleOnlineCovers(enabled: boolean) {
     if (!settings.value || isBusy.value) return
+    pendingOnlineCoversEnabled.value = enabled
     activeOperation.value = 'toggle'
     try {
-      settings.value = await setOnlineCoversEnabled(!settings.value.enabled)
+      settings.value = await setOnlineCoversEnabled(enabled)
       toast.success({ title: settings.value.enabled ? '联网封面已启用' : '联网封面已关闭' })
     } catch (error) {
       toast.error({ title: '更新联网封面设置失败', description: getErrorMessage(error) })
     } finally {
+      pendingOnlineCoversEnabled.value = null
       activeOperation.value = null
     }
   }
@@ -168,12 +174,13 @@
       </div>
 
       <BaseSwitch
-        :model-value="settings?.enabled ?? false"
-        :accessible-label="settings?.enabled ? '关闭联网封面' : '启用联网封面'"
-        :disabled="!settings || isLoading || isBusy"
+        :model-value="displayedOnlineCoversEnabled"
+        :accessible-label="displayedOnlineCoversEnabled ? '关闭联网封面' : '启用联网封面'"
+        :disabled="!settings || isLoading || (isBusy && activeOperation !== 'toggle')"
+        :loading="activeOperation === 'toggle'"
         @update:model-value="toggleOnlineCovers"
       >
-        {{ settings?.enabled ? '已开启' : '已关闭' }}
+        {{ displayedOnlineCoversEnabled ? '已开启' : '已关闭' }}
       </BaseSwitch>
     </div>
 

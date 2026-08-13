@@ -6,15 +6,22 @@
       modelValue: boolean
       accessibleLabel: string
       disabled?: boolean
+      loading?: boolean
     }>(),
     {
-      disabled: false
+      disabled: false,
+      loading: false
     }
   )
 
   const emit = defineEmits<{
     'update:modelValue': [value: boolean]
   }>()
+
+  function handleModelValueUpdate(value: boolean) {
+    if (props.disabled || props.loading) return
+    emit('update:modelValue', value)
+  }
 </script>
 
 <template>
@@ -23,7 +30,9 @@
     :model-value="props.modelValue"
     :aria-label="props.accessibleLabel"
     :disabled="props.disabled"
-    @update:model-value="emit('update:modelValue', $event)"
+    :aria-disabled="props.disabled || props.loading || undefined"
+    :aria-busy="props.loading || undefined"
+    @update:model-value="handleModelValueUpdate"
   >
     <span class="base-switch__track" aria-hidden="true">
       <SwitchThumb class="base-switch__thumb" />
@@ -82,11 +91,18 @@
 
   .base-switch:focus-visible {
     border-radius: 7px;
-    outline: 3px solid var(--focus-ring);
+    outline: 0;
+    box-shadow: var(--control-focus-shadow);
   }
 
   .base-switch:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
+    opacity: var(--control-disabled-opacity);
+  }
+
+  .base-switch[aria-busy='true'] {
+    opacity: 1;
+    cursor: default;
+    pointer-events: none;
   }
 </style>

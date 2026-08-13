@@ -27,13 +27,19 @@
       options: BaseSelectOption[]
       accessibleLabel: string
       placeholder?: string
+      size?: 'sm' | 'md'
       disabled?: boolean
       loading?: boolean
+      invalid?: boolean
+      describedBy?: string
     }>(),
     {
       placeholder: '请选择',
+      size: 'md',
       disabled: false,
-      loading: false
+      loading: false,
+      invalid: false,
+      describedBy: undefined
     }
   )
 
@@ -54,7 +60,14 @@
     :disabled="props.disabled || props.loading || !props.options.length"
     @update:model-value="updateValue"
   >
-    <SelectTrigger class="base-select__trigger" :aria-label="props.accessibleLabel">
+    <SelectTrigger
+      class="base-select__trigger"
+      :class="`base-select__trigger--${props.size}`"
+      :aria-label="props.accessibleLabel"
+      :aria-busy="props.loading || undefined"
+      :aria-invalid="props.invalid || undefined"
+      :aria-describedby="props.describedBy"
+    >
       <SelectValue class="base-select__value" :placeholder="props.placeholder">
         {{ selectedOption?.label }}
       </SelectValue>
@@ -100,12 +113,11 @@
   .base-select__trigger {
     display: grid;
     width: 100%;
-    min-height: 34px;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
     align-items: center;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--control-radius);
     padding: 0 12px;
     background: var(--surface);
     color: var(--text);
@@ -116,6 +128,17 @@
       box-shadow 160ms ease;
   }
 
+  .base-select__trigger--md {
+    min-height: var(--control-height-md);
+  }
+
+  .base-select__trigger--sm {
+    min-height: var(--control-height-sm);
+    padding-right: 10px;
+    padding-left: 10px;
+    font-size: var(--font-size-sm);
+  }
+
   .base-select__trigger:hover:not(:disabled) {
     border-color: var(--border-strong);
     background: var(--surface-hover);
@@ -124,12 +147,21 @@
   .base-select__trigger:focus-visible {
     border-color: var(--accent-border);
     outline: 0;
-    box-shadow: 0 0 0 3px var(--focus-ring);
+    box-shadow: var(--control-focus-shadow);
+  }
+
+  .base-select__trigger[aria-invalid='true'] {
+    border-color: var(--control-error-border);
+  }
+
+  .base-select__trigger[aria-invalid='true']:focus-visible {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px var(--control-error-ring);
   }
 
   .base-select__trigger:disabled {
     cursor: not-allowed;
-    opacity: 0.58;
+    opacity: var(--control-disabled-opacity);
   }
 
   .base-select__value {

@@ -327,3 +327,16 @@ Game Shift 主题变量与组件样式
 3. 使用 Reka Switch 重写 `BaseSwitch` 并迁移设置页开关。
 4. 评估 Toast、Popover、Tooltip 和 DropdownMenu。
 5. 对键盘、焦点、弹层、窗口缩放和主要页面进行统一回归。
+
+### 8.4 共享组件交互规范
+
+共享交互组件统一遵循以下约定：
+
+- 表单与按钮类控件使用 `sm`、`md` 两档尺寸；默认 `md` 高度为 `34px`，`sm` 高度为 `30px`，圆角统一为 `8px`。
+- 禁用状态由组件原生 `disabled` 能力承载，统一使用禁用光标和透明度；业务层不得只通过视觉样式模拟禁用。
+- 加载状态需要阻止重复操作并设置 `aria-busy`；`BaseButton`、`BaseSelect` 使用旋转加载反馈，`BaseSwitch` 保持滑块布局稳定并静默拦截重复切换。
+- 键盘焦点只通过 `:focus-visible` 展示统一焦点环，避免鼠标点击后持续显示焦点样式。
+- `TextField` 和 `BaseSelect` 通过 `invalid` 与 `describedBy` 暴露错误语义，业务层负责提供具体错误文案。
+- Dialog 使用 Escape、遮罩点击、焦点锁定和焦点恢复的标准行为；操作进行中可通过 `closeDisabled` 阻止关闭。
+- Select 支持方向键、Enter、Space 与 Escape；Switch 支持 Space 和 Enter；Tooltip 同时支持鼠标悬停和键盘聚焦。
+- 颜色、尺寸、禁用透明度、焦点环和错误边框优先使用全局主题变量，不在业务组件内重复定义。

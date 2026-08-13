@@ -1,15 +1,18 @@
 <script setup lang="ts">
   type IconButtonVariant = 'plain' | 'active' | 'danger'
+  type IconButtonSize = 'sm' | 'md'
 
   withDefaults(
     defineProps<{
       label: string
       variant?: IconButtonVariant
+      size?: IconButtonSize
       disabled?: boolean
       type?: 'button' | 'submit' | 'reset'
     }>(),
     {
       variant: 'plain',
+      size: 'md',
       disabled: false,
       type: 'button'
     }
@@ -23,7 +26,7 @@
 <template>
   <button
     class="icon-button"
-    :class="[`icon-button--${variant}`]"
+    :class="[`icon-button--${variant}`, `icon-button--${size}`]"
     :type="type"
     :disabled="disabled"
     :title="label"
@@ -37,11 +40,8 @@
 <style scoped>
   .icon-button {
     display: grid;
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: var(--control-radius);
     background: transparent;
     color: var(--text-muted);
     line-height: 0;
@@ -53,19 +53,36 @@
       color 160ms ease;
   }
 
-  .icon-button:hover {
+  .icon-button--md {
+    width: var(--control-height-md);
+    min-width: var(--control-height-md);
+    height: var(--control-height-md);
+  }
+
+  .icon-button--sm {
+    width: var(--control-height-sm);
+    min-width: var(--control-height-sm);
+    height: var(--control-height-sm);
+  }
+
+  .icon-button:hover:not(:disabled) {
     border-color: var(--border);
     background: var(--surface);
     color: var(--text);
   }
 
-  .icon-button:active {
+  .icon-button:active:not(:disabled) {
     background: var(--surface-hover);
   }
 
   .icon-button:disabled {
     cursor: not-allowed;
-    opacity: 0.48;
+    opacity: var(--control-disabled-opacity);
+  }
+
+  .icon-button:focus-visible {
+    outline: 0;
+    box-shadow: var(--control-focus-shadow);
   }
 
   .icon-button:disabled:hover {

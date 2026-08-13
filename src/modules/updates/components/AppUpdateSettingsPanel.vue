@@ -21,6 +21,8 @@
   } = storeToRefs(updater)
   const isSettingsLoading = ref(false)
   const isToggling = ref(false)
+  const pendingAutoCheckEnabled = ref<boolean | null>(null)
+  const displayedAutoCheckEnabled = computed(() => pendingAutoCheckEnabled.value ?? autoCheckEnabled.value)
 
   const status = computed(() => {
     if (availableUpdate.value) {
@@ -45,8 +47,10 @@
 
     return {
       type: 'idle',
-      label: autoCheckEnabled.value ? '自动检查已开启' : '自动检查已关闭',
-      description: autoCheckEnabled.value ? '应用和游戏库加载完成后会检查一次新版本。' : '仍可随时手动检查新版本。'
+      label: displayedAutoCheckEnabled.value ? '自动检查已开启' : '自动检查已关闭',
+      description: displayedAutoCheckEnabled.value
+        ? '应用和游戏库加载完成后会检查一次新版本。'
+        : '仍可随时手动检查新版本。'
     }
   })
 
@@ -61,16 +65,18 @@
     }
   }
 
-  async function toggleAutoCheck() {
+  async function toggleAutoCheck(enabled: boolean) {
     if (!settings.value || isToggling.value) return
 
+    pendingAutoCheckEnabled.value = enabled
     isToggling.value = true
     try {
-      const next = await updater.setAutoCheckEnabled(!settings.value.autoCheckEnabled)
+      const next = await updater.setAutoCheckEnabled(enabled)
       toast.success({ title: next.autoCheckEnabled ? '自动检查更新已开启' : '自动检查更新已关闭' })
     } catch (error) {
       toast.error({ title: '更新设置保存失败', description: getErrorMessage(error) })
     } finally {
+      pendingAutoCheckEnabled.value = null
       isToggling.value = false
     }
   }
@@ -93,12 +99,13 @@
 
       <div class="app-update-panel__controls">
         <BaseSwitch
-          :model-value="autoCheckEnabled"
-          :accessible-label="autoCheckEnabled ? '关闭自动检查更新' : '开启自动检查更新'"
-          :disabled="!settings || isSettingsLoading || isToggling"
+          :model-value="displayedAutoCheckEnabled"
+          :accessible-label="displayedAutoCheckEnabled ? '关闭自动检查更新' : '开启自动检查更新'"
+          :disabled="!settings || isSettingsLoading"
+          :loading="isToggling"
           @update:model-value="toggleAutoCheck"
         >
-          {{ autoCheckEnabled ? '自动检查已开启' : '自动检查已关闭' }}
+          {{ displayedAutoCheckEnabled ? '自动检查已开启' : '自动检查已关闭' }}
         </BaseSwitch>
 
         <BaseButton :loading="isChecking" :disabled="isInstalling" size="sm" @click="updater.checkForUpdates()">
