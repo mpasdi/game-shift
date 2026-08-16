@@ -38,3 +38,5 @@ Thumbs.db
 
 # Local dev server logs
 .vite-dev*.log
+
+*.tsbuildinfo
