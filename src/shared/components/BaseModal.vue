@@ -48,7 +48,7 @@
       <DialogContent
         class="modal-panel"
         :class="`modal-panel--${size}`"
-        aria-describedby="undefined"
+        :aria-describedby="undefined"
         @interact-outside="handleInteractOutside"
         @escape-key-down="handleEscapeKeyDown"
       >
