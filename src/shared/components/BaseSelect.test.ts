@@ -1,5 +1,5 @@
 import { mount, enableAutoUnmount } from '@vue/test-utils'
-import { describe, expect, it, afterEach } from 'vitest'
+import { describe, expect, it, afterEach, vi } from 'vitest'
 import BaseSelect from './BaseSelect.vue'
 import { nextTick } from 'vue'
 
@@ -123,5 +123,40 @@ describe('BaseSelect', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(selectButton.attributes('aria-expanded')).toBe('false')
     expect(document.body.querySelector('[role="listbox"]')).toBeNull()
+  })
+
+  it('test option can be selected when arrow key be keydown', async () => {
+    const wrapper = mount(BaseSelect, {
+      props: { ...baseProps }
+    })
+    const selectButton = wrapper.get<HTMLButtonElement>('[role="combobox"]')
+    await selectButton.trigger('keydown', { key: 'Enter' })
+    const options = document.body.querySelectorAll('[role="option"]')
+    expect(options).toHaveLength(2)
+
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(options[0])
+    })
+
+    options[0]?.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        bubbles: true,
+        cancelable: true
+      })
+    )
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(options[1])
+    })
+
+    options[1].dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Enter'
+      })
+    )
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(wrapper.emitted('update:modelValue')).toEqual([['option2']])
   })
 })

@@ -144,4 +144,29 @@ describe('Modal', () => {
     await nextTick()
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
+
+  it('prevent close then modal when click outside', async () => {
+    const wrapper = mount(BaseModal, {
+      attachTo: document.body,
+      props: {
+        open: true,
+        title: 'modal title',
+        closeOnBackdrop: false
+      }
+    })
+    await nextTick()
+    // 等待 Reka 注册弹框外部的 pointerdown 监听
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const backdrop = document.body.querySelector('.modal-backdrop')
+    expect(backdrop).not.toBeNull()
+    backdrop?.dispatchEvent(
+      new Event('pointerdown', {
+        bubbles: true,
+        cancelable: true
+      })
+    )
+    await nextTick()
+    expect(wrapper.emitted('close')).toBeUndefined()
+  })
 })

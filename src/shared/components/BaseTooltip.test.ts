@@ -2,7 +2,7 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import BaseTooltip from './BaseTooltip.vue'
 import BaseTooltipProvider from './BaseTooltipProvider.vue'
-import { defineComponent, nextTick } from 'vue'
+import { defineComponent } from 'vue'
 
 enableAutoUnmount(afterEach)
 
@@ -52,8 +52,9 @@ describe('BaseTooltip and BaseTooltipProvider', () => {
       }
     })
 
-    await wrapper.trigger('focus')
-    await nextTick()
+    const triggerBtn = wrapper.get('button')
+    await triggerBtn.trigger('focus')
+    await new Promise((resolve) => setTimeout(resolve, 200))
     const tooltipContent = document.body.querySelector('[role="tooltip"]')
     expect(tooltipContent).toBeNull()
   })
