@@ -705,6 +705,7 @@
 - [x] 将 TypeScript 升级到 6.x，并同步升级 `vue-tsc`、`typescript-eslint` 等关联工具
 - [x] Vue 保持稳定版 3.5.x，并升级到通过供应链发布年龄策略的 `3.5.40`；不在本版本引入 Vue 3.6 预发布版或 Vapor Mode
 - [ ] TypeScript 7 暂缓，等待 Vue / Volar / `vue-tsc` / `typescript-eslint` 完成原生编译器 API 适配
+- [ ] 当前核心流程测试补充完成后，将 `tsconfig.json` 的 `target` 和 `lib` 从 `ES2020` 评估升级到 `ES2022`；保持 Vite 构建目标与 Tauri WebView 兼容范围一致，完成 `pnpm verify` 和桌面端冒烟验证后再落地
 - [x] 完成 `pnpm verify`，确认前端构建、Rust 检查、测试和 Clippy 通过
 - [x] 完成 `pnpm tauri dev` 桌面端手动冒烟验证
 - [ ] 在发布环境完成带 Updater 签名的 Windows NSIS 构建；本地已生成 EXE 和 NSIS 安装包，最终签名因未配置私钥而按预期停止
@@ -741,7 +742,18 @@
 - [ ] 补充最近游玩时间格式化等独立工具函数的边界测试
 - [ ] 将新增测试纳入 `pnpm verify`，并确认测试之间不存在共享状态和执行顺序依赖
 
-#### 8.6.2 游戏运行状态实现
+#### 8.6.2 开发前置：Ren'Py 游戏启动路径兼容性
+
+状态：待修复。2026-09-16 实测发现，部分 Ren'Py 8.3.2 游戏从 Game Shift 启动时会在引擎初始化阶段报 `Module _errorhandling could not be loaded`，但从资源管理器直接双击同一 `.exe` 可以正常运行。错误堆栈中的路径带有 Windows 扩展路径前缀 `\\?\`。
+
+初步判断：启动流程中的 `normalize_existing_exe_path` 和 `normalize_existing_directory` 会调用 `canonicalize()`，Windows 返回的 `PathBuf` 可能带有 `\\?\` 前缀；`launch_game` 随后将该路径直接传给 `Command::new` 和 `current_dir`。项目已有 `strip_windows_extended_path_prefix`，但当前仅在路径转为数据库字符串时使用，尚未覆盖进程启动参数。
+
+- [ ] 为启动前的 Windows 路径准备逻辑补充回归测试，确认普通盘符路径和 UNC 路径不会以不兼容的 `\\?\` 形式传给子进程
+- [ ] 启动前移除可执行文件路径和工作目录中的 Windows 扩展路径前缀，同时保留现有的文件、目录与 `.exe` 校验
+- [ ] 使用出现问题的 Ren'Py 游戏重新验收，确认不再出现 `_errorhandling` 模块加载错误
+- [ ] 补充普通游戏、包含空格路径、自定义工作目录和启动参数的启动回归，避免兼容性修复影响现有流程
+
+#### 8.6.3 游戏运行状态实现
 
 - [ ] 后端跟踪由 Game Shift 启动的游戏进程
 - [ ] 维护前端运行中游戏状态
