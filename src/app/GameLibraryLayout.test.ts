@@ -79,7 +79,10 @@ async function initGameLibraryLayout(path: string = '/home') {
 
   const wrapper = mount(GameLibraryLayout, {
     global: {
-      plugins: [pinia, router]
+      plugins: [pinia, router],
+      stubs: {
+        BaseTooltip: true
+      }
     }
   })
   await flushPromises()
@@ -482,5 +485,101 @@ describe('GameLibraryLayout', () => {
     const scanDialog = wrapper.getComponent(ScanResultsDialog)
     expect(scanDialog.props('open')).toBe(true)
     expect(scanDialog.props('errorMessage')).toBe('scan game fail')
+  })
+
+  it('imports scan games', async () => {
+    const selectedDirectory = 'D:\\Games'
+    vi.mocked(openDialog).mockResolvedValue(selectedDirectory)
+    const { wrapper, gamesStore, loadGamesSpy } = await initGameLibraryLayout('/games')
+
+    const scanCandidate: ScanCandidate = {
+      name: '空洞骑士',
+      exePath: 'D:\\Games\\Hollow Knight\\hollow_knight.exe',
+      folderPath: 'D:\\Games\\Hollow Knight',
+      exeFileName: 'Games/test.exe',
+      exists: false,
+      recommended: true,
+      confidence: 1,
+      reasons: ['test.exe']
+    }
+    const createPayload = {
+      name: scanCandidate.name,
+      exePath: scanCandidate.exePath,
+      workDir: scanCandidate.folderPath,
+      args: null
+    }
+    vi.spyOn(gamesStore, 'scanGames').mockResolvedValue([scanCandidate])
+    const createGameSpy = vi.spyOn(gamesStore, 'createGame').mockResolvedValue(createdGame)
+
+    await nextTick()
+
+    // 1. 点击按钮
+    const buttons = wrapper.findAll('button')
+    const scanButton = buttons.find((button) => button.text().trim() === '扫描目录')
+    expect(scanButton).toBeDefined()
+    await scanButton!.trigger('click')
+    await flushPromises()
+
+    // 2. 打开弹框， 并导入
+    const scanDialog = wrapper.getComponent(ScanResultsDialog)
+    expect(scanDialog.props('open')).toBe(true)
+    expect(scanDialog.props('candidates')).toEqual([scanCandidate])
+    scanDialog.vm.$emit('import', [scanCandidate])
+
+    await flushPromises()
+
+    expect(createGameSpy).toHaveBeenCalledTimes(1)
+    expect(createGameSpy).toHaveBeenCalledWith(createPayload)
+    expect(scanDialog.props('open')).toBe(false)
+    expect(loadGamesSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps scan dialog open when import fails', async () => {
+    const selectedDirectory = 'D:\\Games'
+    vi.mocked(openDialog).mockResolvedValue(selectedDirectory)
+    const { wrapper, gamesStore, loadGamesSpy } = await initGameLibraryLayout('/games')
+
+    const scanCandidate: ScanCandidate = {
+      name: '空洞骑士',
+      exePath: 'D:\\Games\\Hollow Knight\\hollow_knight.exe',
+      folderPath: 'D:\\Games\\Hollow Knight',
+      exeFileName: 'Games/test.exe',
+      exists: false,
+      recommended: true,
+      confidence: 1,
+      reasons: ['test.exe']
+    }
+    const createPayload = {
+      name: scanCandidate.name,
+      exePath: scanCandidate.exePath,
+      workDir: scanCandidate.folderPath,
+      args: null
+    }
+    vi.spyOn(gamesStore, 'scanGames').mockResolvedValue([scanCandidate])
+    const createGameSpy = vi.spyOn(gamesStore, 'createGame').mockRejectedValue(new Error('import fail'))
+    await nextTick()
+
+    // 1. 点击扫描按钮
+    const buttons = wrapper.findAll('button')
+    const scanButton = buttons.find((button) => button.text().trim() === '扫描目录')
+    expect(scanButton).toBeDefined()
+    await scanButton!.trigger('click')
+    await flushPromises()
+
+    // 2  点击导入按钮
+    const dialogButtons = Array.from(document.body.querySelectorAll('button'))
+    const importButton = dialogButtons.find((button) => button.textContent.trim() === '导入')
+    expect(importButton).toBeDefined()
+    importButton!.click()
+    await flushPromises()
+
+    expect(createGameSpy).toHaveBeenCalledTimes(1)
+    expect(createGameSpy).toHaveBeenCalledWith(createPayload)
+    expect(loadGamesSpy).toHaveBeenCalledTimes(1)
+
+    const dialog = document.body.querySelector('[role="dialog"]')
+    const scanDialog = wrapper.getComponent(ScanResultsDialog)
+    expect(scanDialog.props('open')).toBe(true)
+    expect(dialog?.textContent).toContain('import fail')
   })
 })
