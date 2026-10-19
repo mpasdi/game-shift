@@ -745,14 +745,16 @@
 
 #### 8.6.2 开发前置：Ren'Py 游戏启动路径兼容性
 
-状态：待修复。2026-09-16 实测发现，部分 Ren'Py 8.3.2 游戏从 Game Shift 启动时会在引擎初始化阶段报 `Module _errorhandling could not be loaded`，但从资源管理器直接双击同一 `.exe` 可以正常运行。错误堆栈中的路径带有 Windows 扩展路径前缀 `\\?\`。
+状态：2026-10-19 已完成启动路径兼容性代码修复与命令构造回归测试，待使用 Eternum-0.9.5 实机验收。2026-09-16 实测发现，部分 Ren'Py 8.3.2 游戏从 Game Shift 启动时会在引擎初始化阶段报 `Module _errorhandling could not be loaded`，但从资源管理器直接双击同一 `.exe` 可以正常运行。错误堆栈中的路径带有 Windows 扩展路径前缀 `\\?\`。
 
 初步判断：启动流程中的 `normalize_existing_exe_path` 和 `normalize_existing_directory` 会调用 `canonicalize()`，Windows 返回的 `PathBuf` 可能带有 `\\?\` 前缀；`launch_game` 随后将该路径直接传给 `Command::new` 和 `current_dir`。项目已有 `strip_windows_extended_path_prefix`，但当前仅在路径转为数据库字符串时使用，尚未覆盖进程启动参数。
 
-- [ ] 为启动前的 Windows 路径准备逻辑补充回归测试，确认普通盘符路径和 UNC 路径不会以不兼容的 `\\?\` 形式传给子进程
-- [ ] 启动前移除可执行文件路径和工作目录中的 Windows 扩展路径前缀，同时保留现有的文件、目录与 `.exe` 校验
+- [x] 为启动前的 Windows 路径准备逻辑补充回归测试，确认普通盘符路径和 UNC 路径不会以不兼容的 `\\?\` 形式传给子进程
+- [x] 启动前移除可执行文件路径和工作目录中的 Windows 扩展路径前缀，同时保留现有的文件、目录与 `.exe` 校验
 - [ ] 使用出现问题的 Ren'Py 游戏重新验收，确认不再出现 `_errorhandling` 模块加载错误
 - [ ] 补充普通游戏、包含空格路径、自定义工作目录和启动参数的启动回归，避免兼容性修复影响现有流程
+
+实现说明：`launcher.rs` 将命令构造与实际启动分离，在路径校验和 `canonicalize()` 后，仅于 Windows 启动边界复用 `path_to_string` 转换可执行文件路径与工作目录；UNC 路径保留网络共享语义。自动测试覆盖前缀转换、中文 / 空格路径、默认 / 自定义工作目录、参数解析及无效路径拒绝，仅构造命令而不启动游戏。真实游戏和网络共享启动仍需手动验收。
 
 #### 8.6.3 游戏运行状态实现
 
