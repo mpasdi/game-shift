@@ -52,6 +52,7 @@
         :key="game.id"
         :game="game"
         :is-launching="actions.launchingGameIds.value.includes(game.id)"
+        :is-running="actions.runningGameIds.value.includes(game.id)"
         @launch="actions.launchGame"
         @toggle-favorite="actions.toggleFavorite"
       />
@@ -62,6 +63,7 @@
       :games="visibleGames"
       action-mode="quick"
       :launching-game-ids="actions.launchingGameIds.value"
+      :running-game-ids="actions.runningGameIds.value"
       @launch="actions.launchGame"
       @toggle-favorite="actions.toggleFavorite"
     />

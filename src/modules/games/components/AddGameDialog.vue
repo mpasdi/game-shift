@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { computed, reactive, ref, watch } from 'vue'
   import { open as openDialog } from '@tauri-apps/plugin-dialog'
-  import { FileSearch, FolderOpen, Globe2, ImagePlus } from '@lucide/vue'
+  import { FileSearch, FolderOpen, Globe2, ImagePlus, LockKeyhole } from '@lucide/vue'
   import BaseButton from '../../../shared/components/BaseButton.vue'
   import BaseModal from '../../../shared/components/BaseModal.vue'
   import TextField from '../../../shared/components/TextField.vue'
@@ -18,11 +18,13 @@
       mode?: 'create' | 'edit'
       game?: Game | null
       errorMessage?: string | null
+      launchLocked?: boolean
     }>(),
     {
       mode: 'create',
       game: null,
-      errorMessage: null
+      errorMessage: null,
+      launchLocked: false
     }
   )
 
@@ -74,13 +76,14 @@
   )
 
   async function chooseExePath() {
+    if (props.launchLocked) return
     const selected = await openDialog({
       multiple: false,
       directory: false,
       filters: [{ name: 'Windows 可执行文件', extensions: ['exe'] }]
     })
 
-    if (typeof selected !== 'string') return
+    if (typeof selected !== 'string' || props.launchLocked) return
 
     form.exePath = selected
     form.workDir = getFolderPath(selected)
@@ -88,13 +91,14 @@
   }
 
   async function chooseWorkDir() {
+    if (props.launchLocked) return
     const selected = await openDialog({
       multiple: false,
       directory: true,
       defaultPath: form.workDir || getFolderPath(form.exePath) || undefined
     })
 
-    if (typeof selected !== 'string') return
+    if (typeof selected !== 'string' || props.launchLocked) return
 
     form.workDir = selected
   }
@@ -125,6 +129,16 @@
   }
 
   function submitForm() {
+    if (
+      props.launchLocked &&
+      props.game &&
+      (form.exePath.trim() !== props.game.exePath ||
+        form.workDir.trim() !== (props.game.workDir ?? props.game.folderPath) ||
+        form.args.trim() !== (props.game.args ?? ''))
+    ) {
+      localError.value = '游戏正在运行，请先退出游戏再修改启动配置'
+      return
+    }
     localError.value = validateForm()
     if (localError.value) return
 
@@ -281,10 +295,16 @@
             </div>
 
             <div class="form-field">
-              <label class="form-field__label" for="game-exe">可执行文件</label>
+              <div class="form-field__heading">
+                <label class="form-field__label" for="game-exe">可执行文件</label>
+                <span v-if="launchLocked" class="form-field__lock-hint" role="status">
+                  <LockKeyhole :size="12" aria-hidden="true" />
+                  运行中，启动配置已锁定
+                </span>
+              </div>
               <div class="path-field">
                 <TextField id="game-exe" v-model="form.exePath" placeholder="选择游戏 .exe 文件" readonly />
-                <BaseButton variant="secondary" type="button" @click="chooseExePath">
+                <BaseButton variant="secondary" type="button" :disabled="launchLocked || saving" @click="chooseExePath">
                   <template #icon><FileSearch :size="17" /></template>
                   选择
                 </BaseButton>
@@ -295,7 +315,7 @@
               <label class="form-field__label" for="game-work-dir">工作目录</label>
               <div class="path-field">
                 <TextField id="game-work-dir" v-model="form.workDir" placeholder="默认使用 .exe 所在目录" readonly />
-                <BaseButton variant="secondary" type="button" @click="chooseWorkDir">
+                <BaseButton variant="secondary" type="button" :disabled="launchLocked || saving" @click="chooseWorkDir">
                   <template #icon><FolderOpen :size="17" /></template>
                   选择
                 </BaseButton>
@@ -304,7 +324,12 @@
 
             <div class="form-field">
               <label class="form-field__label" for="game-args">启动参数</label>
-              <TextField id="game-args" v-model="form.args" placeholder="可选，例如 -windowed" />
+              <TextField
+                id="game-args"
+                v-model="form.args"
+                :disabled="launchLocked || saving"
+                placeholder="可选，例如 -windowed"
+              />
             </div>
           </div>
         </div>
@@ -396,6 +421,22 @@
     color: var(--text-muted);
     font-size: var(--font-size-sm);
     font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .form-field__heading {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
+  .form-field__lock-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+    font-size: var(--font-size-xs, 12px);
     line-height: 1.2;
   }
 

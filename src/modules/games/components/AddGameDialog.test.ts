@@ -1,7 +1,7 @@
 import { nextTick } from 'vue'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { describe, afterEach, it, expect, vi } from 'vitest'
-import { mount, enableAutoUnmount, flushPromises } from '@vue/test-utils'
+import { DOMWrapper, mount, enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import AddGameDialog from './AddGameDialog.vue'
 // type
 import type { CreateGamePayload, Game, UpdateGamePayload } from '../types/game'
@@ -26,6 +26,36 @@ const game: Game = {
 }
 
 describe('AddGameDialog', () => {
+  // 测试场景：表单打开后开始运行，锁定配置但允许改名；提前修改的参数不得提交。
+  it('locks launch fields dynamically while allowing metadata edits', async () => {
+    const wrapper = mount(AddGameDialog, {
+      attachTo: document.body,
+      props: { open: true, saving: false, mode: 'edit', game }
+    })
+    await nextTick()
+    const dialog = document.body.querySelector('[role="dialog"]')!
+    await wrapper.setProps({ launchLocked: true })
+    const args = dialog.querySelector<HTMLInputElement>('#game-args')!
+    expect(args.disabled).toBe(true)
+    const choices = Array.from(dialog.querySelectorAll('button')).filter(
+      (button) => button.textContent?.trim() === '选择'
+    )
+    expect(choices).toHaveLength(2)
+    expect(choices.every((button) => button.disabled)).toBe(true)
+    await new DOMWrapper(dialog.querySelector<HTMLInputElement>('#game-name')!).setValue('新名称')
+    const save = Array.from(dialog.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === '保存修改'
+    )!
+    save.click()
+    expect(wrapper.emitted('submit')?.[0]?.[0]).toMatchObject({ name: '新名称', exePath: game.exePath })
+    await wrapper.setProps({ launchLocked: false })
+    await new DOMWrapper(args).setValue('--changed')
+    await wrapper.setProps({ launchLocked: true })
+    save.click()
+    await nextTick()
+    expect(wrapper.emitted('submit')).toHaveLength(1)
+    expect(dialog.textContent).toContain('请先退出游戏再修改启动配置')
+  })
   it('renders create mode title and actions', async () => {
     mount(AddGameDialog, {
       attachTo: document.body,

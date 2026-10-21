@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { createGame, deleteGame, launchGame, listGames, scanGames, updateGame } from '../api'
+import { createGame, deleteGame, launchGame, listGames, listRunningGames, scanGames, updateGame } from '../api'
 import type { CreateGamePayload, Game, GameFilter, ScanCandidate, UpdateGamePayload } from '../types/game'
 
 const LAUNCH_COOLDOWN_MS = 3000
@@ -24,6 +24,9 @@ interface GamesState {
   isSaving: boolean
   isScanning: boolean
   launchingGameIds: string[]
+  runningGameIds: string[]
+  runtimeError: string | null
+  runtimeRevision: number
   errorMessage: string | null
   libraryErrorMessage: string | null
 }
@@ -37,6 +40,9 @@ export const useGamesStore = defineStore('games', {
     isSaving: false,
     isScanning: false,
     launchingGameIds: [],
+    runningGameIds: [],
+    runtimeError: null,
+    runtimeRevision: 0,
     errorMessage: null,
     libraryErrorMessage: null
   }),
@@ -55,6 +61,19 @@ export const useGamesStore = defineStore('games', {
     }
   },
   actions: {
+    async refreshRunningGames() {
+      const revision = ++this.runtimeRevision
+      try {
+        const snapshot = await listRunningGames()
+        if (revision !== this.runtimeRevision) return
+        this.runningGameIds = snapshot.gameIds
+        this.runtimeError = snapshot.error
+      } catch {
+        if (revision === this.runtimeRevision) {
+          this.runtimeError = '运行状态同步失败，暂时保留上次状态，稍后自动重试'
+        }
+      }
+    },
     async loadGames() {
       this.isLoading = true
       this.libraryErrorMessage = null
@@ -93,6 +112,15 @@ export const useGamesStore = defineStore('games', {
       this.errorMessage = null
 
       try {
+        const current = this.games.find((game) => game.id === payload.id)
+        if (
+          current &&
+          (this.runningGameIds.includes(payload.id) || this.launchingGameIds.includes(payload.id)) &&
+          (payload.exePath.trim() !== current.exePath ||
+            (payload.workDir?.trim() || current.folderPath) !== (current.workDir || current.folderPath) ||
+            (payload.args?.trim() || '') !== (current.args || ''))
+        )
+          throw new Error('游戏正在运行，请先退出游戏再修改启动配置')
         const game = await updateGame(payload)
         this.upsertGame(game)
         return game
@@ -108,6 +136,9 @@ export const useGamesStore = defineStore('games', {
       this.errorMessage = null
 
       try {
+        if (this.runningGameIds.includes(id) || this.launchingGameIds.includes(id)) {
+          throw new Error('游戏正在运行，请先退出游戏再移除')
+        }
         await deleteGame(id)
         this.games = this.games.filter((game) => game.id !== id)
       } catch (error) {
@@ -118,19 +149,22 @@ export const useGamesStore = defineStore('games', {
       }
     },
     async launchGame(id: string) {
-      if (this.launchingGameIds.includes(id)) return null
+      if (this.launchingGameIds.includes(id) || this.runningGameIds.includes(id)) return null
 
+      ++this.runtimeRevision
       this.launchingGameIds.push(id)
       this.errorMessage = null
 
       try {
         const game = await launchGame(id)
+        if (!this.runningGameIds.includes(id)) this.runningGameIds.push(id)
         this.upsertGame(game)
         return game
       } catch (error) {
         this.errorMessage = error instanceof Error ? error.message : String(error)
         throw error
       } finally {
+        await this.refreshRunningGames()
         window.setTimeout(() => {
           this.launchingGameIds = this.launchingGameIds.filter((gameId) => gameId !== id)
         }, LAUNCH_COOLDOWN_MS)

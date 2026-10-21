@@ -3,6 +3,13 @@ use tauri::AppHandle;
 use super::models::{CreateGamePayload, Game, ScanCandidate, UpdateGamePayload};
 
 #[tauri::command]
+pub fn running_games_command(
+    state: tauri::State<'_, super::runtime::RunningGames>,
+) -> Result<super::runtime::RunningSnapshot, String> {
+    state.snapshot()
+}
+
+#[tauri::command]
 pub fn list_games_command(app: AppHandle) -> Result<Vec<Game>, String> {
     super::list_games(&app)
 }

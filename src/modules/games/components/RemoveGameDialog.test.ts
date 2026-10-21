@@ -99,6 +99,29 @@ describe('RemoveGameDialog', () => {
     expect(wrapper.emitted('confirm')).toBeUndefined()
   })
 
+  // 测试场景：弹框打开后游戏开始运行，禁止移除；退出后恢复移除。
+  it('locks removal dynamically until the game exits', async () => {
+    const wrapper = mount(RemoveGameDialog, {
+      attachTo: document.body,
+      props: { open: true, game, deleting: false }
+    })
+    await nextTick()
+    const button = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (el) => el.textContent?.trim() === '移除'
+    )!
+    expect(button).toBeDefined()
+    await wrapper.setProps({ launchLocked: true })
+    expect(button.disabled).toBe(true)
+    button.click()
+    expect(wrapper.emitted('confirm')).toBeUndefined()
+    expect(document.body.textContent).toContain('游戏正在运行，请先退出游戏再移除。')
+
+    await wrapper.setProps({ launchLocked: false })
+    expect(button.disabled).toBe(false)
+    button.click()
+    expect(wrapper.emitted('confirm')).toEqual([[]])
+  })
+
   it('render the errorMessage', async () => {
     mount(RemoveGameDialog, {
       attachTo: document.body,

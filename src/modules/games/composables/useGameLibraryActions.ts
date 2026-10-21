@@ -7,6 +7,7 @@ export type GameViewMode = 'grid' | 'list'
 export interface GameLibraryActions {
   viewMode: Readonly<Ref<GameViewMode>>
   launchingGameIds: Ref<string[]>
+  runningGameIds: Ref<string[]>
   setViewMode: (viewMode: GameViewMode) => void
   openEditGameDialog: (game: Game) => void
   openRemoveGameDialog: (game: Game) => void

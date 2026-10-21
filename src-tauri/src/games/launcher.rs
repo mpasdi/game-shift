@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::db;
 
@@ -16,16 +16,15 @@ pub(super) fn launch_game(app: &AppHandle, id: &str) -> Result<Game, String> {
         return Err("游戏 ID 不能为空".to_string());
     }
 
-    let game = repository::get_by_id(&connection, id)?
-        .ok_or_else(|| "游戏不存在或已被删除".to_string())?;
-    let mut command = prepare_launch_command(
-        &game.exe_path,
-        game.work_dir.as_deref(),
-        game.args.as_deref(),
-    )?;
-    command
-        .spawn()
-        .map_err(|error| format_launch_error(&error))?;
+    app.state::<super::runtime::RunningGames>().spawn(id, || {
+        let game = repository::get_by_id(&connection, id)?
+            .ok_or_else(|| "游戏不存在或已被删除".to_string())?;
+        prepare_launch_command(
+            &game.exe_path,
+            game.work_dir.as_deref(),
+            game.args.as_deref(),
+        )
+    })?;
 
     let now = current_timestamp_millis()?;
     repository::record_launch(&connection, id, now)?;
@@ -67,7 +66,7 @@ fn compatible_launch_path(path: PathBuf) -> Result<PathBuf, String> {
     }
 }
 
-fn format_launch_error(error: &std::io::Error) -> String {
+pub(super) fn format_launch_error(error: &std::io::Error) -> String {
     match error.raw_os_error() {
         Some(193 | 216) => "该文件无法作为 Windows 程序运行，请重新选择".to_string(),
         Some(5) => "没有权限启动这个文件，请检查文件权限后重试".to_string(),

@@ -9,6 +9,7 @@
     game?: Game | null
     deleting: boolean
     errorMessage?: string | null
+    launchLocked?: boolean
   }>()
 
   const emit = defineEmits<{
@@ -33,13 +34,22 @@
           </div>
         </template>
         <p class="confirm-dialog__description">只会移除 Game Shift 中的记录，不会删除本地磁盘上的游戏文件。</p>
+        <p v-if="props.launchLocked" role="status" class="form-error">游戏正在运行，请先退出游戏再移除。</p>
         <p v-if="props.errorMessage" class="form-error">{{ props.errorMessage }}</p>
       </div>
     </div>
 
     <template #footer>
       <BaseButton variant="secondary" type="button" :disabled="props.deleting" @click="emit('close')">取消</BaseButton>
-      <BaseButton variant="danger" type="button" :loading="props.deleting" @click="emit('confirm')">移除</BaseButton>
+      <BaseButton
+        variant="danger"
+        type="button"
+        :loading="props.deleting"
+        :disabled="props.launchLocked"
+        @click="!props.launchLocked && emit('confirm')"
+      >
+        移除
+      </BaseButton>
     </template>
   </BaseModal>
 </template>

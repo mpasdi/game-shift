@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { launchGame } from '../api.ts'
+import { launchGame, listRunningGames, updateGame, deleteGame } from '../api.ts'
 import { createPinia, setActivePinia } from 'pinia'
 import { useGamesStore } from './games.ts'
 // type
@@ -22,10 +22,32 @@ const games: Game[] = [
 ]
 
 describe('games store launch', () => {
+  // 运行和启动期间只允许资料编辑，启动配置和移除都必须等待退出。
+  it.each(['runningGameIds', 'launchingGameIds'] as const)('guards mutations while %s is active', async (state) => {
+    const store = useGamesStore()
+    store.games = [...games]
+    store[state] = ['game-1']
+    const payload = { ...games[0], name: '新名称', favorite: true }
+    vi.mocked(updateGame).mockResolvedValue({ ...games[0], ...payload })
+    await store.updateGame(payload)
+    expect(updateGame).toHaveBeenCalledTimes(1)
+    for (const change of [{ exePath: 'D:\\Other.exe' }, { workDir: 'D:\\Other' }, { args: '--new' }]) {
+      await expect(store.updateGame({ ...payload, ...change })).rejects.toThrow('修改启动配置')
+    }
+    expect(updateGame).toHaveBeenCalledTimes(1)
+    await expect(store.deleteGame('game-1')).rejects.toThrow('再移除')
+    expect(deleteGame).not.toHaveBeenCalled()
+    expect(store[state]).toEqual(['game-1'])
+    store[state] = []
+    vi.mocked(deleteGame).mockResolvedValue(undefined)
+    await store.deleteGame('game-1')
+    expect(deleteGame).toHaveBeenCalledWith('game-1')
+  })
   beforeEach(() => {
     // 每个测试使用全新的 Pinia，避免测试之间共享状态
     setActivePinia(createPinia())
     vi.resetAllMocks()
+    vi.mocked(listRunningGames).mockResolvedValue({ gameIds: [], error: null })
     vi.useFakeTimers()
   })
   afterEach(() => {
@@ -89,6 +111,45 @@ describe('games store launch', () => {
 
     vi.advanceTimersByTime(1)
     expect(gamesStore.launchingGameIds).toEqual([])
+  })
+
+  // 测试场景：冷却结束但进程仍在运行时阻止启动；确认退出后允许再次启动。
+  it('blocks a running game after cooldown and allows relaunch after exit', async () => {
+    vi.mocked(launchGame).mockResolvedValue(games[0])
+    vi.mocked(listRunningGames).mockResolvedValue({ gameIds: ['game-1'], error: null })
+    const store = useGamesStore()
+    await store.launchGame('game-1')
+    vi.advanceTimersByTime(3000)
+    expect(store.runningGameIds).toEqual(['game-1'])
+    expect(await store.launchGame('game-1')).toBeNull()
+    expect(launchGame).toHaveBeenCalledTimes(1)
+    vi.mocked(listRunningGames).mockResolvedValue({ gameIds: [], error: null })
+    await store.refreshRunningGames()
+    await store.launchGame('game-1')
+    expect(launchGame).toHaveBeenCalledTimes(2)
+  })
+
+  // 测试场景：同步异常保留运行锁定，后续成功快照恢复；旧快照不能覆盖新状态。
+  it('preserves state on sync failure and ignores stale snapshots', async () => {
+    const store = useGamesStore()
+    store.runningGameIds = ['game-1']
+    vi.mocked(listRunningGames).mockRejectedValueOnce(new Error('offline'))
+    await store.refreshRunningGames()
+    expect(store.runningGameIds).toEqual(['game-1'])
+    expect(store.runtimeError).not.toBeNull()
+    let finish!: (value: { gameIds: string[]; error: null }) => void
+    vi.mocked(listRunningGames).mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve
+      })
+    )
+    const oldRequest = store.refreshRunningGames()
+    await store.refreshRunningGames()
+    expect(store.runningGameIds).toEqual([])
+    expect(store.runtimeError).toBeNull()
+    finish({ gameIds: ['game-1'], error: null })
+    await oldRequest
+    expect(store.runningGameIds).toEqual([])
   })
 
   it('records and rethrows error when launching game fails', async () => {

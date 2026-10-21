@@ -1,3 +1,33 @@
+/* 运行状态不是普通禁用态；悬停时也保留绿色，覆盖 IconButton 的 scoped disabled:hover。 */
+.game-table button.game-launch--running:disabled,
+.game-table button.game-launch--running:disabled:hover,
+.game-grid-card button.game-launch--running:disabled,
+.game-grid-card button.game-launch--running:disabled:hover,
+.game-quick-card button.game-launch--running:disabled,
+.game-quick-card button.game-launch--running:disabled:hover {
+  color: #a7f3c0;
+  background: #153d2c;
+  border-color: #38865b;
+  opacity: 1;
+  box-shadow: none;
+  cursor: default;
+}
+
+.game-running-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgb(134 239 172 / 12%);
+}
+
+.runtime-status-notice {
+  color: #fcd34d;
+  font-size: 12px;
+}
+
 :root {
   font-family:
     Inter,

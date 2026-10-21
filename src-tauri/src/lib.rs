@@ -33,6 +33,7 @@ fn app_info(app: tauri::AppHandle) -> Result<AppInfo, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(games::runtime::RunningGames::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -49,6 +50,7 @@ pub fn run() {
             games::commands::update_game_command,
             games::commands::delete_game_command,
             games::commands::launch_game_command,
+            games::commands::running_games_command,
             games::commands::scan_games_command,
             games::covers::commands::search_cover_candidates_command,
             games::covers::commands::list_cover_candidates_command,

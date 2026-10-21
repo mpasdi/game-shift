@@ -25,12 +25,14 @@
       actionMode?: GameTableActionMode
       launchStyle?: GameTableLaunchStyle
       launchingGameIds?: string[]
+      runningGameIds?: string[]
     }>(),
     {
       density: 'regular',
       actionMode: 'full',
       launchStyle: 'icon',
-      launchingGameIds: () => []
+      launchingGameIds: () => [],
+      runningGameIds: () => []
     }
   )
 
@@ -60,7 +62,11 @@
   }
 
   function isLaunching(game: Game) {
-    return props.launchingGameIds.includes(game.id)
+    return props.launchingGameIds.includes(game.id) || isRunning(game)
+  }
+
+  function isRunning(game: Game) {
+    return props.runningGameIds.includes(game.id)
   }
 
   function getTableRowKey(row: unknown) {
@@ -102,23 +108,29 @@
         <BaseButton
           v-if="props.launchStyle === 'button'"
           class="game-table__launch-button"
+          :class="{ 'game-launch--running': isRunning(row as Game) }"
           size="sm"
           variant="primary"
           :disabled="isLaunching(row as Game)"
           @click="emit('launch', row as Game)"
         >
-          <template #icon><Play :size="14" /></template>
-          启动
+          <template #icon>
+            <span v-if="isRunning(row as Game)" class="game-running-dot" aria-hidden="true" />
+            <Play v-else :size="14" />
+          </template>
+          {{ isRunning(row as Game) ? '运行中' : '启动' }}
         </BaseButton>
         <IconButton
           v-else
           class="game-table__action game-table__action--primary"
-          label="启动游戏"
+          :class="{ 'game-launch--running': isRunning(row as Game) }"
+          :label="isRunning(row as Game) ? '游戏运行中' : '启动游戏'"
           variant="active"
           :disabled="isLaunching(row as Game)"
           @click="emit('launch', row as Game)"
         >
-          <Play :size="15" />
+          <span v-if="isRunning(row as Game)" class="game-running-dot" aria-hidden="true" />
+          <Play v-else :size="15" />
         </IconButton>
         <IconButton
           v-if="props.actionMode === 'full' || props.actionMode === 'quick'"

@@ -6,6 +6,35 @@ use rusqlite::Connection;
 use super::{models::Game, persist_with_cover_rollback, repository};
 
 #[test]
+fn running_game_allows_metadata_but_rejects_launch_changes() {
+    let game = sample_game("cover.jpg".into());
+    assert!(super::ensure_launch_edit_allowed(
+        true,
+        &game,
+        &game.exe_path,
+        game.work_dir.as_deref(),
+        game.args.as_deref()
+    )
+    .is_ok());
+    for (exe, work_dir, args) in [
+        ("other.exe", game.work_dir.as_deref(), game.args.as_deref()),
+        (
+            game.exe_path.as_str(),
+            Some("C:\\other"),
+            game.args.as_deref(),
+        ),
+        (
+            game.exe_path.as_str(),
+            game.work_dir.as_deref(),
+            Some("--other"),
+        ),
+    ] {
+        assert!(super::ensure_launch_edit_allowed(true, &game, exe, work_dir, args).is_err());
+        assert!(super::ensure_launch_edit_allowed(false, &game, exe, work_dir, args).is_ok());
+    }
+}
+
+#[test]
 fn removes_the_new_cover_when_database_insert_fails() {
     let test_directory = std::env::temp_dir().join(format!(
         "game-shift-cover-insert-rollback-{}-{}",

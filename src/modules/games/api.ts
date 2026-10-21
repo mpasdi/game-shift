@@ -50,6 +50,16 @@ export async function launchGame(id: string) {
   return invoke<Game>('launch_game_command', { id })
 }
 
+export interface RunningGamesSnapshot {
+  gameIds: string[]
+  error: string | null
+}
+
+export async function listRunningGames(): Promise<RunningGamesSnapshot> {
+  if (!isTauriRuntime()) return { gameIds: [], error: null }
+  return invoke<RunningGamesSnapshot>('running_games_command')
+}
+
 export async function scanGames(directory: string) {
   if (!isTauriRuntime()) {
     throw new Error('当前环境不支持扫描本地目录，请在 Tauri 桌面应用中使用')
