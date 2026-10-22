@@ -3,22 +3,27 @@
   import { RouterLink, RouterView, useRoute } from 'vue-router'
   import { storeToRefs } from 'pinia'
   import { open as openDialog } from '@tauri-apps/plugin-dialog'
+  import { gameLibraryActionsKey } from '../modules/games/composables/useGameLibraryActions'
+  import { useGamesStore } from '../modules/games/stores/games'
+  import { useRunningGames } from '../modules/games/composables/useRunningGames'
+  import { useAppUpdaterStore } from '../modules/updates/stores/appUpdater'
+  import { routeNames } from '../router/routeNames'
+
+  // components
   import { Clock3, FolderSearch, Home, Library, Plus, Search, Settings, Sparkles, Star } from '@lucide/vue'
   import AppShell from './AppShell.vue'
   import AddGameDialog from '../modules/games/components/AddGameDialog.vue'
   import EmptyLibraryState from '../modules/games/components/EmptyLibraryState.vue'
   import RemoveGameDialog from '../modules/games/components/RemoveGameDialog.vue'
   import ScanResultsDialog from '../modules/games/components/ScanResultsDialog.vue'
-  import { gameLibraryActionsKey } from '../modules/games/composables/useGameLibraryActions'
-  import type { GameViewMode } from '../modules/games/composables/useGameLibraryActions'
-  import { useGamesStore } from '../modules/games/stores/games'
-  import { useAppUpdaterStore } from '../modules/updates/stores/appUpdater'
-  import type { CreateGamePayload, Game, ScanCandidate, UpdateGamePayload } from '../modules/games/types/game'
-  import { routeNames } from '../router/routeNames'
   import BaseButton from '../shared/components/BaseButton.vue'
   import EmptyState from '../shared/components/EmptyState.vue'
   import TextField from '../shared/components/TextField.vue'
   import { getErrorMessage, useToast } from '../shared/composables/useToast'
+
+  // type
+  import type { GameViewMode } from '../modules/games/composables/useGameLibraryActions'
+  import type { CreateGamePayload, Game, ScanCandidate, UpdateGamePayload } from '../modules/games/types/game'
 
   interface NavItem {
     name: string
@@ -28,9 +33,11 @@
 
   const route = useRoute()
   const gamesStore = useGamesStore()
+  useRunningGames()
   const appUpdater = useAppUpdaterStore()
   const toast = useToast()
-  const { games, searchText, isLoading, launchingGameIds, libraryErrorMessage } = storeToRefs(gamesStore)
+  const { games, searchText, isLoading, launchingGameIds, runningGameIds, runtimeError, libraryErrorMessage } =
+    storeToRefs(gamesStore)
   type ViewModeScope = 'home' | 'games' | 'favorites' | 'recent'
 
   const viewModes = ref<Record<ViewModeScope, GameViewMode>>({
@@ -236,6 +243,7 @@
   provide(gameLibraryActionsKey, {
     viewMode,
     launchingGameIds,
+    runningGameIds,
     setViewMode,
     openEditGameDialog,
     openRemoveGameDialog,
@@ -329,7 +337,10 @@
         @scan="scanDirectory"
       />
 
-      <RouterView v-else />
+      <template v-else>
+        <p v-if="runtimeError" class="runtime-status-notice" role="status">{{ runtimeError }}</p>
+        <RouterView />
+      </template>
     </section>
   </AppShell>
 
@@ -337,6 +348,9 @@
     :open="isGameDialogOpen"
     :mode="dialogMode"
     :game="editingGame"
+    :launch-locked="
+      Boolean(editingGame && (runningGameIds.includes(editingGame.id) || launchingGameIds.includes(editingGame.id)))
+    "
     :saving="gamesStore.isSaving"
     :error-message="gamesStore.errorMessage"
     @close="closeGameDialog"
@@ -346,6 +360,9 @@
   <RemoveGameDialog
     :open="Boolean(removingGame)"
     :game="removingGame"
+    :launch-locked="
+      Boolean(removingGame && (runningGameIds.includes(removingGame.id) || launchingGameIds.includes(removingGame.id)))
+    "
     :deleting="gamesStore.isSaving"
     :error-message="gamesStore.errorMessage"
     @close="closeRemoveGameDialog"

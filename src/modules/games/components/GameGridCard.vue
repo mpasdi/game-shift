@@ -12,10 +12,12 @@
       game: Game
       showManageActions?: boolean
       isLaunching?: boolean
+      isRunning?: boolean
     }>(),
     {
       showManageActions: true,
-      isLaunching: false
+      isLaunching: false,
+      isRunning: false
     }
   )
 
@@ -46,12 +48,14 @@
         <div class="game-grid-card__actions">
           <IconButton
             class="game-grid-card__primary-action"
-            label="启动游戏"
+            :class="{ 'game-launch--running': props.isRunning }"
+            :label="props.isRunning ? '游戏运行中' : '启动游戏'"
             variant="active"
-            :disabled="props.isLaunching"
+            :disabled="props.isLaunching || props.isRunning"
             @click="emit('launch', props.game)"
           >
-            <Play :size="15" />
+            <span v-if="props.isRunning" class="game-running-dot" aria-hidden="true" />
+            <Play v-else :size="15" />
           </IconButton>
           <IconButton v-if="props.showManageActions" label="编辑游戏" @click="emit('edit', props.game)">
             <Pencil :size="16" />
@@ -171,7 +175,7 @@
     color: var(--accent-strong);
   }
 
-  .game-grid-card__actions :deep(.game-grid-card__primary-action:hover) {
+  .game-grid-card__actions :deep(.game-grid-card__primary-action:hover:not(:disabled)) {
     border-color: transparent;
     background: linear-gradient(180deg, #8d73ff, #6d50e8);
     color: #ffffff;

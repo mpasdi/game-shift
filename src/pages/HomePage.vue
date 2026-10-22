@@ -97,6 +97,7 @@
         :key="game.id"
         :game="game"
         :is-launching="actions.launchingGameIds.value.includes(game.id)"
+        :is-running="actions.runningGameIds.value.includes(game.id)"
         @edit="actions.openEditGameDialog"
         @launch="actions.launchGame"
         @toggle-favorite="actions.toggleFavorite"
@@ -108,6 +109,7 @@
       v-else
       :games="visibleGames"
       :launching-game-ids="actions.launchingGameIds.value"
+      :running-game-ids="actions.runningGameIds.value"
       @edit="actions.openEditGameDialog"
       @launch="actions.launchGame"
       @toggle-favorite="actions.toggleFavorite"
@@ -137,6 +139,7 @@
         action-mode="launch-only"
         launch-style="button"
         :launching-game-ids="actions.launchingGameIds.value"
+        :running-game-ids="actions.runningGameIds.value"
         @launch="actions.launchGame"
       />
     </section>
@@ -165,6 +168,7 @@
           :key="game.id"
           :game="game"
           :is-launching="actions.launchingGameIds.value.includes(game.id)"
+          :is-running="actions.runningGameIds.value.includes(game.id)"
           @launch="actions.launchGame"
           @toggle-favorite="actions.toggleFavorite"
         />
@@ -191,6 +195,7 @@
         density="compact"
         action-mode="launch-only"
         :launching-game-ids="actions.launchingGameIds.value"
+        :running-game-ids="actions.runningGameIds.value"
         @launch="actions.launchGame"
       />
     </section>

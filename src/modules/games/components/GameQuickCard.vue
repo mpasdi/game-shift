@@ -11,10 +11,12 @@
     defineProps<{
       game: Game
       isLaunching?: boolean
+      isRunning?: boolean
       showLastPlayTime?: boolean
     }>(),
     {
       isLaunching: false,
+      isRunning: false,
       showLastPlayTime: false
     }
   )
@@ -44,12 +46,14 @@
     <div class="game-quick-card__actions">
       <IconButton
         class="game-quick-card__primary-action"
-        label="启动游戏"
+        :class="{ 'game-launch--running': props.isRunning }"
+        :label="props.isRunning ? '游戏运行中' : '启动游戏'"
         variant="active"
-        :disabled="props.isLaunching"
+        :disabled="props.isLaunching || props.isRunning"
         @click="emit('launch', props.game)"
       >
-        <Play :size="14" />
+        <span v-if="props.isRunning" class="game-running-dot" aria-hidden="true" />
+        <Play v-else :size="14" />
       </IconButton>
     </div>
   </article>
@@ -167,7 +171,7 @@
     backdrop-filter: blur(10px);
   }
 
-  .game-quick-card__actions :deep(.game-quick-card__primary-action:hover) {
+  .game-quick-card__actions :deep(.game-quick-card__primary-action:hover:not(:disabled)) {
     border-color: transparent;
     background: linear-gradient(180deg, #8d73ff, #6d50e8);
     color: #ffffff;

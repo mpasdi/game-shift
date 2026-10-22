@@ -5,13 +5,14 @@ pub(crate) mod covers;
 mod launcher;
 mod models;
 mod repository;
+pub(crate) mod runtime;
 mod scanner;
 
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::Connection;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::db;
 
@@ -132,6 +133,16 @@ async fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game
     if repository::exe_path_exists_for_other_game(&connection, &input.exe_path, &id)? {
         return Err("该游戏启动路径已存在".to_string());
     }
+    app.state::<runtime::RunningGames>()
+        .with_status(&id, |running| {
+            ensure_launch_edit_allowed(
+                running,
+                &existing,
+                &input.exe_path,
+                input.work_dir.as_deref(),
+                input.args.as_deref(),
+            )
+        })?;
     drop(connection);
 
     let now = current_timestamp_millis()?;
@@ -173,15 +184,27 @@ async fn update_game(app: &AppHandle, payload: UpdateGamePayload) -> Result<Game
 
     let persisted =
         persist_with_cover_rollback(game.cover.as_deref(), existing.cover.as_deref(), || {
-            let mut connection = db::open_connection(app)?;
-            let transaction = connection
-                .transaction()
-                .map_err(|error| error.to_string())?;
-            repository::update_metadata(&transaction, &game)?;
-            let persisted = repository::get_by_id(&transaction, &id)?
-                .ok_or_else(|| "游戏更新后无法读取".to_string())?;
-            transaction.commit().map_err(|error| error.to_string())?;
-            Ok(persisted)
+            app.state::<runtime::RunningGames>()
+                .with_status(&id, |running| {
+                    let mut connection = db::open_connection(app)?;
+                    let transaction = connection
+                        .transaction()
+                        .map_err(|error| error.to_string())?;
+                    let current = repository::get_by_id(&transaction, &id)?
+                        .ok_or_else(|| "游戏不存在或已被删除".to_string())?;
+                    ensure_launch_edit_allowed(
+                        running,
+                        &current,
+                        &game.exe_path,
+                        game.work_dir.as_deref(),
+                        game.args.as_deref(),
+                    )?;
+                    repository::update_metadata(&transaction, &game)?;
+                    let persisted = repository::get_by_id(&transaction, &id)?
+                        .ok_or_else(|| "游戏更新后无法读取".to_string())?;
+                    transaction.commit().map_err(|error| error.to_string())?;
+                    Ok(persisted)
+                })
         })?;
     assets::cleanup_stale_cover_files(app, &id, game.cover.as_deref());
     Ok(persisted)
@@ -209,8 +232,35 @@ fn delete_game(app: &AppHandle, id: &str) -> Result<(), String> {
     if id.is_empty() {
         return Err("游戏 ID 不能为空".to_string());
     }
-    if !repository::delete(&connection, id)? {
-        return Err("游戏不存在或已被删除".to_string());
+    app.state::<runtime::RunningGames>()
+        .with_status(id, |running| {
+            if running {
+                return Err("游戏正在运行，请先退出游戏再移除".to_string());
+            }
+            if !repository::delete(&connection, id)? {
+                return Err("游戏不存在或已被删除".to_string());
+            }
+            Ok(())
+        })
+}
+
+fn ensure_launch_edit_allowed(
+    running: bool,
+    existing: &Game,
+    exe: &str,
+    work_dir: Option<&str>,
+    args: Option<&str>,
+) -> Result<(), String> {
+    if running
+        && (existing.exe_path != exe
+            || existing
+                .work_dir
+                .as_deref()
+                .unwrap_or(&existing.folder_path)
+                != work_dir.unwrap_or(&existing.folder_path)
+            || existing.args.as_deref().unwrap_or("") != args.unwrap_or(""))
+    {
+        return Err("游戏正在运行，请先退出游戏再修改启动配置".to_string());
     }
     Ok(())
 }
