@@ -17,7 +17,18 @@ pub fn database_path(app: &AppHandle) -> Result<PathBuf, String> {
 
 pub fn open_connection(app: &AppHandle) -> Result<Connection, String> {
     let path = database_path(app)?;
-    Connection::open(path).map_err(|error| error.to_string())
+    open_path(&path)
+}
+
+pub(crate) fn open_path(path: &std::path::Path) -> Result<Connection, String> {
+    let connection = Connection::open(path).map_err(|error| error.to_string())?;
+    connection
+        .busy_timeout(std::time::Duration::from_secs(2))
+        .map_err(|error| error.to_string())?;
+    connection
+        .pragma_update(None, "foreign_keys", true)
+        .map_err(|error| error.to_string())?;
+    Ok(connection)
 }
 
 pub fn initialize(app: &AppHandle) -> Result<(), String> {
@@ -25,7 +36,7 @@ pub fn initialize(app: &AppHandle) -> Result<(), String> {
     run_migrations(&connection)
 }
 
-fn run_migrations(connection: &Connection) -> Result<(), String> {
+pub(crate) fn run_migrations(connection: &Connection) -> Result<(), String> {
     connection
         .execute_batch(
             "
@@ -55,6 +66,22 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 value TEXT NOT NULL,
                 update_time INTEGER NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS play_sessions (
+                id TEXT PRIMARY KEY,
+                game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+                started_at INTEGER NOT NULL,
+                checkpoint_at INTEGER NOT NULL,
+                duration_ms INTEGER NOT NULL DEFAULT 0 CHECK(duration_ms >= 0),
+                ended_at INTEGER,
+                end_reason TEXT CHECK(end_reason IN ('game_exited', 'manager_exited', 'interrupted')),
+                CHECK(checkpoint_at >= started_at),
+                CHECK((ended_at IS NULL AND end_reason IS NULL)
+                    OR (ended_at IS NOT NULL AND end_reason IS NOT NULL AND ended_at >= started_at))
+            );
+            CREATE INDEX IF NOT EXISTS idx_play_sessions_game ON play_sessions(game_id, started_at);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_play_sessions_active
+                ON play_sessions(game_id) WHERE ended_at IS NULL;
             ",
         )
         .map_err(|error| error.to_string())?;
