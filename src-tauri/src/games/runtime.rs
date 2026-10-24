@@ -7,7 +7,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use tauri::{AppHandle, Manager};
 
-use super::sessions::{self, EndReason, PlaySession};
+use super::sessions::{self, EndReason, GamePlaytime, PlaySession};
 
 const CHECKPOINT_MS: i64 = 30_000;
 static NEXT_SESSION: AtomicU64 = AtomicU64::new(0);
@@ -154,6 +154,7 @@ pub(crate) fn initialize(app: &AppHandle) -> Result<(), String> {
 pub(crate) struct RunningSnapshot {
     game_ids: Vec<String>,
     error: Option<String>,
+    playtimes: Vec<GamePlaytime>,
 }
 
 impl RunningGames {
@@ -304,9 +305,19 @@ impl RunningGames {
         }
         let mut game_ids = state.games.keys().cloned().collect::<Vec<_>>();
         game_ids.sort();
+        let mut playtimes = match state.database.as_deref() {
+            Some(path) => sessions::summaries(&crate::db::open_path(path)?)?,
+            None => Vec::new(),
+        };
+        for summary in &mut playtimes {
+            if let Some(game) = state.games.get(&summary.game_id) {
+                summary.with_live_session(&game.session);
+            }
+        }
         Ok(RunningSnapshot {
             game_ids,
             error: state.error.clone(),
+            playtimes,
         })
     }
 }

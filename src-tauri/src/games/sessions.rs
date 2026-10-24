@@ -1,6 +1,7 @@
 use rusqlite::{params, Connection};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 pub(super) enum EndReason {
     GameExited,
     ManagerExited,
@@ -23,6 +24,77 @@ pub(super) struct PlaySession {
     pub started_at: i64,
     pub duration_ms: i64,
     pub end_reason: Option<EndReason>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct GamePlaytime {
+    pub game_id: String,
+    pub total_duration_ms: Option<i64>,
+    pub last_session_duration_ms: Option<i64>,
+    pub last_session_end_reason: Option<EndReason>,
+    pub current_session_duration_ms: Option<i64>,
+    #[serde(skip)]
+    last_session_id: Option<String>,
+}
+
+impl GamePlaytime {
+    pub fn with_live_session(&mut self, session: &PlaySession) {
+        let persisted_current = if self.last_session_id.as_deref() == Some(&session.id) {
+            self.last_session_duration_ms.unwrap_or(0)
+        } else {
+            0
+        };
+        self.total_duration_ms = Some(
+            self.total_duration_ms
+                .unwrap_or(0)
+                .saturating_sub(persisted_current)
+                .saturating_add(session.duration_ms),
+        );
+        self.last_session_duration_ms = Some(session.duration_ms);
+        self.last_session_id = Some(session.id.clone());
+        self.last_session_end_reason = session.end_reason;
+        self.current_session_duration_ms =
+            session.end_reason.is_none().then_some(session.duration_ms);
+    }
+}
+
+pub(super) fn summaries(connection: &Connection) -> Result<Vec<GamePlaytime>, String> {
+    // rowid 代表会话创建顺序，系统时间回拨也不会让旧会话变成“最近一次”。
+    let mut statement = connection
+        .prepare(
+            "WITH totals AS (
+            SELECT game_id, SUM(duration_ms) AS total_ms, MAX(rowid) AS last_row
+            FROM play_sessions GROUP BY game_id
+         )
+         SELECT g.id, t.total_ms, s.duration_ms, s.end_reason, s.id
+         FROM games g
+         LEFT JOIN totals t ON t.game_id = g.id
+         LEFT JOIN play_sessions s ON s.rowid = t.last_row
+         ORDER BY g.id",
+        )
+        .map_err(|error| error.to_string())?;
+    let rows = statement
+        .query_map([], |row| {
+            let reason: Option<String> = row.get(3)?;
+            let last_session_end_reason = match reason.as_deref() {
+                Some("game_exited") => Some(EndReason::GameExited),
+                Some("manager_exited") => Some(EndReason::ManagerExited),
+                Some("interrupted") => Some(EndReason::Interrupted),
+                _ => None,
+            };
+            Ok(GamePlaytime {
+                game_id: row.get(0)?,
+                total_duration_ms: row.get(1)?,
+                last_session_duration_ms: row.get(2)?,
+                last_session_end_reason,
+                current_session_duration_ms: None,
+                last_session_id: row.get(4)?,
+            })
+        })
+        .map_err(|error| error.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())
 }
 
 impl PlaySession {

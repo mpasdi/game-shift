@@ -14,7 +14,7 @@
   import { routeNames } from '../router/routeNames'
 
   const gamesStore = useGamesStore()
-  const { games, searchText } = storeToRefs(gamesStore)
+  const { gamesWithPlaytime: games, searchText } = storeToRefs(gamesStore)
   const actions = useGameLibraryActions()
 
   const visibleGames = computed(() => gamesStore.filteredGames)

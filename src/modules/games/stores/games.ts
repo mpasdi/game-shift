@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { createGame, deleteGame, launchGame, listGames, listRunningGames, scanGames, updateGame } from '../api'
-import type { CreateGamePayload, Game, GameFilter, ScanCandidate, UpdateGamePayload } from '../types/game'
+import type { CreateGamePayload, Game, GameFilter, GamePlaytime, ScanCandidate, UpdateGamePayload } from '../types/game'
 
 const LAUNCH_COOLDOWN_MS = 3000
 
@@ -25,6 +25,7 @@ interface GamesState {
   isScanning: boolean
   launchingGameIds: string[]
   runningGameIds: string[]
+  playtimes: Record<string, GamePlaytime>
   runtimeError: string | null
   runtimeRevision: number
   errorMessage: string | null
@@ -41,15 +42,19 @@ export const useGamesStore = defineStore('games', {
     isScanning: false,
     launchingGameIds: [],
     runningGameIds: [],
+    playtimes: {},
     runtimeError: null,
     runtimeRevision: 0,
     errorMessage: null,
     libraryErrorMessage: null
   }),
   getters: {
+    gamesWithPlaytime(state): Game[] {
+      return state.games.map((game) => ({ ...game, playtime: state.playtimes[game.id] }))
+    },
     filteredGames(state): Game[] {
       const keyword = state.searchText.trim().toLowerCase()
-      return state.games
+      return this.gamesWithPlaytime
         .filter((game) => {
           if (state.activeFilter === 'favorite' && !game.favorite) return false
           if (state.activeFilter === 'recent' && !game.lastPlayTime) return false
@@ -66,8 +71,10 @@ export const useGamesStore = defineStore('games', {
       try {
         const snapshot = await listRunningGames()
         if (revision !== this.runtimeRevision) return
+        const playtimes = Object.fromEntries(snapshot.playtimes.map((playtime) => [playtime.gameId, playtime]))
         this.runningGameIds = snapshot.gameIds
         this.runtimeError = snapshot.error
+        this.playtimes = playtimes
       } catch {
         if (revision === this.runtimeRevision) {
           this.runtimeError = '运行状态同步失败，暂时保留上次状态，稍后自动重试'
@@ -141,6 +148,7 @@ export const useGamesStore = defineStore('games', {
         }
         await deleteGame(id)
         this.games = this.games.filter((game) => game.id !== id)
+        delete this.playtimes[id]
       } catch (error) {
         this.errorMessage = error instanceof Error ? error.message : String(error)
         throw error

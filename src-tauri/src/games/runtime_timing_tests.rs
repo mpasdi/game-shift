@@ -83,10 +83,20 @@ fn backend_checkpoints_and_settles_game_exit_without_frontend() {
     fixture.refresh(30_000, false);
     assert_eq!(fixture.saved(), (30_000, None));
     fixture.refresh(45_000, false);
+    let running = fixture.registry.snapshot().unwrap();
+    assert_eq!(running.playtimes[0].total_duration_ms, Some(45_000));
+    assert_eq!(
+        running.playtimes[0].current_session_duration_ms,
+        Some(45_000)
+    );
     fixture.status.store(1, Ordering::SeqCst);
     fixture.refresh(46_000, false);
     assert_eq!(fixture.saved(), (45_000, Some("game_exited".into())));
     assert!(fixture.registry.0.lock().unwrap().games.is_empty());
+    let exited = fixture.registry.snapshot().unwrap();
+    assert_eq!(exited.playtimes[0].total_duration_ms, Some(45_000));
+    assert_eq!(exited.playtimes[0].last_session_duration_ms, Some(45_000));
+    assert_eq!(exited.playtimes[0].current_session_duration_ms, None);
 }
 
 // 测试场景：管理器先退出时立即保存尾段，保留游戏进程且拒绝继续启动。

@@ -162,3 +162,69 @@ fn migration_preserves_existing_game_data_and_deletion_cleans_sessions() {
         0
     );
 }
+
+// 测试场景：旧启动记录没有可推算的时长；零时长新会话与“无记录”明确区分。
+#[test]
+fn summaries_distinguish_missing_history_from_known_zero_duration() {
+    let mut connection = database();
+    connection
+        .execute("UPDATE games SET play_count = 7", [])
+        .unwrap();
+    let summary = summaries(&connection).unwrap().remove(0);
+    assert_eq!(summary.total_duration_ms, None);
+    assert_eq!(summary.last_session_duration_ms, None);
+    save(
+        &mut connection,
+        &session("zero", 1_000, 0, Some(EndReason::GameExited)),
+    )
+    .unwrap();
+    let summary = summaries(&connection).unwrap().remove(0);
+    assert_eq!(summary.total_duration_ms, Some(0));
+    assert_eq!(summary.last_session_duration_ms, Some(0));
+}
+
+// 测试场景：跨会话汇总，只替换本次已落盘部分；回拨系统时间不影响最近会话选择。
+#[test]
+fn summaries_overlay_live_progress_without_counting_checkpoints_twice() {
+    let mut connection = database();
+    save(
+        &mut connection,
+        &session("previous", 100_000, 60_000, Some(EndReason::ManagerExited)),
+    )
+    .unwrap();
+    let mut current = session("current", 1_000, 30_000, None);
+    save(&mut connection, &current).unwrap();
+    current.duration_ms = 45_000;
+    let mut summary = summaries(&connection).unwrap().remove(0);
+    summary.with_live_session(&current);
+    assert_eq!(summary.total_duration_ms, Some(105_000));
+    assert_eq!(summary.last_session_duration_ms, Some(45_000));
+    assert_eq!(summary.current_session_duration_ms, Some(45_000));
+    current.end_reason = Some(EndReason::Interrupted);
+    save(&mut connection, &current).unwrap();
+    let summary = summaries(&connection).unwrap().remove(0);
+    assert_eq!(summary.total_duration_ms, Some(105_000));
+    assert_eq!(summary.last_session_duration_ms, Some(45_000));
+    assert_eq!(
+        summary.last_session_end_reason,
+        Some(EndReason::Interrupted)
+    );
+    assert_eq!(summary.current_session_duration_ms, None);
+}
+
+// 测试场景：新会话首次落盘失败，展示仍包含已确认的本次进度，旧时长不被减掉。
+#[test]
+fn summaries_include_live_sessions_not_yet_persisted() {
+    let mut connection = database();
+    save(
+        &mut connection,
+        &session("previous", 1_000, 60_000, Some(EndReason::GameExited)),
+    )
+    .unwrap();
+    let mut summary = summaries(&connection).unwrap().remove(0);
+    summary.with_live_session(&session("unsaved", 100_000, 12_000, None));
+    summary.with_live_session(&session("unsaved", 100_000, 12_000, None));
+    assert_eq!(summary.total_duration_ms, Some(72_000));
+    assert_eq!(summary.last_session_duration_ms, Some(12_000));
+    assert_eq!(summary.current_session_duration_ms, Some(12_000));
+}
