@@ -29,8 +29,8 @@ describe('running game synchronization lifecycle', () => {
   // 测试场景：挂载读取当前会话，后续同步退出，卸载停止定时任务。
   it('refreshes running state and stops after unmount', async () => {
     vi.mocked(listRunningGames)
-      .mockResolvedValueOnce({ gameIds: ['game'], error: null })
-      .mockResolvedValue({ gameIds: [], error: null })
+      .mockResolvedValueOnce({ gameIds: ['game'], error: null, playtimes: [] })
+      .mockResolvedValue({ gameIds: [], error: null, playtimes: [] })
     const wrapper = mount(Host)
     try {
       await flushPromises()
@@ -46,7 +46,7 @@ describe('running game synchronization lifecycle', () => {
 
   // 测试场景：慢请求期间不堆积轮询；卸载后的响应不得更新 Store 或重新启动定时任务。
   it('does not overlap requests or restart polling after a late response', async () => {
-    let finish!: (value: { gameIds: string[]; error: null }) => void
+    let finish!: (value: { gameIds: string[]; error: null; playtimes: [] }) => void
     vi.mocked(listRunningGames).mockReturnValueOnce(
       new Promise((resolve) => {
         finish = resolve
@@ -56,7 +56,7 @@ describe('running game synchronization lifecycle', () => {
     await vi.advanceTimersByTimeAsync(5000)
     expect(listRunningGames).toHaveBeenCalledTimes(1)
     wrapper.unmount()
-    finish({ gameIds: ['stale'], error: null })
+    finish({ gameIds: ['stale'], error: null, playtimes: [] })
     await flushPromises()
     expect(useGamesStore().runningGameIds).toEqual([])
     expect(vi.getTimerCount()).toBe(0)

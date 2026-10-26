@@ -17,6 +17,15 @@ export interface Game {
   lastPlayTime?: number | null
   createTime: number
   updateTime: number
+  playtime?: GamePlaytime
+}
+
+export interface GamePlaytime {
+  gameId: string
+  totalDurationMs: number | null
+  lastSessionDurationMs: number | null
+  lastSessionEndReason: 'game_exited' | 'manager_exited' | 'interrupted' | null
+  currentSessionDurationMs: number | null
 }
 
 export interface CreateGamePayload {

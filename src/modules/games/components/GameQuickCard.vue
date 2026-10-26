@@ -3,7 +3,7 @@
   import { Play } from '@lucide/vue'
   import IconButton from '../../../shared/components/IconButton.vue'
   import type { Game } from '../types/game'
-  import { formatLastPlayTime } from '../utils/formatLastPlayTime'
+  import { useLastPlayTime } from '../composables/useLastPlayTime'
   import GameArtwork from './GameArtwork.vue'
   import GameFavoriteToggle from './GameFavoriteToggle.vue'
 
@@ -26,7 +26,8 @@
     toggleFavorite: [game: Game]
   }>()
 
-  const lastPlayText = computed(() => formatLastPlayTime(props.game.lastPlayTime))
+  const formatLastPlayTime = useLastPlayTime()
+  const lastPlayText = computed(() => formatLastPlayTime.value(props.game.lastPlayTime))
 </script>
 
 <template>

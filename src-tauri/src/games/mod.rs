@@ -7,6 +7,7 @@ mod models;
 mod repository;
 pub(crate) mod runtime;
 mod scanner;
+mod sessions;
 
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};

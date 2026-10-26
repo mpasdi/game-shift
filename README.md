@@ -8,7 +8,7 @@
 
 Game Shift 用于集中管理 Windows 电脑上的本地游戏启动程序。你可以手动添加单个 `.exe`，也可以扫描游戏目录批量导入，并在统一界面中完成搜索、收藏、启动和最近游玩管理。
 
-> 当前版本：`v0.2.3 Beta`
+> 当前版本：`v0.3.1 Beta`
 
 ## 主要功能
 
@@ -21,6 +21,8 @@ Game Shift 用于集中管理 Windows 电脑上的本地游戏启动程序。你
 - 按名称或启动程序文件名搜索
 - 收藏游戏，并按最近收藏时间排序
 - 记录最近游玩时间和启动次数
+- 展示游戏运行状态，防止重复启动
+- 在列表中展示累计游玩时长
 - 支持工作目录与自定义启动参数
 - 编辑或移除游戏记录
 - 支持自动或手动检查、下载和安装应用更新
@@ -39,7 +41,7 @@ Game Shift 用于集中管理 Windows 电脑上的本地游戏启动程序。你
 前往 [GitHub Releases](https://github.com/mpasdi/game-shift/releases) 下载最新版本：
 
 ```text
-Game Shift_0.2.3_x64-setup.exe
+Game Shift_0.3.1_x64-setup.exe
 ```
 
 运行安装程序并按照提示完成安装。请只从本项目官方 GitHub Releases 下载，不要运行来源不明的二次打包文件。
@@ -57,7 +59,7 @@ Game Shift 是免费开源软件，当前 Beta 安装包暂未购买商业 Windo
 PowerShell 校验命令：
 
 ```powershell
-Get-FileHash -LiteralPath '.\Game Shift_0.2.3_x64-setup.exe' -Algorithm SHA256
+Get-FileHash -LiteralPath '.\Game Shift_0.3.1_x64-setup.exe' -Algorithm SHA256
 ```
 
 如果无法确认文件来源或校验值不一致，请不要继续安装。
@@ -91,6 +93,13 @@ Get-FileHash -LiteralPath '.\Game Shift_0.2.3_x64-setup.exe' -Algorithm SHA256
 - 发现新版本后，由用户确认是否下载和安装，不进行静默或强制更新。
 - v0.2.1 用户可以通过应用内更新升级到后续版本；v0.2.0 及更早版本需要从 GitHub Releases 手动安装最新版本。
 
+### 游玩时长
+
+- 通过 Game Shift 启动游戏后，列表中的“累计时长”会同步更新。
+- 仅统计 Game Shift 运行期间能够确认的直接启动进程时长，升级前的历史时长不补算。
+- 关闭 Game Shift 会停止计时，但不会关闭游戏；重新打开后不接管旧进程，也不补算关闭期间的时间。
+- 普通卡片保留最近游玩时间和启动次数，快捷卡片保留原有日期展示，不显示单次或累计时长。
+
 ### 数据与本地文件
 
 - 游戏库数据保存在本地 SQLite 数据库中，不会上传到服务器。
@@ -105,8 +114,9 @@ Get-FileHash -LiteralPath '.\Game Shift_0.2.3_x64-setup.exe' -Algorithm SHA256
 
 - 当前仅提供 Windows x64 安装包。
 - 安装包暂未进行商业 Windows 代码签名。
-- 暂不跟踪游戏进程运行状态。
-- 暂不统计单次或累计游玩时长。
+- 仅跟踪通过 Game Shift 直接启动的进程，不识别外部启动的游戏，也不继续跟踪启动器退出后运行的子进程。
+- 仅在列表展示累计游玩时长，暂不展示单次时长或游玩会话列表。
+- 暂不提供关闭游戏进程的操作。
 - 分类与标签功能尚未开放。
 - 联网封面需要用户自行申请 SteamGridDB API Key。
 
@@ -212,6 +222,8 @@ commit-msg -> commitlint
 - [UI 设计说明](./docs/ui-design.md)
 - [开发模块与实现清单](./workLine.md)
 - [Windows 发布 SOP](./docs/windows-release-sop.md)
+- [v0.3.1 发布记录](./docs/releases/v0.3.1.md)
+- [v0.3.0 发布记录](./docs/releases/v0.3.0.md)
 - [v0.2.3 发布记录](./docs/releases/v0.2.3.md)
 - [v0.2.2 发布记录](./docs/releases/v0.2.2.md)
 - [v0.2.1 发布记录](./docs/releases/v0.2.1.md)

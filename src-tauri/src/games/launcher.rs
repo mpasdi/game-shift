@@ -7,7 +7,7 @@ use crate::db;
 
 use super::models::Game;
 use super::repository;
-use super::{current_timestamp_millis, normalize_existing_directory, normalize_existing_exe_path};
+use super::{normalize_existing_directory, normalize_existing_exe_path};
 
 pub(super) fn launch_game(app: &AppHandle, id: &str) -> Result<Game, String> {
     let connection = db::open_connection(app)?;
@@ -26,8 +26,6 @@ pub(super) fn launch_game(app: &AppHandle, id: &str) -> Result<Game, String> {
         )
     })?;
 
-    let now = current_timestamp_millis()?;
-    repository::record_launch(&connection, id, now)?;
     repository::get_by_id(&connection, id)?.ok_or_else(|| "游戏启动后无法读取".to_string())
 }
 

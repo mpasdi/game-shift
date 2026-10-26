@@ -47,7 +47,7 @@ describe('games store launch', () => {
     // 每个测试使用全新的 Pinia，避免测试之间共享状态
     setActivePinia(createPinia())
     vi.resetAllMocks()
-    vi.mocked(listRunningGames).mockResolvedValue({ gameIds: [], error: null })
+    vi.mocked(listRunningGames).mockResolvedValue({ gameIds: [], error: null, playtimes: [] })
     vi.useFakeTimers()
   })
   afterEach(() => {
@@ -116,14 +116,14 @@ describe('games store launch', () => {
   // 测试场景：冷却结束但进程仍在运行时阻止启动；确认退出后允许再次启动。
   it('blocks a running game after cooldown and allows relaunch after exit', async () => {
     vi.mocked(launchGame).mockResolvedValue(games[0])
-    vi.mocked(listRunningGames).mockResolvedValue({ gameIds: ['game-1'], error: null })
+    vi.mocked(listRunningGames).mockResolvedValue({ gameIds: ['game-1'], error: null, playtimes: [] })
     const store = useGamesStore()
     await store.launchGame('game-1')
     vi.advanceTimersByTime(3000)
     expect(store.runningGameIds).toEqual(['game-1'])
     expect(await store.launchGame('game-1')).toBeNull()
     expect(launchGame).toHaveBeenCalledTimes(1)
-    vi.mocked(listRunningGames).mockResolvedValue({ gameIds: [], error: null })
+    vi.mocked(listRunningGames).mockResolvedValue({ gameIds: [], error: null, playtimes: [] })
     await store.refreshRunningGames()
     await store.launchGame('game-1')
     expect(launchGame).toHaveBeenCalledTimes(2)
@@ -137,7 +137,7 @@ describe('games store launch', () => {
     await store.refreshRunningGames()
     expect(store.runningGameIds).toEqual(['game-1'])
     expect(store.runtimeError).not.toBeNull()
-    let finish!: (value: { gameIds: string[]; error: null }) => void
+    let finish!: (value: { gameIds: string[]; error: null; playtimes: [] }) => void
     vi.mocked(listRunningGames).mockReturnValueOnce(
       new Promise((resolve) => {
         finish = resolve
@@ -147,7 +147,7 @@ describe('games store launch', () => {
     await store.refreshRunningGames()
     expect(store.runningGameIds).toEqual([])
     expect(store.runtimeError).toBeNull()
-    finish({ gameIds: ['game-1'], error: null })
+    finish({ gameIds: ['game-1'], error: null, playtimes: [] })
     await oldRequest
     expect(store.runningGameIds).toEqual([])
   })

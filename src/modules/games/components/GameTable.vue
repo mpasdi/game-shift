@@ -5,7 +5,8 @@
   import DataTable from '../../../shared/components/DataTable.vue'
   import IconButton from '../../../shared/components/IconButton.vue'
   import type { Game } from '../types/game'
-  import { formatLastPlayTime } from '../utils/formatLastPlayTime'
+  import { useLastPlayTime } from '../composables/useLastPlayTime'
+  import { formatPlayDuration, playtimeDescription } from '../utils/formatPlayDuration'
   import GameArtwork from './GameArtwork.vue'
 
   type GameTableDensity = 'compact' | 'regular'
@@ -43,17 +44,22 @@
     remove: [game: Game]
   }>()
 
+  const formatLastPlayTime = useLastPlayTime()
+
   const actionColumnWidth = computed(() => {
-    if (props.launchStyle === 'button') return '108px'
-    if (props.actionMode === 'full') return '156px'
-    if (props.actionMode === 'quick') return '96px'
-    return '64px'
+    let baseWidth = 64
+    if (props.launchStyle === 'button') baseWidth = 108
+    else if (props.actionMode === 'full') baseWidth = 156
+    else if (props.actionMode === 'quick') baseWidth = 96
+    // 操作内容靠右排列，额外留白放在左侧，与次数列拉开距离。
+    return `${baseWidth + 32}px`
   })
 
   const columns = computed<GameTableColumn[]>(() => [
-    { key: 'game', label: '游戏', width: 'minmax(220px, 2fr)' },
-    { key: 'lastPlay', label: '最近游玩', width: 'minmax(150px, 1fr)' },
-    { key: 'playCount', label: '次数', width: 'minmax(100px, 1fr)', align: 'center' },
+    { key: 'game', label: '游戏', width: 'minmax(180px, 2fr)' },
+    { key: 'lastPlay', label: '最近游玩', width: 'minmax(132px, 1.2fr)' },
+    { key: 'totalPlay', label: '累计时长', width: 'minmax(112px, 0.9fr)' },
+    { key: 'playCount', label: '次数', width: 'minmax(48px, 0.4fr)', align: 'center' },
     { key: 'actions', label: '操作', width: actionColumnWidth.value, align: 'right' }
   ])
 
@@ -96,6 +102,12 @@
     <template #cell-lastPlay="{ row }">
       <span class="game-table__stat" :title="formatLastPlayTime((row as Game).lastPlayTime)">
         {{ formatLastPlayTime((row as Game).lastPlayTime) }}
+      </span>
+    </template>
+
+    <template #cell-totalPlay="{ row }">
+      <span class="game-table__stat" :title="playtimeDescription((row as Game).playtime)">
+        {{ formatPlayDuration((row as Game).playtime?.totalDurationMs) }}
       </span>
     </template>
 

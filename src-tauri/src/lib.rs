@@ -2,6 +2,8 @@ mod db;
 mod games;
 mod settings;
 
+use tauri::Manager;
+
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AppInfo {
@@ -40,6 +42,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             db::initialize(app.handle())?;
+            games::runtime::initialize(app.handle())?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -62,6 +65,13 @@ pub fn run() {
             settings::commands::delete_steamgriddb_api_key_command,
             settings::commands::test_steamgriddb_connection_command
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Game Shift");
+        .build(tauri::generate_context!())
+        .expect("error while building Game Shift")
+        .run(|app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                if let Err(error) = app.state::<games::runtime::RunningGames>().shutdown() {
+                    eprintln!("退出时保存游玩记录失败：{error}");
+                }
+            }
+        });
 }

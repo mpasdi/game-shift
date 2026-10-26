@@ -18,6 +18,51 @@ const game: Game = {
 }
 
 describe('game running state', () => {
+  // 测试场景：列表展示累计时长，卡片保留日期；运行中、退出后及悬停均不展示单次时长。
+  it('keeps cumulative playtime in tables and original metadata in cards', async () => {
+    const timedGame: Game = {
+      ...game,
+      playtime: {
+        gameId: game.id,
+        totalDurationMs: 3_660_000,
+        lastSessionDurationMs: 60_000,
+        lastSessionEndReason: null,
+        currentSessionDurationMs: 60_000
+      }
+    }
+    const table = mount(GameTable, { props: { games: [timedGame], runningGameIds: [game.id] } })
+    const grid = mount(GameGridCard, { props: { game: timedGame, isRunning: true } })
+    const quick = mount(GameQuickCard, { props: { game: timedGame, isRunning: true, showLastPlayTime: true } })
+    expect(table.text()).toContain('累计时长')
+    expect(table.text()).toContain('1 小时 1 分钟')
+    expect(grid.get('p').text()).toBe('无启动记录 · 1 次')
+    expect(quick.get('p').text()).toBe('无启动记录')
+    for (const wrapper of [table, grid, quick]) {
+      expect(wrapper.html()).not.toContain('本次')
+      expect(wrapper.html()).not.toContain('上次')
+    }
+    const ended: Game = {
+      ...timedGame,
+      playtime: { ...timedGame.playtime!, currentSessionDurationMs: null, lastSessionEndReason: 'interrupted' }
+    }
+    await table.setProps({ games: [ended], runningGameIds: [] })
+    await grid.setProps({ game: ended, isRunning: false })
+    await quick.setProps({ game: ended, isRunning: false })
+    expect(table.text()).toContain('1 小时 1 分钟')
+    expect(grid.get('p').text()).toBe('无启动记录 · 1 次')
+    for (const card of [grid, quick]) {
+      expect(card.html()).not.toContain('累计')
+      expect(card.html()).not.toContain('1 小时 1 分钟')
+    }
+    for (const wrapper of [table, grid, quick]) {
+      expect(wrapper.html()).not.toContain('本次')
+      expect(wrapper.html()).not.toContain('上次')
+      expect(wrapper.html()).not.toContain('中断')
+    }
+    await table.setProps({ games: [game] })
+    expect(table.text()).toContain('—')
+  })
+
   // 测试场景：两种卡片运行时禁用启动，退出后恢复正常操作。
   for (const [name, component] of [
     ['grid', GameGridCard],

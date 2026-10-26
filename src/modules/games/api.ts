@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { CoverCandidate, CoverSearchResult } from './types/cover'
-import type { CreateGamePayload, Game, ScanCandidate, UpdateGamePayload } from './types/game'
+import type { CreateGamePayload, Game, GamePlaytime, ScanCandidate, UpdateGamePayload } from './types/game'
 
 function isTauriRuntime() {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
@@ -53,10 +53,11 @@ export async function launchGame(id: string) {
 export interface RunningGamesSnapshot {
   gameIds: string[]
   error: string | null
+  playtimes: GamePlaytime[]
 }
 
 export async function listRunningGames(): Promise<RunningGamesSnapshot> {
-  if (!isTauriRuntime()) return { gameIds: [], error: null }
+  if (!isTauriRuntime()) return { gameIds: [], error: null, playtimes: [] }
   return invoke<RunningGamesSnapshot>('running_games_command')
 }
 

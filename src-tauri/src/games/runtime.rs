@@ -1,6 +1,16 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::process::{Child, Command};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use tauri::{AppHandle, Manager};
+
+use super::sessions::{self, EndReason, GamePlaytime, PlaySession};
+
+const CHECKPOINT_MS: i64 = 30_000;
+static NEXT_SESSION: AtomicU64 = AtomicU64::new(0);
 
 trait TrackedProcess: Send {
     fn has_exited(&mut self) -> std::io::Result<bool>;
@@ -12,17 +22,189 @@ impl TrackedProcess for Child {
     }
 }
 
+#[derive(Clone, Default)]
+pub(crate) struct RunningGames(Arc<Mutex<RuntimeState>>);
+
+// Windows 安装更新时 Updater 会直接退出进程，不经过 RunEvent::Exit，
+// 但会先清理 Tauri 资源；使用同一结算逻辑保留这一退出路径的尾段。
+struct ShutdownGuard(RunningGames);
+
+impl tauri::Resource for ShutdownGuard {}
+
+impl Drop for ShutdownGuard {
+    fn drop(&mut self) {
+        if let Err(error) = self.0.shutdown() {
+            eprintln!("退出时保存游玩记录失败：{error}");
+        }
+    }
+}
+
 #[derive(Default)]
-pub(crate) struct RunningGames(Mutex<HashMap<String, Box<dyn TrackedProcess>>>);
+struct RuntimeState {
+    games: HashMap<String, RunningGame>,
+    database: Option<PathBuf>,
+    // 保持独占文件锁，防止另一个实例把当前活跃会话当成崩溃遗留记录恢复。
+    ownership: Option<std::fs::File>,
+    stopping: bool,
+    error: Option<String>,
+}
+
+struct RunningGame {
+    process: Box<dyn TrackedProcess>,
+    session: PlaySession,
+    started: Instant,
+    last_saved_ms: Option<i64>,
+}
+
+impl RunningGame {
+    fn observe(&mut self, now: Instant, closing: bool) -> Result<(), String> {
+        if self.session.end_reason.is_some() {
+            return Ok(());
+        }
+        match self.process.has_exited() {
+            Ok(false) => {
+                self.session.duration_ms = self.session.duration_ms.max(
+                    i64::try_from(now.saturating_duration_since(self.started).as_millis())
+                        .unwrap_or(i64::MAX),
+                );
+                if closing {
+                    self.session.end_reason = Some(EndReason::ManagerExited);
+                }
+            }
+            // 进程退出发生在两次检查之间，保守结算到最后确认存活的时刻。
+            Ok(true) => self.session.end_reason = Some(EndReason::GameExited),
+            Err(_) => {
+                if closing {
+                    self.session.end_reason = Some(EndReason::Interrupted);
+                    return Ok(());
+                }
+                return Err("部分游戏状态暂时无法确认，已保留启动锁定，稍后自动重试".into());
+            }
+        }
+        Ok(())
+    }
+
+    fn save_if_due(
+        &mut self,
+        database: Option<&std::path::Path>,
+        force: bool,
+    ) -> Result<(), String> {
+        let due = self
+            .last_saved_ms
+            .is_none_or(|last| self.session.duration_ms - last >= CHECKPOINT_MS);
+        if !force && !due && self.session.end_reason.is_none() {
+            return Ok(());
+        }
+        if let Some(path) = database {
+            let result = crate::db::open_path(path)
+                .and_then(|mut connection| sessions::save(&mut connection, &self.session));
+            result.map_err(|error| format!("游玩记录保存失败，将自动重试：{error}"))?;
+        }
+        self.last_saved_ms = Some(self.session.duration_ms);
+        Ok(())
+    }
+}
+
+impl RuntimeState {
+    fn refresh_game(&mut self, id: &str, now: Instant, closing: bool) -> Result<(), String> {
+        let Some(game) = self.games.get_mut(id) else {
+            return Ok(());
+        };
+        let observed = game.observe(now, closing);
+        game.save_if_due(self.database.as_deref(), closing)?;
+        if game.session.end_reason.is_some() {
+            self.games.remove(id);
+        }
+        observed
+    }
+
+    fn refresh(&mut self, now: Instant, closing: bool) {
+        self.error = None;
+        for id in self.games.keys().cloned().collect::<Vec<_>>() {
+            if let Err(error) = self.refresh_game(&id, now, closing) {
+                self.error = Some(error);
+            }
+        }
+    }
+}
+
+pub(crate) fn initialize(app: &AppHandle) -> Result<(), String> {
+    let registry = app.state::<RunningGames>();
+    registry.initialize_database(crate::db::database_path(app)?)?;
+    app.resources_table()
+        .add(ShutdownGuard(registry.inner().clone()));
+    let handle = app.clone();
+    std::thread::Builder::new()
+        .name("game-playtime".into())
+        .spawn(move || loop {
+            std::thread::sleep(Duration::from_secs(1));
+            let registry = handle.state::<RunningGames>();
+            match registry.tick() {
+                Ok(true) => (),
+                Ok(false) => break,
+                Err(error) => eprintln!("游玩计时任务失败：{error}"),
+            }
+        })
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RunningSnapshot {
     game_ids: Vec<String>,
     error: Option<String>,
+    playtimes: Vec<GamePlaytime>,
 }
 
 impl RunningGames {
+    fn initialize_database(&self, path: PathBuf) -> Result<(), String> {
+        let mut state = self
+            .0
+            .lock()
+            .map_err(|_| "无法读取游戏运行状态".to_string())?;
+        if state.database.is_some() {
+            return Err("游玩计时已经初始化".into());
+        }
+        let ownership = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path.with_extension("tracking.lock"))
+            .map_err(|error| error.to_string())?;
+        ownership.try_lock().map_err(|error| {
+            format!("无法独占游玩记录，请确认其他 Game Shift 实例已退出：{error}")
+        })?;
+        let connection = crate::db::open_path(&path)?;
+        sessions::recover_interrupted(&connection)?;
+        state.database = Some(path);
+        state.ownership = Some(ownership);
+        Ok(())
+    }
+
+    fn tick(&self) -> Result<bool, String> {
+        let mut state = self
+            .0
+            .lock()
+            .map_err(|_| "无法读取游戏运行状态".to_string())?;
+        if state.stopping {
+            return Ok(false);
+        }
+        state.refresh(Instant::now(), false);
+        Ok(true)
+    }
+
+    pub(crate) fn shutdown(&self) -> Result<(), String> {
+        let mut state = self
+            .0
+            .lock()
+            .map_err(|_| "无法读取游戏运行状态".to_string())?;
+        state.stopping = true;
+        state.refresh(Instant::now(), true);
+        state.error.clone().map_or(Ok(()), Err)
+    }
+
     pub(super) fn spawn(
         &self,
         id: &str,
@@ -42,21 +224,12 @@ impl RunningGames {
         id: &str,
         action: impl FnOnce(bool) -> Result<T, String>,
     ) -> Result<T, String> {
-        let mut processes = self
+        let mut state = self
             .0
             .lock()
             .map_err(|_| "无法读取游戏运行状态".to_string())?;
-        let running = match processes.get_mut(id) {
-            Some(process) => match process.has_exited() {
-                Ok(true) => {
-                    processes.remove(id);
-                    false
-                }
-                Ok(false) => true,
-                Err(_) => return Err("无法确认游戏是否退出，请稍后重试".to_string()),
-            },
-            None => false,
-        };
+        state.refresh_game(id, Instant::now(), false)?;
+        let running = state.games.contains_key(id);
         action(running)
     }
 
@@ -66,41 +239,92 @@ impl RunningGames {
         spawn: impl FnOnce() -> Result<Box<dyn TrackedProcess>, String>,
     ) -> Result<(), String> {
         // 检查和创建进程使用同一把锁，避免同时收到两个启动请求时重复 spawn。
-        let mut processes = self
+        let mut state = self
             .0
             .lock()
             .map_err(|_| "无法读取游戏运行状态".to_string())?;
-        if let Some(process) = processes.get_mut(id) {
-            match process.has_exited() {
-                Ok(true) => {
-                    processes.remove(id);
-                }
-                Ok(false) => return Err("游戏正在运行，请勿重复启动".to_string()),
-                Err(_) => return Err("无法确认游戏是否退出，请稍后重试".to_string()),
-            }
+        if state.stopping {
+            return Err("Game Shift 正在退出，无法启动游戏".into());
         }
-        processes.insert(id.to_string(), spawn()?);
+        state.refresh_game(id, Instant::now(), false)?;
+        if state.games.contains_key(id) {
+            return Err("游戏正在运行，请勿重复启动".to_string());
+        }
+        let started_at = super::current_timestamp_millis()?;
+        let preparing = Instant::now();
+        let session_id = format!(
+            "{}-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_err(|error| error.to_string())?
+                .as_nanos(),
+            NEXT_SESSION.fetch_add(1, Ordering::Relaxed)
+        );
+        // 先完成所有可能失败的元数据准备；进程启动后必须保留句柄。
+        let process = spawn()?;
+        let started = Instant::now();
+        let started_at = started_at.saturating_add(
+            i64::try_from(started.duration_since(preparing).as_millis()).unwrap_or(i64::MAX),
+        );
+        state.games.insert(
+            id.to_string(),
+            RunningGame {
+                process,
+                session: PlaySession {
+                    id: session_id,
+                    game_id: id.into(),
+                    started_at,
+                    duration_ms: 0,
+                    end_reason: None,
+                },
+                started,
+                last_saved_ms: None,
+            },
+        );
+        let database = state.database.clone();
+        if let Err(error) = state
+            .games
+            .get_mut(id)
+            .expect("newly inserted game")
+            .save_if_due(database.as_deref(), true)
+        {
+            state.error = Some(error.clone());
+            return Err(format!("游戏已启动，但{error}"));
+        }
         Ok(())
     }
 
     pub(crate) fn snapshot(&self) -> Result<RunningSnapshot, String> {
-        let mut processes = self
+        let mut state = self
             .0
             .lock()
             .map_err(|_| "无法读取游戏运行状态".to_string())?;
-        let mut error = None;
-        processes.retain(|_, child| match child.has_exited() {
-            Ok(exited) => !exited,
-            Err(_) => {
-                error = Some("部分游戏状态暂时无法确认，已保留启动锁定，稍后自动重试".to_string());
-                true
-            }
-        });
-        let mut game_ids = processes.keys().cloned().collect::<Vec<_>>();
+        if !state.stopping {
+            state.refresh(Instant::now(), false);
+        }
+        let mut game_ids = state.games.keys().cloned().collect::<Vec<_>>();
         game_ids.sort();
-        Ok(RunningSnapshot { game_ids, error })
+        let mut playtimes = match state.database.as_deref() {
+            Some(path) => sessions::summaries(&crate::db::open_path(path)?)?,
+            None => Vec::new(),
+        };
+        for summary in &mut playtimes {
+            if let Some(game) = state.games.get(&summary.game_id) {
+                summary.with_live_session(&game.session);
+            }
+        }
+        Ok(RunningSnapshot {
+            game_ids,
+            error: state.error.clone(),
+            playtimes,
+        })
     }
 }
+
+#[cfg(test)]
+#[path = "runtime_timing_tests.rs"]
+mod timing_tests;
 
 #[cfg(test)]
 mod tests {
