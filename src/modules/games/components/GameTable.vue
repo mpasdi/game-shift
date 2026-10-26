@@ -5,7 +5,7 @@
   import DataTable from '../../../shared/components/DataTable.vue'
   import IconButton from '../../../shared/components/IconButton.vue'
   import type { Game } from '../types/game'
-  import { formatLastPlayTime } from '../utils/formatLastPlayTime'
+  import { useLastPlayTime } from '../composables/useLastPlayTime'
   import { formatPlayDuration, playtimeDescription } from '../utils/formatPlayDuration'
   import GameArtwork from './GameArtwork.vue'
 
@@ -43,6 +43,8 @@
     toggleFavorite: [game: Game]
     remove: [game: Game]
   }>()
+
+  const formatLastPlayTime = useLastPlayTime()
 
   const actionColumnWidth = computed(() => {
     let baseWidth = 64

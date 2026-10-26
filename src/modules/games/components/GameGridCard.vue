@@ -3,7 +3,7 @@
   import { Pencil, Play, Trash2 } from '@lucide/vue'
   import IconButton from '../../../shared/components/IconButton.vue'
   import type { Game } from '../types/game'
-  import { formatLastPlayTime } from '../utils/formatLastPlayTime'
+  import { useLastPlayTime } from '../composables/useLastPlayTime'
   import GameArtwork from './GameArtwork.vue'
   import GameFavoriteToggle from './GameFavoriteToggle.vue'
 
@@ -28,7 +28,8 @@
     remove: [game: Game]
   }>()
 
-  const lastPlayText = computed(() => formatLastPlayTime(props.game.lastPlayTime))
+  const formatLastPlayTime = useLastPlayTime()
+  const lastPlayText = computed(() => formatLastPlayTime.value(props.game.lastPlayTime))
 
   const metaText = computed(() => `${lastPlayText.value} · ${props.game.playCount} 次`)
 </script>
